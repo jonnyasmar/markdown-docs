@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdown Docs</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: var(--vscode-editor-font-family, 'Segoe UI', Arial, sans-serif);
+            background: var(--vscode-editor-background, #1e1e1e);
+            color: var(--vscode-editor-foreground, #d4d4d4);
+        }
+
+        .editor-container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .editor-main {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .toolbar {
+            background: var(--vscode-editorWidget-background, #252526);
+            border-bottom: 1px solid var(--vscode-editorWidget-border, #454545);
+            padding: 8px 12px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .toolbar button {
+            background: var(--vscode-button-background, #0e639c);
+            color: var(--vscode-button-foreground, #ffffff);
+            border: 1px solid var(--vscode-button-border, transparent);
+            border-radius: 4px;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .toolbar button:hover {
+            background: var(--vscode-button-hoverBackground, #1177bb);
+        }
+
+        .editor-content {
+            flex: 1;
+            background: var(--vscode-editor-background, #1e1e1e);
+            color: var(--vscode-editor-foreground, #d4d4d4);
+            border: none;
+            outline: none;
+            padding: 16px;
+            font-family: var(--vscode-editor-font-family, monospace);
+            font-size: 14px;
+            line-height: 1.5;
+            resize: none;
+        }
+
+        .comments-sidebar {
+            flex: 1;
+            min-width: 300px;
+            max-width: 400px;
+            background: var(--vscode-sideBar-background, #252526);
+            border-left: 1px solid var(--vscode-sideBar-border, #454545);
+            padding: 16px;
+            overflow-y: auto;
+        }
+
+        .comments-sidebar h3 {
+            margin: 0 0 16px 0;
+            color: var(--vscode-sideBar-foreground, #cccccc);
+        }
+
+        .no-comments {
+            color: var(--vscode-descriptionForeground, #858585);
+            text-align: center;
+            margin-top: 40px;
+            font-style: italic;
+        }
+
+        .comment-item {
+            background: var(--vscode-editorWidget-background, #252526);
+            border: 1px solid var(--vscode-editorWidget-border, #454545);
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .comment-content {
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+
+        .comment-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .comment-actions button {
+            padding: 4px 8px;
+            font-size: 12px;
+            background: var(--vscode-button-secondaryBackground, #3c3c3c);
+            color: var(--vscode-button-secondaryForeground, #cccccc);
+            border: 1px solid var(--vscode-button-border, transparent);
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .comment-actions button:hover {
+            background: var(--vscode-button-secondaryHoverBackground, #505050);
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            color: var(--vscode-descriptionForeground, #858585);
+        }
+
+        .error {
+            color: var(--vscode-errorForeground, #f85149);
+            padding: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="loading">Loading Markdown Editor...</div>
+    </div>
+
+    <script>
+        // Global variables to prevent VS Code API issues
+        let vscode;
+        let currentMarkdown = '';
+        let comments = [];
+
+        // Safely acquire VS Code API only once
+        function getVSCodeAPI() {
+            if (window.vscodeApi) {
+                return window.vscodeApi;
+            }
+            
+            try {
+                if (typeof acquireVsCodeApi !== 'undefined') {
+                    window.vscodeApi = acquireVsCodeApi();
+                    return window.vscodeApi;
+                } else {
+                    console.error('VS Code API not available');
+                    return null;
+                }
+            } catch (error) {
+                console.error('Error acquiring VS Code API:', error);
+                return null;
+            }
+        }
+
+        // Initialize the editor
+        function initializeEditor() {
+            console.log('Initializing simple editor');
+            
+            vscode = getVSCodeAPI();
+            if (!vscode) {
+                showError('Failed to connect to VS Code');
+                return;
+            }
+
+            // Create the editor UI
+            createEditorUI();
+
+            // Set up message handling
+            window.addEventListener('message', handleMessage);
+
+            // Request initial content
+            console.log('Sending ready message');
+            vscode.postMessage({ command: 'ready' });
+        }
+
+        function createEditorUI() {
+            const app = document.getElementById('app');
+            app.innerHTML = `
+                <div class="editor-container">
+                    <div class="editor-main">
+                        <div class="toolbar">
+                            <button onclick="formatBold()">Bold</button>
+                            <button onclick="formatItalic()">Italic</button>
+                            <button onclick="formatHeader()">Header</button>
+                            <button onclick="addComment()">💬 Comment</button>
+                        </div>
+                        <textarea 
+                            id="editor-content" 
+                            class="editor-content"
+                            placeholder="Start typing your markdown..."
+                            oninput="handleContentChange()"
+                        ></textarea>
+                    </div>
+                    <div class="comments-sidebar">
+                        <h3>Comments</h3>
+                        <div id="comments-list">
+                            <div class="no-comments">
+                                No comments yet.<br>
+                                Select text and click 💬 Comment to add comments.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function handleMessage(event) {
+            const message = event.data;
+            console.log('Received message:', message);
+
+            switch (message.command) {
+                case 'update':
+                    console.log('Updating content:', message.content);
+                    currentMarkdown = message.content || '';
+                    const editor = document.getElementById('editor-content');
+                    if (editor && editor.value !== currentMarkdown) {
+                        editor.value = currentMarkdown;
+                    }
+                    break;
+                
+                case 'updateComments':
+                    comments = message.comments || [];
+                    updateCommentsUI();
+                    break;
+            }
+        }
+
+        function handleContentChange() {
+            const editor = document.getElementById('editor-content');
+            if (editor && vscode) {
+                currentMarkdown = editor.value;
+                vscode.postMessage({
+                    command: 'edit',
+                    content: currentMarkdown
+                });
+            }
+        }
+
+        function formatBold() {
+            formatSelectedText('**', '**');
+        }
+
+        function formatItalic() {
+            formatSelectedText('*', '*');
+        }
+
+        function formatHeader() {
+            formatSelectedText('## ', '');
+        }
+
+        function formatSelectedText(prefix, suffix) {
+            const editor = document.getElementById('editor-content');
+            if (!editor) return;
+
+            const start = editor.selectionStart;
+            const end = editor.selectionEnd;
+            const selectedText = editor.value.substring(start, end);
+            
+            if (selectedText) {
+                const formattedText = prefix + selectedText + suffix;
+                editor.value = 
+                    editor.value.substring(0, start) + 
+                    formattedText + 
+                    editor.value.substring(end);
+                
+                // Update cursor position
+                editor.focus();
+                editor.setSelectionRange(start + prefix.length, start + prefix.length + selectedText.length);
+                
+                handleContentChange();
+            } else {
+                alert('Please select some text to format');
+            }
+        }
+
+        function addComment() {
+            const editor = document.getElementById('editor-content');
+            if (!editor) return;
+
+            const start = editor.selectionStart;
+            const end = editor.selectionEnd;
+            const selectedText = editor.value.substring(start, end);
+            
+            if (selectedText.trim()) {
+                const comment = prompt('Enter your comment:');
+                if (comment && vscode) {
+                    vscode.postMessage({
+                        command: 'addComment',
+                        range: { start, end },
+                        comment: comment
+                    });
+                }
+            } else {
+                alert('Please select some text to comment on');
+            }
+        }
+
+        function updateCommentsUI() {
+            const commentsList = document.getElementById('comments-list');
+            if (!commentsList) return;
+
+            if (comments.length === 0) {
+                commentsList.innerHTML = `
+                    <div class="no-comments">
+                        No comments yet.<br>
+                        Select text and click 💬 Comment to add comments.
+                    </div>
+                `;
+            } else {
+                commentsList.innerHTML = comments.map(comment => `
+                    <div class="comment-item">
+                        <div class="comment-content">${comment.content}</div>
+                        <div class="comment-actions">
+                            <button onclick="navigateToComment('${comment.id}')">Go to</button>
+                            <button onclick="editComment('${comment.id}')">Edit</button>
+                            <button onclick="deleteComment('${comment.id}')">Delete</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function navigateToComment(commentId) {
+            if (vscode) {
+                vscode.postMessage({ command: 'navigateToComment', commentId });
+            }
+        }
+
+        function editComment(commentId) {
+            if (vscode) {
+                vscode.postMessage({ command: 'editComment', commentId });
+            }
+        }
+
+        function deleteComment(commentId) {
+            if (vscode) {
+                vscode.postMessage({ command: 'deleteComment', commentId });
+            }
+        }
+
+        function showError(message) {
+            const app = document.getElementById('app');
+            app.innerHTML = `
+                <div class="error">
+                    <h2>Error</h2>
+                    <p>${message}</p>
+                    <button onclick="initializeEditor()">Retry</button>
+                </div>
+            `;
+        }
+
+        // Initialize when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeEditor);
+        } else {
+            initializeEditor();
+        }
+    </script>
+</body>
+</html>

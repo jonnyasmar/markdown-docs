@@ -1,0 +1,114 @@
+{
+  "name": "markdown-docs",
+  "displayName": "Markdown Docs & Comments",
+  "description": "WYSIWYG Markdown Editor with Inline Commenting (great for working with AI!)",
+  "version": "1.0.0",
+  "icon": "media/icon.png",
+  "publisher": "jonnyasmar",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jonnyasmar/markdown-docs"
+  },
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:markdown-docs.openEditor",
+    "onCommand:markdown-docs.openStandalone",
+    "onWebviewPanel:markdown-docs",
+    "onLanguage:markdown"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "markdown-docs.openEditor",
+        "title": "Open with Markdown Docs",
+        "category": "Markdown Docs"
+      },
+      {
+        "command": "markdown-docs.openStandalone",
+        "title": "Open Standalone Markdown Editor",
+        "category": "Markdown Docs"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "when": "resourceLangId == markdown",
+          "command": "markdown-docs.openEditor",
+          "group": "navigation"
+        }
+      ],
+      "editor/title/context": [
+        {
+          "when": "resourceLangId == markdown",
+          "command": "markdown-docs.openEditor",
+          "group": "1_open"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "key": "ctrl+shift+alt+m",
+        "command": "markdown-docs.openEditor",
+        "mac": "cmd+shift+alt+m",
+        "when": "editorTextFocus && editorLangId == markdown"
+      }
+    ],
+    "configuration": {
+      "title": "Markdown Docs",
+      "properties": {
+        "markdown-docs.defaultFont": {
+          "type": "string",
+          "default": "Arial",
+          "description": "Default font family for the markdown editor",
+          "enum": [
+            "Arial",
+            "Times New Roman", 
+            "Roboto",
+            "Georgia",
+            "Calibri",
+            "Garamond",
+            "Book Antiqua"
+          ]
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "npm run compile:webview && webpack --config webpack.config.js",
+    "compile:webview": "cd webview-ui && npm run build",
+    "watch": "webpack --watch",
+    "package": "npm run compile:webview && webpack --mode production --devtool hidden-source-map",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "npm run compile-tests && npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.1",
+    "@types/node": "16.x",
+    "@types/uuid": "^10.0.0",
+    "@types/vscode": "^1.74.0",
+    "@types/yaml": "^1.9.6",
+    "@typescript-eslint/eslint-plugin": "^5.45.0",
+    "@typescript-eslint/parser": "^5.45.0",
+    "@vscode/test-cli": "^0.0.1",
+    "@vscode/test-electron": "^2.2.0",
+    "eslint": "^8.28.0",
+    "ts-loader": "^9.4.1",
+    "typescript": "^4.9.4",
+    "webpack": "^5.75.0",
+    "webpack-cli": "^5.0.0"
+  },
+  "dependencies": {
+    "uuid": "^11.1.0",
+    "yaml": "^2.8.1"
+  }
+}

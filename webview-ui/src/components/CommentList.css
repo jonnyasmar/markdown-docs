@@ -1,0 +1,33 @@
+.comment-list {
+    height: 100%;
+    overflow-y: auto;
+}
+
+.comment-list-header {
+    padding: 8px 0 12px 0;
+    border-bottom: 1px solid var(--vscode-panel-border);
+    margin-bottom: 12px;
+}
+
+.comment-list-header h3 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--vscode-foreground);
+}
+
+.comment-list-items {
+    padding-bottom: 12px;
+}
+
+.comment-list-empty {
+    text-align: center;
+    padding: 24px 12px;
+    color: var(--vscode-descriptionForeground);
+}
+
+.comment-list-empty p {
+    margin: 8px 0;
+    font-size: 13px;
+    line-height: 1.4;
+}

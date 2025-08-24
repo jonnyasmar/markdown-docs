@@ -1,0 +1,767 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Garamond:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Book+Antiqua:wght@400;700&display=swap');
+
+.mdx-editor-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--vscode-editor-background);
+  color: var(--vscode-editor-foreground);
+  margin: 0;
+  padding: 0;
+  /* Prevent scroll chaining to VS Code editor */
+  overscroll-behavior: contain;
+  overflow: hidden; /* Ensure container manages its own scrolling */
+}
+
+/* Proper MDXEditor dark theming using their CSS variables */
+.mdx-editor.dark-theme {
+  --baseBase: var(--vscode-editor-background);
+  --baseBgSubtle: var(--vscode-editorWidget-background);
+  --baseBg: var(--vscode-input-background);
+  --baseBgHover: var(--vscode-list-hoverBackground);
+  --baseBgActive: var(--vscode-list-activeSelectionBackground);
+  --baseLine: var(--vscode-editorWidget-border);
+  --baseBorder: var(--vscode-input-border);
+  --baseBorderHover: var(--vscode-inputOption-activeBorder);
+  --baseSolid: var(--vscode-button-background);
+  --baseSolidHover: var(--vscode-button-hoverBackground);
+  --baseText: #cccccc;
+  --baseTextContrast: #ffffff;
+  
+  --accentBase: var(--vscode-button-background);
+  --accentBgSubtle: var(--vscode-button-secondaryBackground);
+  --accentBg: var(--vscode-button-background);
+  --accentBgHover: var(--vscode-button-hoverBackground);
+  --accentBgActive: var(--vscode-button-hoverBackground);
+  --accentLine: var(--vscode-button-border);
+  --accentBorder: var(--vscode-button-border);
+  --accentBorderHover: var(--vscode-button-border);
+  --accentSolid: var(--vscode-button-background);
+  --accentSolidHover: var(--vscode-button-hoverBackground);
+  --accentText: #cccccc;
+  --accentTextContrast: #ffffff;
+
+  background: var(--vscode-editor-background);
+  color: #cccccc;
+  border: none;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Content styling using contentEditableClassName approach */
+.mdx-content {
+  color: #cccccc !important;
+  background: var(--vscode-editor-background) !important;
+  /* Prevent scroll chaining for editor content */
+  overscroll-behavior: contain;
+  font-family: Arial, Helvetica, sans-serif !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+  padding: 8px 20px !important;
+  margin: 0 !important;
+  min-height: 100% !important;
+  overflow-y: auto !important;
+}
+
+.mdx-content * {
+  color: #cccccc !important;
+  font-family: Arial, Helvetica, sans-serif !important;
+}
+
+/* Heading adjustments to reduce top margin */
+.mdx-content h1,
+.mdx-content h2,
+.mdx-content h3,
+.mdx-content h4,
+.mdx-content h5,
+.mdx-content h6 {
+  margin-top: 0.8em !important; /* Reduced from default */
+  margin-bottom: 0.5em !important;
+  line-height: 1.3 !important;
+}
+
+.mdx-content h1 { font-size: 1.6em !important; }
+.mdx-content h2 { font-size: 1.4em !important; }
+.mdx-content h3 { font-size: 1.2em !important; }
+.mdx-content h4 { font-size: 1.1em !important; }
+.mdx-content h5 { font-size: 1.05em !important; }
+.mdx-content h6 { font-size: 1em !important; }
+
+.mdx-content p {
+  margin-bottom: 0.6em !important;
+  color: #cccccc !important;
+  font-size: 14px !important;
+}
+
+.mdx-content strong {
+  font-weight: 600 !important;
+  color: #ffffff !important;
+}
+
+.mdx-content code {
+  background: var(--vscode-textCodeBlock-background) !important;
+  color: #ffffff !important;
+  padding: 2px 4px !important;
+  border-radius: 3px !important;
+  font-size: 13px !important;
+}
+
+.mdx-content pre {
+  background: var(--vscode-textCodeBlock-background) !important;
+  color: #ffffff !important;
+  padding: 12px !important;
+  border-radius: 4px !important;
+  overflow-x: auto !important;
+  font-size: 13px !important;
+}
+
+.mdx-content ul, .mdx-content ol {
+  margin-bottom: 0.6em !important;
+  padding-left: 1.5em !important;
+}
+
+.mdx-content li {
+  margin-bottom: 0.2em !important;
+  color: #cccccc !important;
+}
+
+/* Fix dropdown styling in toolbar */
+.mdx-editor .mdxeditor-toolbar select,
+.mdx-editor .mdxeditor-toolbar [role="combobox"],
+.mdx-editor .mdxeditor-select-content {
+  background: var(--vscode-dropdown-background) !important;
+  color: var(--vscode-dropdown-foreground) !important;
+  border: 1px solid var(--vscode-dropdown-border) !important;
+}
+
+/* Fix for Radix UI Select component specifically */
+.mdxeditor-select-content {
+  background: var(--vscode-dropdown-background) !important;
+  color: var(--vscode-dropdown-foreground) !important;
+  border: 1px solid var(--vscode-dropdown-border) !important;
+}
+
+/* Layout structure */
+.mdx-editor-with-sidebar {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  position: relative;
+}
+
+.mdx-editor-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  min-width: 0; /* Allows flex item to shrink */
+}
+
+/* Override MDXEditor's default content editable styling */
+.mdx-editor .mdxeditor-root-contenteditable {
+  background: var(--vscode-editor-background) !important;
+  color: #cccccc !important;
+  overflow-y: auto !important;
+  height: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Ensure the MDX editor itself is properly sized and scrollable */
+.mdx-editor {
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* Make sure the toolbar doesn't take unnecessary space and auto-fits content */
+.mdx-editor .mdxeditor-toolbar {
+  flex-shrink: 0 !important;
+  min-height: 44px !important;
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+  overflow-x: scroll !important;
+  flex-wrap: nowrap !important;
+  padding: 8px !important;
+}
+
+/* Ensure content area fills remaining space and scrolls */
+.mdx-editor .mdxeditor-root-contenteditable {
+  flex: 1 !important;
+  overflow-y: auto !important;
+  min-height: 0 !important;
+}
+
+/* Comments Sidebar - positioned on the right side */
+.comments-sidebar {
+  width: 320px;
+  min-width: 280px;
+  max-width: 600px;
+  background: var(--vscode-sideBar-background);
+  border-left: 1px solid var(--vscode-sideBar-border);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  height: 100%;
+}
+
+.sidebar-resize-handle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: transparent;
+  cursor: col-resize;
+  z-index: 100;
+}
+
+.sidebar-resize-handle:hover {
+  background: var(--vscode-sash-hoverBorder);
+}
+
+.sidebar-resize-handle:active {
+  background: var(--vscode-focusBorder);
+}
+
+.comments-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--vscode-sideBar-border);
+}
+
+.comments-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--vscode-sideBar-foreground);
+}
+
+.sidebar-close {
+  background: transparent;
+  border: none;
+  color: var(--vscode-sideBar-foreground);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 16px;
+}
+
+.sidebar-close:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+.comments-list {
+  flex: 1;
+  padding: 16px 20px;
+  overflow-y: auto;
+}
+
+.no-comments {
+  text-align: center;
+  color: var(--vscode-descriptionForeground);
+  margin-top: 60px;
+}
+
+.no-comments p {
+  margin: 8px 0;
+}
+
+.help-text {
+  font-size: 13px;
+  opacity: 0.8;
+}
+
+.comment-item {
+  background: var(--vscode-editorWidget-background);
+  border: 1px solid var(--vscode-editorWidget-border);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.comment-content {
+  color: var(--vscode-editor-foreground);
+  line-height: 1.4;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.comment-anchor {
+  font-size: 12px;
+  color: var(--vscode-descriptionForeground);
+  margin-bottom: 8px;
+  font-style: italic;
+}
+
+.comment-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.comment-action-btn {
+  padding: 4px 8px;
+  font-size: 12px;
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+  border: 1px solid var(--vscode-button-border);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.comment-action-btn:hover {
+  background: var(--vscode-button-secondaryHoverBackground);
+}
+
+.comment-action-btn.delete {
+  background: var(--vscode-errorBackground);
+  color: var(--vscode-errorForeground);
+}
+
+.comment-action-btn.delete:hover {
+  opacity: 0.8;
+}
+
+/* Built-in MDXEditor search highlights (CSS Custom Highlight API) */
+/* General matches */
+.mdx-editor ::highlight(MdxSearch) {
+  background-color: rgba(0, 200, 0, 0.35);
+  color: inherit;
+}
+/* Focused/current match */
+.mdx-editor ::highlight(MdxFocusSearch) {
+  background-color: rgba(0, 200, 0, 0.35);
+  color: inherit;
+}
+
+/* Show comments button when sidebar is hidden */
+.show-comments-btn {
+  position: fixed;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  border: 1px solid var(--vscode-button-border);
+  border-radius: 20px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 14px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+}
+
+.show-comments-btn:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+/* Floating comment button */
+.floating-comment-button {
+  position: absolute;
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  border: 1px solid var(--vscode-button-border);
+  border-radius: 50%;
+  padding: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  opacity: 0;
+  transform: translateY(-5px);
+  transition: all 0.2s ease;
+  pointer-events: none;
+  font-weight: 500;
+}
+
+.floating-comment-button.visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: all;
+}
+
+.floating-comment-button:hover {
+  background: var(--vscode-button-hoverBackground);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* Custom comment toggle button in toolbar */
+.mdx-comment-button {
+  background: var(--vscode-button-secondaryBackground) !important;
+  color: var(--vscode-button-secondaryForeground) !important;
+  border: 1px solid var(--vscode-button-border) !important;
+  border-radius: 3px !important;
+  padding: 6px 8px !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+
+.mdx-comment-button:hover {
+  background: var(--vscode-button-secondaryHoverBackground) !important;
+}
+
+/* Comment highlighting - theme-aware subtle inline indicators */
+.comment-highlight {
+  /* Only background color - no other style changes */
+  background-color: rgba(255, 255, 0, 0.15) !important;
+  padding: 0 !important;
+  transition: all 0.3s ease;
+}
+
+.comment-highlight.editor-highlighted {
+  background-color: rgba(0, 123, 255, 0.4) !important;
+  box-shadow: 0 0 8px rgba(0, 123, 255, 0.6);
+  animation: pulse-editor-highlight 0.8s ease-out;
+}
+
+@keyframes pulse-editor-highlight {
+  0% {
+    background-color: rgba(0, 123, 255, 0.6);
+    transform: scale(1);
+  }
+  50% {
+    background-color: rgba(0, 123, 255, 0.5);
+    transform: scale(1.02);
+  }
+  100% {
+    background-color: rgba(0, 123, 255, 0.4);
+    transform: scale(1);
+  }
+}
+
+/* Persistent focus state for inline comments - more subtle than animation */
+.comment-highlight.focused {
+  background-color: rgba(0, 123, 255, 0.2) !important;
+  border-radius: 2px;
+}
+
+.comment-item.highlighted {
+  background-color: rgba(0, 123, 255, 0.15) !important;
+  border-left: 3px solid #007bff !important;
+  transform: translateX(4px);
+  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.2);
+  transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+  animation: pulse-highlight 0.6s ease-out;
+}
+
+@keyframes pulse-highlight {
+  0% {
+    transform: translateX(0px) scale(1);
+    background-color: rgba(0, 123, 255, 0.3);
+  }
+  50% {
+    transform: translateX(6px) scale(1.02);
+    background-color: rgba(0, 123, 255, 0.25);
+  }
+  100% {
+    transform: translateX(4px) scale(1);
+    background-color: rgba(0, 123, 255, 0.15);
+  }
+}
+
+
+.comment-item {
+  transition: all 0.3s ease;
+}
+
+/* Font selection styling */
+.font-selector {
+  background: var(--vscode-dropdown-background) !important;
+  color: var(--vscode-dropdown-foreground) !important;
+  border: 1px solid var(--vscode-dropdown-border) !important;
+  border-radius: 3px;
+  padding: 4px 8px;
+  font-size: 12px;
+  min-width: 120px;
+}
+
+/* Font application - apply to content specifically for override */
+.mdx-content.font-arial,
+.mdx-content.font-arial * {
+  font-family: Arial, sans-serif !important;
+}
+
+.mdx-content.font-times-new-roman,
+.mdx-content.font-times-new-roman * {
+  font-family: "Times New Roman", Times, serif !important;
+}
+
+.mdx-content.font-roboto,
+.mdx-content.font-roboto * {
+  font-family: Roboto, Arial, sans-serif !important;
+}
+
+.mdx-content.font-georgia,
+.mdx-content.font-georgia * {
+  font-family: Georgia, serif !important;
+}
+
+.mdx-content.font-calibri,
+.mdx-content.font-calibri * {
+  font-family: Calibri, sans-serif !important;
+}
+
+.mdx-content.font-garamond,
+.mdx-content.font-garamond * {
+  font-family: Garamond, serif !important;
+}
+
+.mdx-content.font-book-antiqua,
+.mdx-content.font-book-antiqua * {
+  font-family: "Book Antiqua", serif !important;
+}
+
+.mdx-content.font-courier-new,
+.mdx-content.font-courier-new * {
+  font-family: "Courier New", Courier, monospace !important;
+}
+
+/* Book view styling */
+.mdx-editor-container.book-view {
+  background: #f5f5f5 !important;
+  padding: 40px 20px !important;
+  min-height: 100vh;
+  overflow-y: auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+}
+
+/* Individual page styling */
+.book-page {
+  /* 5.5" x 8.5" pages with 0.5" margins = 4.5" x 7.5" content area */
+  width: 5.5in !important;
+  height: 8.5in !important;
+  background: white !important;
+  margin-bottom: 0.5in !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  border: 1px solid #ddd !important;
+  position: relative !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.book-page-content {
+  padding: 0.5in !important;
+  width: 4.5in !important;
+  height: 7.5in !important;
+  overflow: hidden !important;
+  color: black !important;
+  font-size: 12pt !important;
+  line-height: 1.6 !important;
+  box-sizing: border-box !important;
+}
+
+.book-page-number {
+  position: absolute !important;
+  bottom: 0.25in !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  font-size: 10pt !important;
+  color: #666 !important;
+  font-family: Arial, sans-serif !important;
+}
+
+/* Override for book view MDXEditor */
+.mdx-editor-container.book-view .mdx-content {
+  /* Remove individual page styling when in book view */
+  width: auto !important;
+  height: auto !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  color: inherit !important;
+  box-shadow: none !important;
+  border: none !important;
+  overflow: visible !important;
+  page-break-after: auto !important;
+  break-after: auto !important;
+}
+
+.mdx-editor-container.book-view .mdx-editor-content {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+}
+
+.mdx-editor-container.book-view .mdx-editor {
+  width: 8.5in !important;
+  max-width: 8.5in !important;
+}
+
+/* Force page breaks in book view */
+.mdx-editor-container.book-view .mdx-content h1,
+.mdx-editor-container.book-view .mdx-content h2 {
+  page-break-before: auto;
+  break-before: auto;
+}
+
+/* Page numbers for book view */
+.mdx-editor-container.book-view {
+  counter-reset: page;
+}
+
+.mdx-editor-container.book-view .mdx-content::after {
+  content: counter(page);
+  position: absolute;
+  bottom: 0.25in;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  color: #666;
+  font-family: Arial, sans-serif;
+  counter-increment: page;
+}
+
+/* MDXEditor toolbar custom components styling */
+.mdx-editor .mdxeditor-toolbar button[data-state="on"],
+.mdx-editor .mdxeditor-toolbar button.active {
+  background-color: var(--vscode-button-background) !important;
+  color: var(--vscode-button-foreground) !important;
+}
+
+.mdx-editor .mdxeditor-toolbar [data-radix-select-trigger] {
+  background: var(--vscode-dropdown-background) !important;
+  color: var(--vscode-dropdown-foreground) !important;
+  border: 1px solid var(--vscode-dropdown-border) !important;
+  border-radius: 3px !important;
+  min-width: 120px !important;
+}
+
+/* Advanced scroll containment for all editor containers to prevent VS Code editor scrolling */
+.ProseMirror,
+.mdx-editor-content,
+[contenteditable="true"] {
+  overscroll-behavior: contain !important;
+  /* Additional scroll containment properties */
+  scroll-behavior: auto !important; /* Override smooth scroll that might cause issues */
+  overflow-anchor: none !important; /* Prevent anchor scrolling */
+}
+
+/* Additional webview isolation */
+body {
+  overscroll-behavior: contain !important;
+  overflow-anchor: none !important;
+}
+
+/* Prevent any scroll events from bubbling up */
+.mdx-editor-container * {
+  overscroll-behavior: contain;
+}
+
+/* Ensure search UI appears correctly with proper z-index */
+.mdxeditor-popup-container {
+  z-index: 9999 !important;
+}
+
+/* Style for search dialog if it appears */
+.mdx-search-dialog,
+.search-container,
+[data-search-dialog] {
+  z-index: 10000 !important;
+  position: fixed !important;
+  top: 10px !important;
+  right: 10px !important;
+  background: var(--vscode-dropdown-background) !important;
+  border: 1px solid var(--vscode-dropdown-border) !important;
+  border-radius: 4px !important;
+  padding: 8px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Inline search component styles */
+.inline-search-container {
+  display: flex;
+  align-items: center;
+  margin: 0 8px;
+}
+
+.search-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border);
+  border-radius: 4px;
+  padding: 0 8px;
+  min-width: 200px;
+  height: 28px;
+}
+
+.search-icon {
+  color: var(--vscode-descriptionForeground);
+  margin-right: 6px;
+  font-size: 12px;
+  pointer-events: none;
+}
+
+.inline-search-input {
+  background: transparent;
+  border: none;
+  color: var(--vscode-input-foreground);
+  font-size: 13px;
+  outline: none;
+  flex: 1;
+  height: 100%;
+  padding: 0;
+}
+
+.inline-search-input::placeholder {
+  color: var(--vscode-input-placeholderForeground);
+}
+
+.search-clear-btn {
+  background: transparent;
+  border: none;
+  color: var(--vscode-descriptionForeground);
+  cursor: pointer;
+  padding: 0 4px;
+  margin-left: 6px;
+  font-size: 16px;
+  line-height: 1;
+  border-radius: 2px;
+}
+
+.search-clear-btn:hover {
+  background: var(--vscode-button-hoverBackground);
+  color: var(--vscode-button-foreground);
+}
+
+/* Search highlighting styles - high specificity to override comment highlights */
+.mdx-content .search-highlight,
+.mdx-content * .search-highlight,
+[contenteditable="true"] .search-highlight,
+[contenteditable="true"] * .search-highlight {
+  /* background-color: #32cd32 !important; */
+  color: #000000 !important;
+  padding: 1px 2px !important;
+  border-radius: 3px !important;
+  font-weight: inherit !important;
+  font-style: inherit !important;
+  text-decoration: none !important;
+  box-shadow: 0 0 0 1px rgba(50, 205, 50, 0.3) !important;
+  border: none !important;
+}
+
+/* Persistent focus state for sidebar comments - more subtle than highlight animation */
+.comment-item.focused {
+  background-color: rgba(0, 123, 255, 0.08) !important;
+  border-left: 2px solid rgba(0, 123, 255, 0.5) !important;
+  box-shadow: inset 0 0 0 1px rgba(0, 123, 255, 0.2);
+  transform: translateX(2px);
+}
