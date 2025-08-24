@@ -2,7 +2,7 @@
 
 This document serves as an example to showcase the capabilities of the **Markdown Docs** VS Code extension. It includes various Markdown elements and highlights features relevant to the extension.
 
----
+***
 
 ## 🚀 Key Features in Action
 
@@ -22,7 +22,7 @@ Easily find content within your document with the built-in highlighted search fu
 
 Tailor your editing environment by changing the display font directly within the editor settings. Choose a font that suits your preference for optimal readability.
 
----
+***
 
 ## Standard Markdown Elements
 
@@ -42,25 +42,25 @@ This is a paragraph with some **bold text**, *italic text*, and even ***bold and
 
 #### Ordered List
 
-1.  First item
-2.  Second item
-    1.  Nested ordered item
-    2.  Another nested item
-3.  Third item
+1. First item
+2. Second item
+   1. Nested ordered item
+   2. Another nested item
+3. Third item
 
 #### Unordered List
 
-*   Apple
-*   Banana
-    *   Green banana
-    *   Yellow banana
-*   Cherry
+* Apple
+* Banana
+  * Green banana
+  * Yellow banana
+* Cherry
 
 #### Checkbox List
 
-*   [x] Task completed
-*   [ ] Task pending
-*   [ ] Another task
+* [x] Task completed
+* [ ] Task pending
+* [ ] Another task
 
 ### Links
 
@@ -82,6 +82,12 @@ def greet(name):
 print(greet("AI"))
 ```
 
+```mermaid
+  graph TD
+      A[Start] --> B[Decision]
+      B --> C[End]
+```
+
 ### Blockquotes
 
 > "The only way to do great work is to love what you do."
@@ -89,11 +95,11 @@ print(greet("AI"))
 
 ### Tables
 
-| Header 1 | Header 2 | Header 3 |
-| :------- | :------- | :------- |
+| Header 1    | Header 2    | Header 3    |
+| :---------- | :---------- | :---------- |
 | Row 1 Col 1 | Row 1 Col 2 | Row 1 Col 3 |
 | Row 2 Col 1 | Row 2 Col 2 | Row 2 Col 3 |
 
----
+***
 
 This example document should provide a good basis for showcasing the Markdown Docs extension in action. Feel free to add comments, modify content, and explore all the features!

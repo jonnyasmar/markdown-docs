@@ -25,7 +25,12 @@ import {
   Button,
   Select,
   type MDXEditorMethods,
-  useEditorSearch
+  useEditorSearch,
+  sandpackPlugin,
+  codeMirrorPlugin,
+  InsertCodeBlock,
+  ConditionalContents,
+  ChangeCodeMirrorLanguage
 } from '@mdxeditor/editor';
 import { usePublisher } from '@mdxeditor/gurx';
 import '@mdxeditor/editor/style.css';
@@ -164,6 +169,16 @@ const ToolbarWithCommentButton = ({
       <Separator />
       <ListsToggle />
       <Separator />
+      <ConditionalContents
+        options={[
+          { when: (editor) => editor?.editorType === 'codeblock', contents: () => <ChangeCodeMirrorLanguage /> },
+          {
+            fallback: () => (
+              <InsertCodeBlock />
+            )
+          }
+        ]}
+      />
       <CreateLink />
       <InsertTable />
       <InsertThematicBreak />
@@ -404,6 +419,16 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   onDeleteComment,
   defaultFont = 'Arial'
 }) => {
+  console.log('=== MDXEditorWrapper RENDER START ===');
+  console.log('Props received:', { 
+    markdownLength: markdown?.length, 
+    commentsLength: comments?.length,
+    defaultFont,
+    hasOnMarkdownChange: !!onMarkdownChange
+  });
+  console.log('MDXEditorWrapper received markdown ending:', '...' + markdown?.substring((markdown?.length || 0) - 100));
+  console.log('MDXEditorWrapper markdown contains code blocks?', markdown?.includes('```javascript'));
+  console.log('MDXEditorWrapper markdown ends with expected?', markdown?.includes('explore all the features!'));
   // UI state
   const [showCommentSidebar, setShowCommentSidebar] = useState(true);
   const [sidebarWidth, setSidebarWidth] = useState(300);
@@ -631,7 +656,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
             content: contentToSave
           });
           setHasUnsavedChanges(false);
-          
+
           // Notify extension that changes are saved for tab title indicator
           if (window.vscodeApi) {
             window.vscodeApi.postMessage({
@@ -1488,6 +1513,15 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     ));
   };
 
+  console.log('=== MDXEditorWrapper RENDER END - returning JSX ===');
+  console.log('Editor state:', {
+    showCommentSidebar,
+    isBookView,
+    selectedFont,
+    parsedCommentsCount: parsedComments.length,
+    editorRefExists: !!editorRef.current
+  });
+
   return (
     <div className={`mdx-editor-container ${isBookView ? 'book-view' : ''}`} ref={containerRef}>
       {isBookView ? (
@@ -1500,13 +1534,17 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
           {/* Normal view: Top section with editor */}
           <div className="mdx-editor-with-sidebar">
             <div className="mdx-editor-content">
-              <MDXEditor
-                ref={editorRef}
-                markdown={markdown || ''}
-                onChange={handleMarkdownChange}
-                className={`mdx-editor dark-theme font-${selectedFont.toLowerCase().replace(/\s+/g, '-')}`}
-                contentEditableClassName={`mdx-content font-${selectedFont.toLowerCase().replace(/\s+/g, '-')}`}
-                plugins={[
+              {(() => {
+                console.log('=== MDXEDITOR COMPONENT RENDER START ===');
+                console.log('About to render MDXEditor with:', {
+                  markdown: markdown?.substring(0, 100) + '...',
+                  markdownLength: markdown?.length,
+                  selectedFont,
+                  className: `mdx-editor dark-theme font-${selectedFont.toLowerCase().replace(/\s+/g, '-')}`,
+                  contentEditableClassName: `mdx-content font-${selectedFont.toLowerCase().replace(/\s+/g, '-')}`
+                });
+
+                const plugins = [
                   // Core editing plugins
                   headingsPlugin(),
                   quotePlugin(),
@@ -1514,7 +1552,6 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
                   linkPlugin(),
                   tablePlugin(),
                   thematicBreakPlugin(),
-                  codeBlockPlugin({ defaultCodeBlockLanguage: 'txt' }),
                   markdownShortcutPlugin(),
                   searchPlugin(),
                   directivesPlugin({
@@ -1525,6 +1562,62 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
                     // Keep escapeUnknownTextDirectives to prevent parsing normal text as directives
                     escapeUnknownTextDirectives: true
                   }),
+
+                  // RE-ENABLED: Basic code block plugin is needed for fenced block parsing
+                  (() => {
+                    console.log('Initializing basic codeBlockPlugin (without CodeMirror)...');
+                    try {
+                      const plugin = codeBlockPlugin({ defaultCodeBlockLanguage: 'js' });
+                      console.log('codeBlockPlugin initialized successfully');
+                      return plugin;
+                    } catch (error) {
+                      console.error('Error initializing codeBlockPlugin:', error);
+                      throw error;
+                    }
+                  })(),
+                  (() => {
+                    console.log('Initializing codeMirrorPlugin (required for fenced block parsing)...');
+                    try {
+                      const plugin = codeMirrorPlugin({ 
+                        codeBlockLanguages: { 
+                          javascript: 'JavaScript',
+                          js: 'JavaScript', 
+                          css: 'CSS', 
+                          txt: 'Text', 
+                          text: 'Text',
+                          md: 'Markdown', 
+                          markdown: 'Markdown',
+                          ts: 'TypeScript', 
+                          typescript: 'TypeScript',
+                          html: 'HTML', 
+                          json: 'JSON', 
+                          yaml: 'YAML', 
+                          yml: 'YAML', 
+                          ini: 'INI', 
+                          toml: 'TOML', 
+                          xml: 'XML', 
+                          csv: 'CSV', 
+                          sql: 'SQL',
+                          python: 'Python',
+                          py: 'Python',
+                          bash: 'Bash',
+                          shell: 'Shell',
+                          sh: 'Shell',
+                          mermaid: 'Mermaid',
+                          diagram: 'Mermaid'
+                        },
+                        // Add better syntax theme configuration
+                        autocompletion: true,
+                        branchPrediction: false,
+                        codeFolding: true
+                      });
+                      console.log('codeMirrorPlugin initialized successfully with Mermaid support');
+                      return plugin;
+                    } catch (error) {
+                      console.error('Error initializing codeMirrorPlugin:', error);
+                      throw error;
+                    }
+                  })(),
 
                   // Toolbar with our custom comment button and responsive design
                   toolbarPlugin({
@@ -1539,8 +1632,75 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
                       />
                     )
                   })
-                ]}
-              />
+                ];
+
+                console.log('Plugins array length:', plugins.length);
+                console.log('Plugin names:', plugins.map(p => p.constructor?.name || 'Unknown'));
+                console.log('NOTE: Both codeBlockPlugin and codeMirrorPlugin enabled for fenced block support');
+
+                try {
+                  const editorElement = (
+                    <MDXEditor
+                      ref={(ref) => {
+                        editorRef.current = ref;
+                        // Add debugging when editor mounts
+                        if (ref) {
+                          console.log('MDXEditor component mounted, checking content after 2 seconds...');
+                          setTimeout(() => {
+                            try {
+                              const content = ref.getMarkdown();
+                              console.log('Editor content length after mount:', content.length);
+                              console.log('Editor content preview:', content.substring(0, 500) + '...');
+                              
+                              // Check DOM structure
+                              const editorDOM = document.querySelector('.mdx-content') || document.querySelector('[contenteditable="true"]');
+                              if (editorDOM) {
+                                console.log('Editor DOM found, innerHTML length:', editorDOM.innerHTML.length);
+                                console.log('Editor DOM preview:', editorDOM.innerHTML.substring(0, 500) + '...');
+                                
+                                // Check if code blocks exist in DOM
+                                const codeBlocks = editorDOM.querySelectorAll('pre, code, .cm-editor');
+                                console.log('Code blocks found in DOM:', codeBlocks.length);
+                                codeBlocks.forEach((block, index) => {
+                                  console.log(`Code block ${index}:`, block.tagName, block.className);
+                                });
+                              } else {
+                                console.log('Editor DOM not found');
+                              }
+                            } catch (err) {
+                              console.error('Error inspecting editor after mount:', err);
+                            }
+                          }, 2000);
+                        }
+                      }}
+                      markdown={markdown || ''}
+                      onChange={handleMarkdownChange}
+                      className={`mdx-editor dark-theme font-${selectedFont.toLowerCase().replace(/\s+/g, '-')}`}
+                      contentEditableClassName={`mdx-content font-${selectedFont.toLowerCase().replace(/\s+/g, '-')}`}
+                      plugins={plugins}
+                    />
+                  );
+                  console.log('About to return MDXEditor element');
+                  return editorElement;
+                } catch (error) {
+                  console.error('=== MDXEDITOR RENDER ERROR ===', error);
+                  return (
+                    <div style={{ padding: '20px', background: '#ffe6e6', border: '1px solid #ff0000', borderRadius: '4px' }}>
+                      <h3>Editor Error</h3>
+                      <p>Failed to load MDXEditor component:</p>
+                      <pre style={{ background: '#f5f5f5', padding: '10px', borderRadius: '4px', fontSize: '12px' }}>
+                        {error instanceof Error ? error.message : String(error)}
+                      </pre>
+                      <details>
+                        <summary>Stack trace</summary>
+                        <pre style={{ fontSize: '10px' }}>
+                          {error instanceof Error ? error.stack : 'No stack trace available'}
+                        </pre>
+                      </details>
+                    </div>
+                  );
+                }
+              })()}
             </div>
 
             {/* Comments Sidebar */}

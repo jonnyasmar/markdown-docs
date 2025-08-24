@@ -415,8 +415,11 @@ class EditorPanel {
       ? this._document.getText()
       : (await vscode.workspace.fs.readFile(this._uri)).toString();
     
-    console.log('File content length:', md.length);
-    console.log('File content preview:', md.substring(0, 200));
+    console.log('Extension: File content length:', md.length);
+    console.log('Extension: File content preview:', md.substring(0, 200));
+    console.log('Extension: File content ending:', '...' + md.substring(md.length - 100));
+    console.log('Extension: Contains code blocks?', md.includes('```javascript'));
+    console.log('Extension: Ends with expected?', md.includes('explore all the features!'));
     
     // Count directives in the content we're about to send
     const directiveMatches = md.match(/(:+)comment(?:\[[^\]]*\])?\{[^}]*\}/g);
@@ -459,7 +462,7 @@ class EditorPanel {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}' 'unsafe-eval'; font-src ${webview.cspSource}; img-src ${webview.cspSource} data:;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline' https://fonts.googleapis.com; script-src 'nonce-${nonce}' 'unsafe-eval'; font-src ${webview.cspSource} https://fonts.gstatic.com; img-src ${webview.cspSource} data:;">
   <link href="${styleUri}" rel="stylesheet">
   <title>Markdown Docs</title>
 </head>
@@ -469,8 +472,15 @@ class EditorPanel {
     // Make VS Code API globally available before loading the main script
     window.vscodeApi = acquireVsCodeApi();
     console.log('VS Code API acquired in HTML:', !!window.vscodeApi);
+    
+    // Define environment for Vite compatibility
+    window.__VITE_ENV__ = {
+      MODE: 'production',
+      DEV: false,
+      PROD: true
+    };
   </script>
-  <script nonce="${nonce}" src="${scriptUri}"></script>
+  <script type="module" nonce="${nonce}" src="${scriptUri}"></script>
 </body>
 </html>`;
   }

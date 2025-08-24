@@ -21,11 +21,20 @@ if (typeof window !== 'undefined' && window.vscodeApi) {
 }
 
 function EditorApp() {
+  console.log('=== EDITORAPP FUNCTION START ===');
   const [markdown, setMarkdown] = useState('');
   const [comments, setComments] = useState<CommentWithAnchor[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [defaultFont, setDefaultFont] = useState<string>('Arial');
+  
+  console.log('EditorApp state initialized:', {
+    markdownLength: markdown.length,
+    commentsCount: comments.length,
+    error,
+    isLoading,
+    defaultFont
+  });
 
   useEffect(() => {
     console.log('EditorApp useEffect starting');
@@ -51,7 +60,11 @@ function EditorApp() {
       
       switch (message.command) {
         case 'update':
-          console.log('Setting markdown content:', message.content);
+          console.log('Setting markdown content length:', message.content?.length);
+          console.log('Setting markdown content preview:', message.content?.substring(0, 100) + '...');
+          console.log('Setting markdown content ending:', '...' + message.content?.substring(message.content.length - 100));
+          console.log('Full content contains code blocks?', message.content?.includes('```javascript'));
+          console.log('Content ends with expected text?', message.content?.includes('explore all the features!'));
           setMarkdown(message.content || '');
           setIsLoading(false);
           
@@ -214,6 +227,16 @@ function EditorApp() {
       </div>
     );
   }
+
+  console.log('=== EDITORAPP RENDERING MDXEDITORWRAPPER ===');
+  console.log('Final render state:', {
+    markdownLength: markdown.length,
+    markdownPreview: markdown.substring(0, 100),
+    commentsCount: comments.length,
+    defaultFont,
+    error,
+    isLoading
+  });
 
   return (
     <ErrorBoundary>

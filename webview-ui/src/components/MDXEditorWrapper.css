@@ -103,20 +103,165 @@
 
 .mdx-content code {
   background: var(--vscode-textCodeBlock-background) !important;
-  color: #ffffff !important;
+  color: var(--vscode-editor-foreground) !important;
   padding: 2px 4px !important;
   border-radius: 3px !important;
   font-size: 13px !important;
+  font-family: var(--vscode-editor-font-family, 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace) !important;
 }
 
 .mdx-content pre {
   background: var(--vscode-textCodeBlock-background) !important;
-  color: #ffffff !important;
+  color: var(--vscode-editor-foreground) !important;
   padding: 12px !important;
   border-radius: 4px !important;
   overflow-x: auto !important;
   font-size: 13px !important;
+  font-family: var(--vscode-editor-font-family, 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace) !important;
 }
+
+/* CodeMirror editor theming for fenced code blocks - ULTRA HIGH SPECIFICITY */
+.mdx-editor .mdx-content .cm-editor,
+.mdx-editor .mdx-content .cm-editor.cm-focused,
+.mdx-editor-container .mdx-content .cm-editor {
+  background: var(--vscode-textCodeBlock-background) !important;
+  color: var(--vscode-editor-foreground) !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--vscode-panel-border) !important;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace !important;
+  font-size: 13px !important;
+  line-height: 1.4 !important;
+}
+
+.mdx-editor .mdx-content .cm-editor .cm-content,
+.mdx-editor-container .mdx-content .cm-editor .cm-content {
+  background: var(--vscode-textCodeBlock-background) !important;
+  color: var(--vscode-editor-foreground) !important;
+  padding: 8px 12px !important;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace !important;
+}
+
+.mdx-editor .mdx-content .cm-editor .cm-line,
+.mdx-editor-container .mdx-content .cm-editor .cm-line,
+.mdx-editor .mdx-content .cm-editor .cm-line *,
+.mdx-editor-container .mdx-content .cm-editor .cm-line * {
+  color: var(--vscode-editor-foreground) !important;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace !important;
+  font-size: 13px !important;
+}
+
+.mdx-content .cm-editor .cm-cursor {
+  border-left-color: var(--vscode-editorCursor-foreground) !important;
+}
+
+.mdx-content .cm-editor.cm-focused {
+  outline: 1px solid var(--vscode-focusBorder) !important;
+  outline-offset: -1px !important;
+}
+
+.mdx-content .cm-editor .cm-selectionBackground {
+  background: var(--vscode-editor-selectionBackground) !important;
+}
+
+.mdx-content .cm-editor .cm-activeLine {
+  background: var(--vscode-editor-lineHighlightBackground) !important;
+}
+
+.mdx-content .cm-editor .cm-gutters {
+  background: var(--vscode-editorGutter-background) !important;
+  border-right: 1px solid var(--vscode-editorGutter-border) !important;
+  color: var(--vscode-editorLineNumber-foreground) !important;
+}
+
+/* JavaScript syntax highlighting that matches VS Code dark theme - ULTRA HIGH SPECIFICITY */
+.mdx-editor .mdx-content .cm-editor .tok-keyword,
+.mdx-editor-container .mdx-content .cm-editor .tok-keyword,
+.mdx-editor .mdx-content .cm-editor .cm-line .tok-keyword,
+.mdx-editor-container .mdx-content .cm-editor .cm-line .tok-keyword {
+  color: #569cd6 !important; /* VS Code blue for keywords */
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace !important;
+}
+
+.mdx-editor .mdx-content .cm-editor .tok-string,
+.mdx-editor-container .mdx-content .cm-editor .tok-string,
+.mdx-editor .mdx-content .cm-editor .cm-line .tok-string,
+.mdx-editor-container .mdx-content .cm-editor .cm-line .tok-string {
+  color: #ce9178 !important; /* VS Code orange for strings */
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace !important;
+}
+
+.mdx-editor .mdx-content .cm-editor .tok-comment,
+.mdx-editor-container .mdx-content .cm-editor .tok-comment,
+.mdx-editor .mdx-content .cm-editor .cm-line .tok-comment,
+.mdx-editor-container .mdx-content .cm-editor .cm-line .tok-comment {
+  color: #6a9955 !important; /* VS Code green for comments */
+  font-style: italic !important;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace !important;
+}
+
+.mdx-editor .mdx-content .cm-editor .tok-function,
+.mdx-editor-container .mdx-content .cm-editor .tok-function,
+.mdx-editor .mdx-content .cm-editor .cm-line .tok-function,
+.mdx-editor-container .mdx-content .cm-editor .cm-line .tok-function {
+  color: #dcdcaa !important; /* VS Code yellow for functions */
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace !important;
+}
+
+.mdx-editor .mdx-content .cm-editor .tok-number,
+.mdx-editor-container .mdx-content .cm-editor .tok-number,
+.mdx-editor .mdx-content .cm-editor .cm-line .tok-number,
+.mdx-editor-container .mdx-content .cm-editor .cm-line .tok-number {
+  color: #b5cea8 !important; /* VS Code light green for numbers */
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace !important;
+}
+
+.mdx-editor .mdx-content .cm-editor .tok-operator,
+.mdx-editor-container .mdx-content .cm-editor .tok-operator,
+.mdx-editor .mdx-content .cm-editor .cm-line .tok-operator,
+.mdx-editor-container .mdx-content .cm-editor .cm-line .tok-operator {
+  color: #d4d4d4 !important; /* VS Code light gray for operators */
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace !important;
+}
+
+.mdx-editor .mdx-content .cm-editor .tok-variable,
+.mdx-editor-container .mdx-content .cm-editor .tok-variable,
+.mdx-editor .mdx-content .cm-editor .cm-line .tok-variable,
+.mdx-editor-container .mdx-content .cm-editor .cm-line .tok-variable {
+  color: #9cdcfe !important; /* VS Code light blue for variables */
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace !important;
+}
+
+.mdx-editor .mdx-content .cm-editor .tok-property,
+.mdx-editor-container .mdx-content .cm-editor .tok-property,
+.mdx-editor .mdx-content .cm-editor .cm-line .tok-property,
+.mdx-editor-container .mdx-content .cm-editor .cm-line .tok-property {
+  color: #9cdcfe !important; /* VS Code light blue for properties */
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace !important;
+}
+
+.mdx-editor .mdx-content .cm-editor .tok-punctuation,
+.mdx-editor-container .mdx-content .cm-editor .tok-punctuation,
+.mdx-editor .mdx-content .cm-editor .cm-line .tok-punctuation,
+.mdx-editor-container .mdx-content .cm-editor .cm-line .tok-punctuation {
+  color: #d4d4d4 !important; /* VS Code light gray for punctuation */
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace !important;
+}
+
+/* Additional syntax highlighting classes that CodeMirror might use */
+.mdx-editor .mdx-content .cm-editor .cm-keyword,
+.mdx-editor-container .mdx-content .cm-editor .cm-keyword { color: #569cd6 !important; font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace !important; }
+
+.mdx-editor .mdx-content .cm-editor .cm-string,
+.mdx-editor-container .mdx-content .cm-editor .cm-string { color: #ce9178 !important; font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace !important; }
+
+.mdx-editor .mdx-content .cm-editor .cm-comment,
+.mdx-editor-container .mdx-content .cm-editor .cm-comment { color: #6a9955 !important; font-style: italic !important; font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace !important; }
+
+.mdx-editor .mdx-content .cm-editor .cm-variableName,
+.mdx-editor-container .mdx-content .cm-editor .cm-variableName { color: #9cdcfe !important; font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace !important; }
+
+.mdx-editor .mdx-content .cm-editor .cm-number,
+.mdx-editor-container .mdx-content .cm-editor .cm-number { color: #b5cea8 !important; font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace !important; }
 
 .mdx-content ul, .mdx-content ol {
   margin-bottom: 0.6em !important;
