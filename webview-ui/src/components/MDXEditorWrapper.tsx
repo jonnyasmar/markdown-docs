@@ -30,7 +30,8 @@ import {
   codeMirrorPlugin,
   InsertCodeBlock,
   ConditionalContents,
-  ChangeCodeMirrorLanguage
+  ChangeCodeMirrorLanguage,
+  CodeMirrorEditor
 } from '@mdxeditor/editor';
 import { usePublisher } from '@mdxeditor/gurx';
 import '@mdxeditor/editor/style.css';
@@ -1565,10 +1566,56 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
                   // RE-ENABLED: Basic code block plugin is needed for fenced block parsing
                   (() => {
-                    console.log('Initializing basic codeBlockPlugin (without CodeMirror)...');
+                    console.log('Initializing codeBlockPlugin with fallback editor...');
                     try {
-                      const plugin = codeBlockPlugin({ defaultCodeBlockLanguage: 'js' });
-                      console.log('codeBlockPlugin initialized successfully');
+                      const plugin = codeBlockPlugin({ 
+                        defaultCodeBlockLanguage: 'js',
+                        codeBlockEditorDescriptors: [
+                          // Specific mappings for common aliases
+                          { 
+                            priority: 5, 
+                            match: (language, _code) => language === 'javascript',
+                            Editor: (props) => <CodeMirrorEditor {...props} language="js" />
+                          },
+                          { 
+                            priority: 5, 
+                            match: (language, _code) => language === 'python',
+                            Editor: (props) => <CodeMirrorEditor {...props} language="py" />
+                          },
+                          { 
+                            priority: 5, 
+                            match: (language, _code) => language === 'typescript',
+                            Editor: (props) => <CodeMirrorEditor {...props} language="ts" />
+                          },
+                          { 
+                            priority: 5, 
+                            match: (language, _code) => language === 'markdown',
+                            Editor: (props) => <CodeMirrorEditor {...props} language="md" />
+                          },
+                          { 
+                            priority: 5, 
+                            match: (language, _code) => language === 'yml',
+                            Editor: (props) => <CodeMirrorEditor {...props} language="yaml" />
+                          },
+                          { 
+                            priority: 5, 
+                            match: (language, _code) => language === 'text',
+                            Editor: (props) => <CodeMirrorEditor {...props} language="txt" />
+                          },
+                          { 
+                            priority: 5, 
+                            match: (language, _code) => language === 'shell',
+                            Editor: (props) => <CodeMirrorEditor {...props} language="sh" />
+                          },
+                          // Fallback editor for any other unknown languages
+                          { 
+                            priority: -10, 
+                            match: (_) => true, 
+                            Editor: CodeMirrorEditor 
+                          }
+                        ]
+                      });
+                      console.log('codeBlockPlugin initialized successfully with fallback editor');
                       return plugin;
                     } catch (error) {
                       console.error('Error initializing codeBlockPlugin:', error);
@@ -1580,31 +1627,23 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
                     try {
                       const plugin = codeMirrorPlugin({ 
                         codeBlockLanguages: { 
-                          javascript: 'JavaScript',
-                          js: 'JavaScript', 
+                          js: 'JavaScript',
                           css: 'CSS', 
                           txt: 'Text', 
-                          text: 'Text',
                           md: 'Markdown', 
-                          markdown: 'Markdown',
                           ts: 'TypeScript', 
-                          typescript: 'TypeScript',
                           html: 'HTML', 
                           json: 'JSON', 
                           yaml: 'YAML', 
-                          yml: 'YAML', 
                           ini: 'INI', 
                           toml: 'TOML', 
                           xml: 'XML', 
                           csv: 'CSV', 
                           sql: 'SQL',
-                          python: 'Python',
                           py: 'Python',
                           bash: 'Bash',
-                          shell: 'Shell',
                           sh: 'Shell',
-                          mermaid: 'Mermaid',
-                          diagram: 'Mermaid'
+                          mermaid: 'Mermaid'
                         },
                         // Add better syntax theme configuration
                         autocompletion: true,

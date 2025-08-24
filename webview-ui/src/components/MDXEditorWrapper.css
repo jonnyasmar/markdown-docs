@@ -1,6 +1,13 @@
+/* Import Radix UI color systems for proper MDXEditor theming */
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Garamond:wght@400;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Book+Antiqua:wght@400;700&display=swap');
+
+/* Import Radix UI colors for dark theme */
+@import '@radix-ui/colors/slate.css';
+@import '@radix-ui/colors/slate-dark.css';
+@import '@radix-ui/colors/gray.css';
+@import '@radix-ui/colors/gray-dark.css';
 
 .mdx-editor-container {
   display: flex;
@@ -15,8 +22,9 @@
   overflow: hidden; /* Ensure container manages its own scrolling */
 }
 
-/* Proper MDXEditor dark theming using their CSS variables */
+/* Proper MDXEditor theming using semantic variables and VS Code integration */
 .mdx-editor.dark-theme {
+  /* Base colors - main backgrounds and surfaces */
   --baseBase: var(--vscode-editor-background);
   --baseBgSubtle: var(--vscode-editorWidget-background);
   --baseBg: var(--vscode-input-background);
@@ -27,9 +35,10 @@
   --baseBorderHover: var(--vscode-inputOption-activeBorder);
   --baseSolid: var(--vscode-button-background);
   --baseSolidHover: var(--vscode-button-hoverBackground);
-  --baseText: #cccccc;
-  --baseTextContrast: #ffffff;
+  --baseText: var(--vscode-editor-foreground);
+  --baseTextContrast: var(--vscode-editor-foreground);
   
+  /* Accent colors - interactive elements */
   --accentBase: var(--vscode-button-background);
   --accentBgSubtle: var(--vscode-button-secondaryBackground);
   --accentBg: var(--vscode-button-background);
@@ -40,253 +49,256 @@
   --accentBorderHover: var(--vscode-button-border);
   --accentSolid: var(--vscode-button-background);
   --accentSolidHover: var(--vscode-button-hoverBackground);
-  --accentText: #cccccc;
-  --accentTextContrast: #ffffff;
+  --accentText: var(--vscode-button-foreground);
+  --accentTextContrast: var(--vscode-button-foreground);
 
+  /* Layout and structure */
   background: var(--vscode-editor-background);
-  color: #cccccc;
+  color: var(--vscode-editor-foreground);
   border: none;
   height: 100%;
   display: flex;
   flex-direction: column;
 }
 
-/* Content styling using contentEditableClassName approach */
+/* Content styling - clean approach without heavy !important usage */
 .mdx-content {
-  color: #cccccc !important;
-  background: var(--vscode-editor-background) !important;
-  /* Prevent scroll chaining for editor content */
+  color: var(--vscode-editor-foreground);
+  background: var(--vscode-editor-background);
   overscroll-behavior: contain;
-  font-family: Arial, Helvetica, sans-serif !important;
-  font-size: 14px !important;
-  line-height: 1.5 !important;
-  padding: 8px 20px !important;
-  margin: 0 !important;
-  min-height: 100% !important;
-  overflow-y: auto !important;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  padding: 8px 20px;
+  margin: 0;
+  min-height: 100%;
+  overflow-y: auto;
 }
 
-.mdx-content * {
-  color: #cccccc !important;
-  font-family: Arial, Helvetica, sans-serif !important;
+/* Only target text elements that need font override */
+.mdx-content h1, .mdx-content h2, .mdx-content h3, 
+.mdx-content h4, .mdx-content h5, .mdx-content h6,
+.mdx-content p, .mdx-content li, .mdx-content td, .mdx-content th {
+  color: var(--vscode-editor-foreground);
+  font-family: Arial, Helvetica, sans-serif;
 }
 
-/* Heading adjustments to reduce top margin */
+/* Heading styling - reduced margins for better layout */
 .mdx-content h1,
 .mdx-content h2,
 .mdx-content h3,
 .mdx-content h4,
 .mdx-content h5,
 .mdx-content h6 {
-  margin-top: 0.8em !important; /* Reduced from default */
-  margin-bottom: 0.5em !important;
-  line-height: 1.3 !important;
+  margin-top: 0.8em;
+  margin-bottom: 0.5em;
+  line-height: 1.3;
 }
 
-.mdx-content h1 { font-size: 1.6em !important; }
-.mdx-content h2 { font-size: 1.4em !important; }
-.mdx-content h3 { font-size: 1.2em !important; }
-.mdx-content h4 { font-size: 1.1em !important; }
-.mdx-content h5 { font-size: 1.05em !important; }
-.mdx-content h6 { font-size: 1em !important; }
+.mdx-content h1 { font-size: 1.6em; }
+.mdx-content h2 { font-size: 1.4em; }
+.mdx-content h3 { font-size: 1.2em; }
+.mdx-content h4 { font-size: 1.1em; }
+.mdx-content h5 { font-size: 1.05em; }
+.mdx-content h6 { font-size: 1em; }
 
 .mdx-content p {
-  margin-bottom: 0.6em !important;
-  color: #cccccc !important;
-  font-size: 14px !important;
+  margin-bottom: 0.6em;
+  font-size: 14px;
 }
 
 .mdx-content strong {
-  font-weight: 600 !important;
-  color: #ffffff !important;
+  font-weight: 600;
+  color: var(--vscode-editor-foreground);
 }
 
+/* Inline code styling */
 .mdx-content code {
-  background: var(--vscode-textCodeBlock-background) !important;
-  color: var(--vscode-editor-foreground) !important;
-  padding: 2px 4px !important;
-  border-radius: 3px !important;
-  font-size: 13px !important;
-  font-family: var(--vscode-editor-font-family, 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace) !important;
+  background: var(--vscode-textCodeBlock-background);
+  color: var(--vscode-editor-foreground);
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-size: 13px;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
 }
 
+/* Pre-formatted code blocks */
 .mdx-content pre {
-  background: var(--vscode-textCodeBlock-background) !important;
-  color: var(--vscode-editor-foreground) !important;
-  padding: 12px !important;
-  border-radius: 4px !important;
-  overflow-x: auto !important;
-  font-size: 13px !important;
-  font-family: var(--vscode-editor-font-family, 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace) !important;
+  background: var(--vscode-textCodeBlock-background);
+  color: var(--vscode-editor-foreground);
+  padding: 12px;
+  border-radius: 4px;
+  overflow-x: auto;
+  font-size: 13px;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
 }
 
-/* CodeMirror editor theming for fenced code blocks - ULTRA HIGH SPECIFICITY */
-.mdx-editor .mdx-content .cm-editor,
-.mdx-editor .mdx-content .cm-editor.cm-focused,
-.mdx-editor-container .mdx-content .cm-editor {
-  background: var(--vscode-textCodeBlock-background) !important;
-  color: var(--vscode-editor-foreground) !important;
-  border-radius: 4px !important;
-  border: 1px solid var(--vscode-panel-border) !important;
-  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace !important;
-  font-size: 13px !important;
-  line-height: 1.4 !important;
+/* CodeMirror editor theming - clean approach using proper CSS cascade */
+.mdx-content .cm-editor {
+  background: var(--vscode-textCodeBlock-background);
+  color: var(--vscode-editor-foreground);
+  border-radius: 4px;
+  border: 1px solid var(--vscode-panel-border);
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.4;
 }
 
-.mdx-editor .mdx-content .cm-editor .cm-content,
-.mdx-editor-container .mdx-content .cm-editor .cm-content {
-  background: var(--vscode-textCodeBlock-background) !important;
-  color: var(--vscode-editor-foreground) !important;
-  padding: 8px 12px !important;
-  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace !important;
+.mdx-content .cm-editor .cm-content {
+  background: var(--vscode-textCodeBlock-background);
+  color: var(--vscode-editor-foreground);
+  padding: 8px 12px;
+  font-family: inherit; /* Inherit from parent */
 }
 
-.mdx-editor .mdx-content .cm-editor .cm-line,
-.mdx-editor-container .mdx-content .cm-editor .cm-line,
-.mdx-editor .mdx-content .cm-editor .cm-line *,
-.mdx-editor-container .mdx-content .cm-editor .cm-line * {
-  color: var(--vscode-editor-foreground) !important;
-  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace !important;
-  font-size: 13px !important;
+.mdx-content .cm-editor .cm-line {
+  color: var(--vscode-editor-foreground);
+  font-family: inherit; /* Inherit monospace from cm-editor */
+  font-size: inherit;
 }
 
+/* Additional CodeMirror UI elements */
 .mdx-content .cm-editor .cm-cursor {
-  border-left-color: var(--vscode-editorCursor-foreground) !important;
+  border-left-color: var(--vscode-editorCursor-foreground);
 }
 
 .mdx-content .cm-editor.cm-focused {
-  outline: 1px solid var(--vscode-focusBorder) !important;
-  outline-offset: -1px !important;
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
 }
 
 .mdx-content .cm-editor .cm-selectionBackground {
-  background: var(--vscode-editor-selectionBackground) !important;
+  background: var(--vscode-editor-selectionBackground);
 }
 
 .mdx-content .cm-editor .cm-activeLine {
-  background: var(--vscode-editor-lineHighlightBackground) !important;
+  background: var(--vscode-editor-lineHighlightBackground);
 }
 
 .mdx-content .cm-editor .cm-gutters {
-  background: var(--vscode-editorGutter-background) !important;
-  border-right: 1px solid var(--vscode-editorGutter-border) !important;
-  color: var(--vscode-editorLineNumber-foreground) !important;
+  background: var(--vscode-editorGutter-background);
+  border-right: 1px solid var(--vscode-editorGutter-border);
+  color: var(--vscode-editorLineNumber-foreground);
 }
 
-/* JavaScript syntax highlighting that matches VS Code dark theme - ULTRA HIGH SPECIFICITY */
-.mdx-editor .mdx-content .cm-editor .tok-keyword,
-.mdx-editor-container .mdx-content .cm-editor .tok-keyword,
-.mdx-editor .mdx-content .cm-editor .cm-line .tok-keyword,
-.mdx-editor-container .mdx-content .cm-editor .cm-line .tok-keyword {
-  color: #569cd6 !important; /* VS Code blue for keywords */
-  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace !important;
-}
+/* Syntax highlighting using VS Code semantic tokens - clean approach */
+.cm-editor .tok-keyword { color: #569cd6; }
+.cm-editor .tok-string { color: #ce9178; }
+.cm-editor .tok-comment { color: #6a9955; font-style: italic; }
+.cm-editor .tok-function { color: #dcdcaa; }
+.cm-editor .tok-number { color: #b5cea8; }
+.cm-editor .tok-operator { color: #d4d4d4; }
+.cm-editor .tok-variable { color: #9cdcfe; }
+.cm-editor .tok-property { color: #9cdcfe; }
+.cm-editor .tok-punctuation { color: #d4d4d4; }
 
-.mdx-editor .mdx-content .cm-editor .tok-string,
-.mdx-editor-container .mdx-content .cm-editor .tok-string,
-.mdx-editor .mdx-content .cm-editor .cm-line .tok-string,
-.mdx-editor-container .mdx-content .cm-editor .cm-line .tok-string {
-  color: #ce9178 !important; /* VS Code orange for strings */
-  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace !important;
-}
-
-.mdx-editor .mdx-content .cm-editor .tok-comment,
-.mdx-editor-container .mdx-content .cm-editor .tok-comment,
-.mdx-editor .mdx-content .cm-editor .cm-line .tok-comment,
-.mdx-editor-container .mdx-content .cm-editor .cm-line .tok-comment {
-  color: #6a9955 !important; /* VS Code green for comments */
-  font-style: italic !important;
-  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace !important;
-}
-
-.mdx-editor .mdx-content .cm-editor .tok-function,
-.mdx-editor-container .mdx-content .cm-editor .tok-function,
-.mdx-editor .mdx-content .cm-editor .cm-line .tok-function,
-.mdx-editor-container .mdx-content .cm-editor .cm-line .tok-function {
-  color: #dcdcaa !important; /* VS Code yellow for functions */
-  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace !important;
-}
-
-.mdx-editor .mdx-content .cm-editor .tok-number,
-.mdx-editor-container .mdx-content .cm-editor .tok-number,
-.mdx-editor .mdx-content .cm-editor .cm-line .tok-number,
-.mdx-editor-container .mdx-content .cm-editor .cm-line .tok-number {
-  color: #b5cea8 !important; /* VS Code light green for numbers */
-  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace !important;
-}
-
-.mdx-editor .mdx-content .cm-editor .tok-operator,
-.mdx-editor-container .mdx-content .cm-editor .tok-operator,
-.mdx-editor .mdx-content .cm-editor .cm-line .tok-operator,
-.mdx-editor-container .mdx-content .cm-editor .cm-line .tok-operator {
-  color: #d4d4d4 !important; /* VS Code light gray for operators */
-  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace !important;
-}
-
-.mdx-editor .mdx-content .cm-editor .tok-variable,
-.mdx-editor-container .mdx-content .cm-editor .tok-variable,
-.mdx-editor .mdx-content .cm-editor .cm-line .tok-variable,
-.mdx-editor-container .mdx-content .cm-editor .cm-line .tok-variable {
-  color: #9cdcfe !important; /* VS Code light blue for variables */
-  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace !important;
-}
-
-.mdx-editor .mdx-content .cm-editor .tok-property,
-.mdx-editor-container .mdx-content .cm-editor .tok-property,
-.mdx-editor .mdx-content .cm-editor .cm-line .tok-property,
-.mdx-editor-container .mdx-content .cm-editor .cm-line .tok-property {
-  color: #9cdcfe !important; /* VS Code light blue for properties */
-  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace !important;
-}
-
-.mdx-editor .mdx-content .cm-editor .tok-punctuation,
-.mdx-editor-container .mdx-content .cm-editor .tok-punctuation,
-.mdx-editor .mdx-content .cm-editor .cm-line .tok-punctuation,
-.mdx-editor-container .mdx-content .cm-editor .cm-line .tok-punctuation {
-  color: #d4d4d4 !important; /* VS Code light gray for punctuation */
-  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace !important;
-}
-
-/* Additional syntax highlighting classes that CodeMirror might use */
-.mdx-editor .mdx-content .cm-editor .cm-keyword,
-.mdx-editor-container .mdx-content .cm-editor .cm-keyword { color: #569cd6 !important; font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace !important; }
-
-.mdx-editor .mdx-content .cm-editor .cm-string,
-.mdx-editor-container .mdx-content .cm-editor .cm-string { color: #ce9178 !important; font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace !important; }
-
-.mdx-editor .mdx-content .cm-editor .cm-comment,
-.mdx-editor-container .mdx-content .cm-editor .cm-comment { color: #6a9955 !important; font-style: italic !important; font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace !important; }
-
-.mdx-editor .mdx-content .cm-editor .cm-variableName,
-.mdx-editor-container .mdx-content .cm-editor .cm-variableName { color: #9cdcfe !important; font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace !important; }
-
-.mdx-editor .mdx-content .cm-editor .cm-number,
-.mdx-editor-container .mdx-content .cm-editor .cm-number { color: #b5cea8 !important; font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace !important; }
+/* CodeMirror syntax highlighting classes */
+.cm-editor .cm-keyword { color: #569cd6; }
+.cm-editor .cm-string { color: #ce9178; }
+.cm-editor .cm-comment { color: #6a9955; font-style: italic; }
+.cm-editor .cm-variableName { color: #9cdcfe; }
+.cm-editor .cm-number { color: #b5cea8; }
 
 .mdx-content ul, .mdx-content ol {
-  margin-bottom: 0.6em !important;
-  padding-left: 1.5em !important;
+  margin-bottom: 0.6em;
+  padding-left: 1.5em;
 }
 
 .mdx-content li {
-  margin-bottom: 0.2em !important;
-  color: #cccccc !important;
+  margin-bottom: 0.2em;
+  color: var(--vscode-editor-foreground);
 }
 
-/* Fix dropdown styling in toolbar */
+/* Toolbar dropdown styling */
 .mdx-editor .mdxeditor-toolbar select,
 .mdx-editor .mdxeditor-toolbar [role="combobox"],
 .mdx-editor .mdxeditor-select-content {
-  background: var(--vscode-dropdown-background) !important;
-  color: var(--vscode-dropdown-foreground) !important;
-  border: 1px solid var(--vscode-dropdown-border) !important;
+  background: var(--vscode-dropdown-background);
+  color: var(--vscode-dropdown-foreground);
+  border: 1px solid var(--vscode-dropdown-border);
 }
 
-/* Fix for Radix UI Select component specifically */
+/* Radix UI Select component theming */
 .mdxeditor-select-content {
+  background: var(--vscode-dropdown-background);
+  color: var(--vscode-dropdown-foreground);
+  border: 1px solid var(--vscode-dropdown-border);
+}
+
+/* Code block language selector styling - fix black/white buttons */
+.mdxeditor-code-block-language-select-button,
+button[class*="_selectTrigger_"],
+button[role="combobox"][aria-label="Language"],
+.cm-editor .mdxeditor-language-selector,
+.cm-editor button[data-language-selector],
+.cm-editor .cm-editor-language-selector,
+[data-code-block-editor] .mdxeditor-language-selector,
+[data-code-block-editor] button {
+  background: var(--vscode-button-secondaryBackground) !important;
+  color: var(--vscode-button-secondaryForeground) !important;
+  border: 1px solid var(--vscode-button-border) !important;
+  border-radius: 4px !important;
+  font-size: 12px !important;
+  padding: 4px 8px !important;
+}
+
+/* Language selector hover state */
+.mdxeditor-code-block-language-select-button:hover,
+button[class*="_selectTrigger_"]:hover,
+button[role="combobox"][aria-label="Language"]:hover,
+.cm-editor .mdxeditor-language-selector:hover,
+.cm-editor button[data-language-selector]:hover,
+[data-code-block-editor] button:hover {
+  background: var(--vscode-button-secondaryHoverBackground) !important;
+}
+
+/* Fix CodeMirror active line gutter elements with inline styles */
+.cm-editor .cm-gutterElement.cm-activeLineGutter {
+  background: var(--vscode-editor-lineHighlightBackground) !important;
+  color: var(--vscode-editorLineNumber-activeForeground) !important;
+}
+
+/* Fix any select triggers in code blocks */
+.cm-editor [data-radix-select-trigger],
+[data-code-block-editor] [data-radix-select-trigger],
+.mdxeditor-code-block [data-radix-select-trigger] {
+  background: var(--vscode-button-secondaryBackground) !important;
+  color: var(--vscode-button-secondaryForeground) !important;
+  border: 1px solid var(--vscode-button-border) !important;
+  border-radius: 4px !important;
+}
+
+/* Fix dropdown content that renders in portals */
+[data-radix-select-content],
+[data-radix-select-viewport],
+[data-radix-popper-content-wrapper] [data-radix-select-content] {
   background: var(--vscode-dropdown-background) !important;
   color: var(--vscode-dropdown-foreground) !important;
   border: 1px solid var(--vscode-dropdown-border) !important;
+  border-radius: 6px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Fix dropdown items */
+[data-radix-select-item],
+[data-radix-select-content] [role="option"] {
+  background: transparent !important;
+  color: var(--vscode-dropdown-foreground) !important;
+  padding: 8px 12px !important;
+  cursor: pointer !important;
+  border-radius: 4px !important;
+  margin: 2px !important;
+}
+
+[data-radix-select-item]:hover,
+[data-radix-select-content] [role="option"]:hover {
+  background: var(--vscode-list-hoverBackground) !important;
+}
+
+[data-radix-select-item][data-highlighted],
+[data-radix-select-content] [role="option"][data-highlighted] {
+  background: var(--vscode-list-activeSelectionBackground) !important;
+  color: var(--vscode-list-activeSelectionForeground) !important;
 }
 
 /* Layout structure */
@@ -305,40 +317,35 @@
   min-width: 0; /* Allows flex item to shrink */
 }
 
-/* Override MDXEditor's default content editable styling */
+/* MDXEditor content editable styling - using semantic variables */
 .mdx-editor .mdxeditor-root-contenteditable {
-  background: var(--vscode-editor-background) !important;
-  color: #cccccc !important;
-  overflow-y: auto !important;
-  height: 100% !important;
-  padding: 0 !important;
-  margin: 0 !important;
+  background: var(--baseBase);
+  color: var(--baseText);
+  overflow-y: auto;
+  height: 100%;
+  padding: 0;
+  margin: 0;
+  flex: 1;
+  min-height: 0;
 }
 
-/* Ensure the MDX editor itself is properly sized and scrollable */
+/* MDXEditor layout */
 .mdx-editor {
-  height: 100% !important;
-  display: flex !important;
-  flex-direction: column !important;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
-/* Make sure the toolbar doesn't take unnecessary space and auto-fits content */
+/* Toolbar styling with proper spacing */
 .mdx-editor .mdxeditor-toolbar {
-  flex-shrink: 0 !important;
-  min-height: 44px !important;
-  height: auto !important;
-  max-height: none !important;
-  overflow: visible !important;
-  overflow-x: scroll !important;
-  flex-wrap: nowrap !important;
-  padding: 8px !important;
-}
-
-/* Ensure content area fills remaining space and scrolls */
-.mdx-editor .mdxeditor-root-contenteditable {
-  flex: 1 !important;
-  overflow-y: auto !important;
-  min-height: 0 !important;
+  flex-shrink: 0;
+  min-height: 44px;
+  height: auto;
+  max-height: none;
+  overflow: visible;
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  padding: 8px;
 }
 
 /* Comments Sidebar - positioned on the right side */
@@ -545,30 +552,29 @@
 
 /* Custom comment toggle button in toolbar */
 .mdx-comment-button {
-  background: var(--vscode-button-secondaryBackground) !important;
-  color: var(--vscode-button-secondaryForeground) !important;
-  border: 1px solid var(--vscode-button-border) !important;
-  border-radius: 3px !important;
-  padding: 6px 8px !important;
-  font-size: 13px !important;
-  cursor: pointer !important;
-  transition: all 0.15s ease !important;
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+  border: 1px solid var(--vscode-button-border);
+  border-radius: 3px;
+  padding: 6px 8px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
 }
 
 .mdx-comment-button:hover {
-  background: var(--vscode-button-secondaryHoverBackground) !important;
+  background: var(--vscode-button-secondaryHoverBackground);
 }
 
 /* Comment highlighting - theme-aware subtle inline indicators */
 .comment-highlight {
-  /* Only background color - no other style changes */
-  background-color: rgba(255, 255, 0, 0.15) !important;
-  padding: 0 !important;
+  background-color: rgba(255, 255, 0, 0.25);
+  padding: 0;
   transition: all 0.3s ease;
 }
 
 .comment-highlight.editor-highlighted {
-  background-color: rgba(0, 123, 255, 0.4) !important;
+  background-color: rgba(0, 123, 255, 0.4);
   box-shadow: 0 0 8px rgba(0, 123, 255, 0.6);
   animation: pulse-editor-highlight 0.8s ease-out;
 }
@@ -590,13 +596,13 @@
 
 /* Persistent focus state for inline comments - more subtle than animation */
 .comment-highlight.focused {
-  background-color: rgba(0, 123, 255, 0.2) !important;
+  background-color: rgba(0, 123, 255, 0.2);
   border-radius: 2px;
 }
 
 .comment-item.highlighted {
-  background-color: rgba(0, 123, 255, 0.15) !important;
-  border-left: 3px solid #007bff !important;
+  background-color: rgba(0, 123, 255, 0.15);
+  border-left: 3px solid #007bff;
   transform: translateX(4px);
   box-shadow: 0 2px 8px rgba(0, 123, 255, 0.2);
   transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
@@ -625,54 +631,62 @@
 
 /* Font selection styling */
 .font-selector {
-  background: var(--vscode-dropdown-background) !important;
-  color: var(--vscode-dropdown-foreground) !important;
-  border: 1px solid var(--vscode-dropdown-border) !important;
+  background: var(--vscode-dropdown-background);
+  color: var(--vscode-dropdown-foreground);
+  border: 1px solid var(--vscode-dropdown-border);
   border-radius: 3px;
   padding: 4px 8px;
   font-size: 12px;
   min-width: 120px;
 }
 
-/* Font application - apply to content specifically for override */
-.mdx-content.font-arial,
-.mdx-content.font-arial * {
-  font-family: Arial, sans-serif !important;
+/* Font application - using higher specificity instead of !important */
+.mdx-content.font-arial h1, .mdx-content.font-arial h2, .mdx-content.font-arial h3, 
+.mdx-content.font-arial h4, .mdx-content.font-arial h5, .mdx-content.font-arial h6,
+.mdx-content.font-arial p, .mdx-content.font-arial li, .mdx-content.font-arial td {
+  font-family: Arial, sans-serif;
 }
 
-.mdx-content.font-times-new-roman,
-.mdx-content.font-times-new-roman * {
-  font-family: "Times New Roman", Times, serif !important;
+.mdx-content.font-times-new-roman h1, .mdx-content.font-times-new-roman h2, .mdx-content.font-times-new-roman h3,
+.mdx-content.font-times-new-roman h4, .mdx-content.font-times-new-roman h5, .mdx-content.font-times-new-roman h6,
+.mdx-content.font-times-new-roman p, .mdx-content.font-times-new-roman li, .mdx-content.font-times-new-roman td {
+  font-family: "Times New Roman", Times, serif;
 }
 
-.mdx-content.font-roboto,
-.mdx-content.font-roboto * {
-  font-family: Roboto, Arial, sans-serif !important;
+.mdx-content.font-roboto h1, .mdx-content.font-roboto h2, .mdx-content.font-roboto h3,
+.mdx-content.font-roboto h4, .mdx-content.font-roboto h5, .mdx-content.font-roboto h6,
+.mdx-content.font-roboto p, .mdx-content.font-roboto li, .mdx-content.font-roboto td {
+  font-family: Roboto, Arial, sans-serif;
 }
 
-.mdx-content.font-georgia,
-.mdx-content.font-georgia * {
-  font-family: Georgia, serif !important;
+.mdx-content.font-georgia h1, .mdx-content.font-georgia h2, .mdx-content.font-georgia h3,
+.mdx-content.font-georgia h4, .mdx-content.font-georgia h5, .mdx-content.font-georgia h6,
+.mdx-content.font-georgia p, .mdx-content.font-georgia li, .mdx-content.font-georgia td {
+  font-family: Georgia, serif;
 }
 
-.mdx-content.font-calibri,
-.mdx-content.font-calibri * {
-  font-family: Calibri, sans-serif !important;
+.mdx-content.font-calibri h1, .mdx-content.font-calibri h2, .mdx-content.font-calibri h3,
+.mdx-content.font-calibri h4, .mdx-content.font-calibri h5, .mdx-content.font-calibri h6,
+.mdx-content.font-calibri p, .mdx-content.font-calibri li, .mdx-content.font-calibri td {
+  font-family: Calibri, sans-serif;
 }
 
-.mdx-content.font-garamond,
-.mdx-content.font-garamond * {
-  font-family: Garamond, serif !important;
+.mdx-content.font-garamond h1, .mdx-content.font-garamond h2, .mdx-content.font-garamond h3,
+.mdx-content.font-garamond h4, .mdx-content.font-garamond h5, .mdx-content.font-garamond h6,
+.mdx-content.font-garamond p, .mdx-content.font-garamond li, .mdx-content.font-garamond td {
+  font-family: Garamond, serif;
 }
 
-.mdx-content.font-book-antiqua,
-.mdx-content.font-book-antiqua * {
-  font-family: "Book Antiqua", serif !important;
+.mdx-content.font-book-antiqua h1, .mdx-content.font-book-antiqua h2, .mdx-content.font-book-antiqua h3,
+.mdx-content.font-book-antiqua h4, .mdx-content.font-book-antiqua h5, .mdx-content.font-book-antiqua h6,
+.mdx-content.font-book-antiqua p, .mdx-content.font-book-antiqua li, .mdx-content.font-book-antiqua td {
+  font-family: "Book Antiqua", serif;
 }
 
-.mdx-content.font-courier-new,
-.mdx-content.font-courier-new * {
-  font-family: "Courier New", Courier, monospace !important;
+.mdx-content.font-courier-new h1, .mdx-content.font-courier-new h2, .mdx-content.font-courier-new h3,
+.mdx-content.font-courier-new h4, .mdx-content.font-courier-new h5, .mdx-content.font-courier-new h6,
+.mdx-content.font-courier-new p, .mdx-content.font-courier-new li, .mdx-content.font-courier-new td {
+  font-family: "Courier New", Courier, monospace;
 }
 
 /* Book view styling */
@@ -776,16 +790,16 @@
 /* MDXEditor toolbar custom components styling */
 .mdx-editor .mdxeditor-toolbar button[data-state="on"],
 .mdx-editor .mdxeditor-toolbar button.active {
-  background-color: var(--vscode-button-background) !important;
-  color: var(--vscode-button-foreground) !important;
+  background-color: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
 }
 
 .mdx-editor .mdxeditor-toolbar [data-radix-select-trigger] {
-  background: var(--vscode-dropdown-background) !important;
-  color: var(--vscode-dropdown-foreground) !important;
-  border: 1px solid var(--vscode-dropdown-border) !important;
-  border-radius: 3px !important;
-  min-width: 120px !important;
+  background: var(--vscode-dropdown-background);
+  color: var(--vscode-dropdown-foreground);
+  border: 1px solid var(--vscode-dropdown-border);
+  border-radius: 3px;
+  min-width: 120px;
 }
 
 /* Advanced scroll containment for all editor containers to prevent VS Code editor scrolling */
