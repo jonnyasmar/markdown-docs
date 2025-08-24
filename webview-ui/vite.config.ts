@@ -9,17 +9,16 @@ export default defineConfig({
     rollupOptions: {
       output: {
         entryFileNames: 'index.js',
-        chunkFileNames: '[name].js',
+        chunkFileNames: 'index.js',
         assetFileNames: '[name].[ext]',
-        // Inline all dynamic imports to avoid module loading issues
-        inlineDynamicImports: true
+        inlineDynamicImports: true, // This should bundle everything into one file
       }
     },
-    minify: false, // Disable minification for easier debugging
+    minify: 'terser',
+    chunkSizeWarningLimit: 10000,
   },
   base: './',
   define: {
-    // Replace import.meta.env with a compatible alternative
     'import.meta.env': 'window.__VITE_ENV__'
   }
 });
