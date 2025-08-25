@@ -1,0 +1,252 @@
+/* Mermaid Editor Styles */
+.mermaid-editor-container {
+  border: 1px solid var(--vscode-input-border);
+  border-radius: 4px;
+  background: var(--vscode-editor-background);
+  margin: 8px 0;
+  overflow: visible;
+  position: relative;
+  z-index: 1;
+}
+
+.mermaid-editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--vscode-editorWidget-background);
+  border-bottom: 1px solid var(--vscode-input-border);
+  font-size: 12px;
+  position: relative;
+  z-index: 10;
+}
+
+.mermaid-label {
+  color: var(--vscode-foreground);
+  font-weight: 500;
+}
+
+.mermaid-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.mermaid-toggle-btn {
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+  border: 1px solid var(--vscode-button-border, var(--vscode-contrastBorder, transparent));
+  padding: 4px 8px;
+  border-radius: 3px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.mermaid-toggle-btn:hover {
+  background: var(--vscode-button-secondaryHoverBackground);
+}
+
+.mermaid-toggle-btn:disabled {
+  background: var(--vscode-button-secondaryBackground);
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.mermaid-preview {
+  padding: 16px;
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mermaid-diagram {
+  width: 100%;
+  text-align: center;
+}
+
+.mermaid-diagram svg {
+  max-width: 100%;
+  height: auto;
+  background: transparent;
+}
+
+.mermaid-placeholder {
+  color: var(--vscode-descriptionForeground);
+  font-style: italic;
+  text-align: center;
+}
+
+.mermaid-error {
+  background: var(--vscode-inputValidation-errorBackground);
+  color: var(--vscode-inputValidation-errorForeground);
+  border: 1px solid var(--vscode-inputValidation-errorBorder);
+  padding: 12px;
+  border-radius: 4px;
+  margin: 8px;
+}
+
+.mermaid-error pre {
+  background: rgba(0, 0, 0, 0.1);
+  padding: 8px;
+  border-radius: 3px;
+  margin: 8px 0;
+  font-size: 11px;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.mermaid-error-inline {
+  background: var(--vscode-inputValidation-errorBackground);
+  color: var(--vscode-inputValidation-errorForeground);
+  border-top: 1px solid var(--vscode-inputValidation-errorBorder);
+  padding: 8px 12px;
+  font-size: 11px;
+}
+
+.mermaid-edit-btn {
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+  border: 1px solid var(--vscode-button-border, var(--vscode-contrastBorder, transparent));
+  padding: 6px 12px;
+  border-radius: 3px;
+  font-size: 11px;
+  cursor: pointer;
+  margin-top: 8px;
+}
+
+.mermaid-edit-btn:hover {
+  background: var(--vscode-button-secondaryHoverBackground);
+}
+
+.mermaid-code-editor {
+  border: none;
+}
+
+.mermaid-code-editor .cm-editor {
+  border: none;
+  border-radius: 0;
+}
+
+/* Dark theme adjustments for mermaid diagrams */
+.dark-theme .mermaid-diagram svg {
+  filter: invert(0);
+}
+
+.dark-theme .mermaid-diagram .node rect,
+.dark-theme .mermaid-diagram .node circle,
+.dark-theme .mermaid-diagram .node ellipse,
+.dark-theme .mermaid-diagram .node polygon {
+  fill: var(--vscode-editor-background) !important;
+  stroke: var(--vscode-foreground) !important;
+}
+
+.dark-theme .mermaid-diagram .node .label,
+.dark-theme .mermaid-diagram text {
+  fill: var(--vscode-foreground) !important;
+}
+
+.dark-theme .mermaid-diagram .edgePath .path {
+  stroke: var(--vscode-foreground) !important;
+}
+
+.dark-theme .mermaid-diagram .marker {
+  fill: var(--vscode-foreground) !important;
+  stroke: var(--vscode-foreground) !important;
+}
+
+/* Split View Styles */
+.mermaid-split-container {
+  display: flex;
+  border-top: 1px solid var(--vscode-input-border);
+}
+
+.mermaid-split-left,
+.mermaid-split-right {
+  display: flex;
+  flex-direction: column;
+  min-width: 200px;
+  align-items: stretch;
+}
+
+.mermaid-split-header {
+  background: var(--vscode-editorWidget-background);
+  color: var(--vscode-foreground);
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 500;
+  border-bottom: 1px solid var(--vscode-input-border);
+  flex-shrink: 0;
+}
+
+.mermaid-split-left .mermaid-split-header {
+  border-right: 1px solid var(--vscode-input-border);
+}
+
+.mermaid-split-left .mermaid-code-editor {
+  border-right: 1px solid var(--vscode-input-border);
+  flex: 1;
+}
+
+.mermaid-split-left .mermaid-code-editor .cm-editor {
+  /* Let CodeMirror determine its own height naturally */
+}
+
+.mermaid-split-right .mermaid-preview {
+  margin: 0;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+.mermaid-split-right .mermaid-diagram {
+  width: 100%;
+  max-width: 100%;
+}
+
+.mermaid-split-right .mermaid-diagram svg {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Ensure mermaid diagrams scale properly */
+.mermaid-preview .mermaid-diagram svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.mermaid-split-resizer {
+  width: 4px;
+  background: var(--vscode-input-border);
+  cursor: col-resize;
+  position: relative;
+  transition: background-color 0.2s;
+}
+
+.mermaid-split-resizer:hover {
+  background: var(--vscode-focusBorder);
+}
+
+.mermaid-split-resizer::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 2px;
+  height: 20px;
+  background: var(--vscode-foreground);
+  opacity: 0.3;
+}
+
+/* Adjust error display in split mode */
+.mermaid-split-left .mermaid-error-inline {
+  margin: 0;
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+  border-bottom: none;
+}

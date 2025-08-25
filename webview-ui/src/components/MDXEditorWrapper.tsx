@@ -38,7 +38,9 @@ import '@mdxeditor/editor/style.css';
 import { CommentWithAnchor } from '../types';
 import { CommentModal } from './CommentModal';
 import { DirectiveService } from '../../../src/services/directive';
+import { MermaidEditor } from './MermaidEditor';
 import './MDXEditorWrapper.css';
+import './MermaidEditor.css';
 
 // Inline search component for toolbar
 const InlineSearchInput = ({ searchInputRef }: { searchInputRef: React.RefObject<HTMLInputElement> }) => {
@@ -285,7 +287,9 @@ const createCommentDirectiveDescriptor = (focusedCommentId: string | null, setFo
   name: 'comment',
   testNode(node: any) {
     console.log('Comment directive test - node:', node);
-    return node && node.name === 'comment';
+    const isComment = node && node.name === 'comment';
+    console.log('Is comment directive?', isComment);
+    return isComment;
   },
   attributes: ['id', 'text'],
   hasChildren: true, // All directive types can have children (the [content] part)
@@ -988,20 +992,44 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       if (editorRef.current) {
         const currentMarkdown = editorRef.current.getMarkdown();
 
-        // Generate the directive text manually with proper escaping
+        // Generate the directive text manually with escaping for all quotes
         let directiveText;
-        const escapedComment = comment.replace(/"/g, '\\"').replace(/\n/g, '\\n');
+        // Use custom encoding that MDXEditor won't interfere with
+        const replacements = [
+          { regex: /\\/g, replacement: '__BSLASH__' },
+          { regex: /"/g, replacement: '__DQUOTE__' },
+          { regex: /'/g, replacement: '__SQUOTE__' },
+          { regex: /\n/g, replacement: '__NEWLINE__' },
+          { regex: /\v/g, replacement: '__VTAB__' },
+          { regex: /\r/g, replacement: '__CR__' }
+        ];
+        
+        const escapedComment = replacements.reduce((acc, replacement) => {
+          const before = acc;
+          const after = acc.replace(replacement.regex, replacement.replacement);
+          console.log(`Replacing ${replacement.regex} with ${replacement.replacement}:`);
+          console.log(`  Before: "${before}"`);
+          console.log(`  After: "${after}"`);
+          return after;
+        }, comment);
+        
+        console.log('=== ESCAPING DEBUG ===');
+        console.log('Original comment:', comment);
+        console.log('Escaped comment:', escapedComment);
 
         if (isInlineComment) {
-          // For inline comments (single paragraph/block only), clean up whitespace
+          // For inline comments (single paragraph/block only), clean up whitespace with # notation
           const cleanSelectedText = processedText.replace(/[ \t]+/g, ' ').trim();
-          directiveText = `:comment[${cleanSelectedText}]{id="${commentId}" text="${escapedComment}"}`;
+          directiveText = `:comment[${cleanSelectedText}]{#${commentId} text="${escapedComment}"}`;
         } else {
-          // For container comments (multiple blocks), use the block-aligned text
-          directiveText = `:::comment{id="${commentId}" text="${escapedComment}"}\n${processedText}\n:::`;
+          // For container comments (multiple blocks), use the block-aligned text with # notation
+          directiveText = `:::comment{#${commentId} text="${escapedComment}"}\n${processedText}\n:::`;
         }
 
         console.log('Generated directive:', directiveText);
+        console.log('Directive length:', directiveText.length);
+        console.log('Contains escaped quotes?', directiveText.includes('\\"'));
+        console.log('Contains escaped equals?', directiveText.includes('\\='));
         console.log('Original selected text length:', selectedText.length);
         console.log('Selected text preview:', selectedText.substring(0, 100) + (selectedText.length > 100 ? '...' : ''));
         console.log('Is inline comment:', isInlineComment);
@@ -1022,6 +1050,10 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
         console.log('Replacing selected text with directive:', directiveText);
         console.log('Original text:', selectedText);
+        console.log('=== MARKDOWN UPDATE ===');
+        console.log('Text index:', textIndex);
+        console.log('Updated markdown length:', updatedMarkdown.length);
+        console.log('Updated markdown preview:', updatedMarkdown.substring(Math.max(0, textIndex - 50), textIndex + directiveText.length + 50));
 
         // Update parent state first
         onMarkdownChange(updatedMarkdown);
@@ -1032,13 +1064,6 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
             command: 'dirtyStateChanged',
             isDirty: true
           });
-        }
-
-        // Manual save only - removed auto-save after comment creation
-
-        // Force editor to re-render with updated content
-        if (editorRef.current) {
-          editorRef.current.setMarkdown(updatedMarkdown);
         }
       }
     }
@@ -1560,17 +1585,23 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
                       createCommentDirectiveDescriptor(focusedCommentId, setFocusedCommentId),
                       genericDirectiveDescriptor  // Refined version - only catches actual directives
                     ],
-                    // Keep escapeUnknownTextDirectives to prevent parsing normal text as directives
-                    escapeUnknownTextDirectives: true
+                    // Try disabling escapeUnknownTextDirectives to see if it causes the equals escaping
+                    escapeUnknownTextDirectives: false
                   }),
 
-                  // RE-ENABLED: Basic code block plugin is needed for fenced block parsing
+                  // Enhanced code block plugin with Mermaid support
                   (() => {
-                    console.log('Initializing codeBlockPlugin with fallback editor...');
+                    console.log('Initializing codeBlockPlugin with Mermaid support...');
                     try {
                       const plugin = codeBlockPlugin({ 
                         defaultCodeBlockLanguage: 'js',
                         codeBlockEditorDescriptors: [
+                          // Mermaid diagram editor - highest priority
+                          { 
+                            priority: 10, 
+                            match: (language, _code) => language === 'mermaid',
+                            Editor: MermaidEditor
+                          },
                           // Specific mappings for common aliases
                           { 
                             priority: 5, 
@@ -1615,7 +1646,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
                           }
                         ]
                       });
-                      console.log('codeBlockPlugin initialized successfully with fallback editor');
+                      console.log('codeBlockPlugin initialized successfully with Mermaid support');
                       return plugin;
                     } catch (error) {
                       console.error('Error initializing codeBlockPlugin:', error);
