@@ -128,6 +128,29 @@
   border-radius: 0;
 }
 
+/* Apply the same CodeMirror fixes to Mermaid editor */
+.mermaid-code-editor .cm-editor .cm-activeLine {
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+
+.dark-theme .mermaid-code-editor .cm-editor .cm-activeLine {
+  background: rgba(255, 255, 255, 0.06) !important;
+}
+
+.mermaid-code-editor .cm-editor .cm-matchingBracket {
+  background: var(--vscode-editor-findMatchHighlightBackground) !important;
+  color: inherit !important;
+  border: 1px solid var(--vscode-editor-findMatchBorder) !important;
+  border-radius: 2px !important;
+}
+
+.mermaid-code-editor .cm-editor .cm-nonmatchingBracket {
+  background: var(--vscode-inputValidation-errorBackground) !important;
+  color: var(--vscode-inputValidation-errorForeground) !important;
+  border: 1px solid var(--vscode-inputValidation-errorBorder) !important;
+  border-radius: 2px !important;
+}
+
 /* Dark theme adjustments for mermaid diagrams */
 .dark-theme .mermaid-diagram svg {
   filter: invert(0);

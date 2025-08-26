@@ -41,6 +41,7 @@ import { DirectiveService } from '../../../src/services/directive';
 import { MermaidEditor } from './MermaidEditor';
 import './MDXEditorWrapper.css';
 import './MermaidEditor.css';
+import { preprocessAngleBrackets, postprocessAngleBrackets } from './SimplifiedAngleBracketPlugin';
 
 // Inline search component for toolbar
 const InlineSearchInput = ({ searchInputRef }: { searchInputRef: React.RefObject<HTMLInputElement> }) => {
@@ -174,7 +175,10 @@ const ToolbarWithCommentButton = ({
       <Separator />
       <ConditionalContents
         options={[
-          { when: (editor) => editor?.editorType === 'codeblock', contents: () => <ChangeCodeMirrorLanguage /> },
+          { 
+            when: (editor) => editor?.editorType === 'codeblock', 
+            contents: () => null // Don't show language selector in main toolbar when in code block
+          },
           {
             fallback: () => (
               <InsertCodeBlock />
@@ -502,93 +506,102 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+
   // Parse comments from markdown
   const [parsedComments, setParsedComments] = useState<CommentWithAnchor[]>([]);
 
-  console.log('MDXEditorWrapper rendering with markdown:', markdown?.substring(0, 100));
-  console.log('Comments sidebar visible:', showCommentSidebar);
-  console.log('Comments count:', parsedComments.length);
-  console.log('Comment modal visible:', showCommentModal);
-  console.log('Selected text:', selectedText);
-  console.log('Show floating button:', showFloatingButton);
-  console.log('Current selected font:', selectedFont);
-  console.log('Font class applied:', `font-${selectedFont.toLowerCase().replace(/\s+/g, '-')}`);
+  // Removed console.logs for better performance during typing
 
-  // Parse comments whenever markdown changes
+  // Parse comments with debouncing to improve typing performance
   React.useEffect(() => {
-    console.log('=== COMMENT PARSING EFFECT TRIGGERED ===');
-    console.log('Markdown length:', markdown?.length);
-    console.log('Markdown preview:', markdown?.substring(0, 200));
-    console.log('isExternalUpdate:', isExternalUpdateRef.current);
+    if (!markdown) {
+      setParsedComments([]);
+      return;
+    }
 
-    if (markdown) {
-      console.log('Parsing comments from markdown...');
+    // Debounce comment parsing to avoid processing on every keystroke
+    const timeoutId = setTimeout(() => {
       try {
         const comments = DirectiveService.parseCommentDirectives(markdown);
-        console.log('Parsed comments count:', comments.length);
-        console.log('Parsed comments details:', comments);
-
-        // Convert to CommentWithAnchor format (we don't have positions, so use dummy values)
         const commentsWithAnchor: CommentWithAnchor[] = comments.map(comment => ({
           ...comment,
           anchoredText: comment.anchoredText || 'Selected text',
-          startPosition: 0, // Not used in our directive-based approach
-          endPosition: 0    // Not used in our directive-based approach
+          startPosition: 0,
+          endPosition: 0
         }));
-
         setParsedComments(commentsWithAnchor);
-        console.log('Comments state updated');
       } catch (error) {
         console.error('Error parsing comments:', error);
         setParsedComments([]);
       }
-    } else {
-      console.log('No markdown provided, clearing comments');
-      setParsedComments([]);
-    }
-    console.log('=== COMMENT PARSING EFFECT END ===');
+    }, 500); // 500ms debounce - only parse after user stops typing
+
+    return () => clearTimeout(timeoutId);
   }, [markdown]);
+
+  // Cleanup timeout on unmount
+  React.useEffect(() => {
+    return () => {
+      if (dirtyStateTimeoutRef.current) {
+        clearTimeout(dirtyStateTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Track if we just saved to prevent unnecessary reloads
+  const justSavedRef = useRef(false);
+  
+  // Timeout ref for debouncing dirty state notifications
+  const dirtyStateTimeoutRef = useRef<NodeJS.Timeout>();
 
   // Update editor content when markdown prop changes from external sources
   React.useEffect(() => {
-    console.log('=== EXTERNAL CONTENT UPDATE EFFECT TRIGGERED ===');
-    console.log('Markdown prop changed:', markdown?.substring(0, 100));
-    console.log('Editor ref exists:', !!editorRef.current);
-    console.log('isExternalUpdate flag:', isExternalUpdateRef.current);
+    // Skip updates immediately after saving to prevent scroll jumping
+    if (justSavedRef.current) {
+      justSavedRef.current = false;
+      console.log('Skipping editor update - just saved');
+      return;
+    }
 
     if (editorRef.current && markdown !== undefined) {
       // Get current editor content to compare
       const currentContent = editorRef.current.getMarkdown();
-      console.log('Current editor content length:', currentContent.length);
-      console.log('New markdown content length:', markdown.length);
 
       // Only update if content has actually changed to avoid unnecessary updates
       if (currentContent !== markdown) {
-        console.log('Content differs, updating editor...');
+        console.log('External content change detected, updating editor...');
 
         // Set external update flag to prevent circular updates
         isExternalUpdateRef.current = true;
 
         try {
+          // Store current cursor position
+          const selection = window.getSelection();
+          const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
+          
           // Update the editor content
           editorRef.current.setMarkdown(markdown);
-          console.log('Editor content updated successfully');
+          
+          // Try to restore cursor position (best effort)
+          if (range && selection) {
+            try {
+              selection.removeAllRanges();
+              selection.addRange(range);
+            } catch (e) {
+              // Ignore cursor restore errors
+            }
+          }
+          
         } catch (error) {
           console.error('Error updating editor content:', error);
         } finally {
-          // Reset the flag after a brief delay to allow for any async operations
+          // Reset the flag after a brief delay
           setTimeout(() => {
             isExternalUpdateRef.current = false;
-            console.log('External update flag reset');
-          }, 100);
+          }, 50);
         }
-      } else {
-        console.log('Content is the same, skipping editor update');
       }
-    } else {
-      console.log('Editor ref not available or markdown is undefined');
     }
-    console.log('=== EXTERNAL CONTENT UPDATE EFFECT END ===');
   }, [markdown]);
 
   // True realtime sync state management
@@ -596,30 +609,29 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   const isExternalUpdateRef = useRef(false);
 
   const handleMarkdownChange = (newMarkdown: string) => {
-    console.log('MDXEditorWrapper: Markdown changed by user');
-
     // Skip if this change is from an external update
     if (isExternalUpdateRef.current) {
-      console.log('Skipping change - from external update');
       return;
     }
 
+    // Ultra-minimal processing for maximum typing speed
     const hasChanges = newMarkdown !== markdown;
     setHasUnsavedChanges(hasChanges);
     onMarkdownChange(newMarkdown);
 
-    // Notify extension about dirty state for tab title indicator
-    if (window.vscodeApi) {
-      window.vscodeApi.postMessage({
-        command: 'dirtyStateChanged',
-        isDirty: hasChanges
-      });
+    // Debounced dirty state notification for better performance
+    if (window.vscodeApi && hasChanges) {
+      // Use a timeout to batch multiple rapid changes
+      clearTimeout(dirtyStateTimeoutRef.current);
+      dirtyStateTimeoutRef.current = setTimeout(() => {
+        window.vscodeApi.postMessage({
+          command: 'dirtyStateChanged',
+          isDirty: true
+        });
+      }, 200); // 200ms debounce
     }
-
-    // DISABLED: No auto-save during typing to prevent cursor jumping
-    // Real-time sync disabled - only save on explicit save command (Ctrl+S/Cmd+S)
-    console.log('Auto-save disabled - changes will be saved on Ctrl+S/Cmd+S');
   };
+
 
   // Handle internal search messages
   React.useEffect(() => {
@@ -650,12 +662,18 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         // Get the current markdown from the editor
         let contentToSave = markdown;
         if (editorRef.current) {
-          contentToSave = editorRef.current.getMarkdown();
-          console.log('Got content from editor:', contentToSave.substring(0, 100));
+          const editorContent = editorRef.current.getMarkdown();
+          // Apply postprocessing to convert mathematical angle brackets back to regular ones
+          contentToSave = postprocessAngleBrackets(editorContent);
+          console.log('Got content from editor and postprocessed:', contentToSave.substring(0, 100));
         }
 
         if (typeof window !== 'undefined' && window.vscodeApi) {
           console.log('Sending save command with content length:', contentToSave.length);
+          
+          // Set flag to prevent editor reload after save
+          justSavedRef.current = true;
+          
           window.vscodeApi.postMessage({
             command: 'save',
             content: contentToSave
@@ -1580,6 +1598,9 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
                   thematicBreakPlugin(),
                   markdownShortcutPlugin(),
                   searchPlugin(),
+                  
+                  // Removed angle bracket plugin for better performance
+                  
                   directivesPlugin({
                     directiveDescriptors: [
                       createCommentDirectiveDescriptor(focusedCommentId, setFocusedCommentId),
@@ -1745,6 +1766,11 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
                       }}
                       markdown={markdown || ''}
                       onChange={handleMarkdownChange}
+                      suppressHtmlProcessing={true}
+                      onError={(error) => {
+                        console.error('MDXEditor parsing error:', error);
+                        console.log('This error might be caused by angle brackets. Try using the source mode if available.');
+                      }}
                       className={`mdx-editor dark-theme font-${selectedFont.toLowerCase().replace(/\s+/g, '-')}`}
                       contentEditableClassName={`mdx-content font-${selectedFont.toLowerCase().replace(/\s+/g, '-')}`}
                       plugins={plugins}

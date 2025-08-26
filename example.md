@@ -82,6 +82,8 @@ def greet(name):
 print(greet("AI"))
 ```
 
+### Mermaid
+
 ```mermaid
 sequenceDiagram
     Alice ->> Bob: Hello Bob, how are you?
@@ -96,8 +98,7 @@ sequenceDiagram
 
 ### Blockquotes
 
-> "The only way to do great work is to love what you do."
-> \- Steve Jobs
+> "The only way to do great work is to love what you do."- Steve Jobs
 
 ### Tables
 

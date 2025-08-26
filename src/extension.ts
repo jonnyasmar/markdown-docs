@@ -3,6 +3,56 @@ import * as path from 'path';
 import { DirectiveService } from './services/directive';
 // OLD: Removed unused imports: FrontmatterService, AnchorService, Comment
 
+// Angle bracket preprocessing functions
+function isInInlineCode(text: string, position: number): boolean {
+  const beforeText = text.substring(0, position);
+  const backticksBefore = (beforeText.match(/`/g) || []).length;
+  return backticksBefore % 2 === 1;
+}
+
+function isInCodeBlock(text: string, position: number): boolean {
+  const beforeText = text.substring(0, position);
+  
+  const codeBlockStart = /```/g;
+  let match;
+  let inCodeBlock = false;
+  
+  codeBlockStart.lastIndex = 0;
+  while ((match = codeBlockStart.exec(beforeText)) !== null) {
+    inCodeBlock = !inCodeBlock;
+  }
+  
+  return inCodeBlock;
+}
+
+function preprocessAngleBrackets(markdown: string): string {
+  let result = '';
+  let i = 0;
+  
+  while (i < markdown.length) {
+    const char = markdown[i];
+    
+    // Only escape < brackets, not > brackets (which are used for blockquotes)
+    if (char === '<') {
+      if (isInInlineCode(markdown, i) || isInCodeBlock(markdown, i)) {
+        result += char;
+      } else {
+        result += '\\' + char;
+      }
+    } else {
+      result += char;
+    }
+    i++;
+  }
+  
+  return result;
+}
+
+function postprocessAngleBrackets(markdown: string): string {
+  // Only remove backslash escaping from < characters (we no longer escape >)
+  return markdown.replace(/\\</g, '<');
+}
+
 function debug(...args: any[]) {
   console.log(...args);
 }
@@ -49,6 +99,7 @@ class EditorPanel {
   private _disposables: vscode.Disposable[] = [];
   private _isUpdatingFromWebview = false;
   private _isDirtyFromWebview = false;
+  private _justSaved = false;
 
   public static async createOrShow(
     context: vscode.ExtensionContext,
@@ -178,9 +229,12 @@ class EditorPanel {
         return;
       }
       
-      // Don't sync external changes if we're currently updating from webview
-      if (this._isUpdatingFromWebview) {
-        console.log('Ignoring external change during webview update');
+      // Don't sync external changes if we're currently updating from webview or just saved
+      if (this._isUpdatingFromWebview || this._justSaved) {
+        console.log('Ignoring external change during webview update or just after save');
+        if (this._justSaved) {
+          this._justSaved = false; // Reset flag
+        }
         return;
       }
       
@@ -220,8 +274,11 @@ class EditorPanel {
       async (message) => {
         debug('msg from webview', message, this._panel.active);
 
-        const syncToEditor = async () => {
+        const syncToEditor = async (content?: string) => {
           debug('sync to editor', this._document, this._uri);
+          
+          // Use provided content or fallback to message content
+          const contentToWrite = content || message.content;
           
           // Check if document is actually open in VS Code with detailed logging
           const openDocuments = vscode.workspace.textDocuments.map(doc => doc.uri.fsPath);
@@ -233,12 +290,13 @@ class EditorPanel {
           console.log('Is document open:', isDocumentOpen);
           console.log('Document exists:', !!this._document);
           console.log('Document is closed:', this._document?.isClosed);
+          console.log('Content to write length:', contentToWrite.length);
           
           // ALWAYS use direct file write to avoid opening files
           if (this._uri) {
             await vscode.workspace.fs.writeFile(
               this._uri, 
-              Buffer.from(message.content, 'utf8')
+              Buffer.from(contentToWrite, 'utf8')
             );
             console.log('Synced via direct file write (avoiding VS Code document operations)');
           } else {
@@ -276,8 +334,14 @@ class EditorPanel {
             console.log('Document exists:', !!this._document);
             console.log('Document URI:', this._uri?.fsPath);
             
-            // Set flag to prevent circular sync
+            // Postprocess content to remove angle bracket escaping
+            const processedContent = postprocessAngleBrackets(message.content);
+            console.log('Original content length:', message.content.length);
+            console.log('Postprocessed content length:', processedContent.length);
+            
+            // Set flags to prevent circular sync and webview updates
             this._isUpdatingFromWebview = true;
+            this._justSaved = true;
             
             try {
               // Check if document is still open in VS Code
@@ -287,7 +351,7 @@ class EditorPanel {
               
               if (isDocumentOpen && this._document && !this._document.isClosed) {
                 console.log('Document is open in VS Code, using document reference');
-                await syncToEditor();
+                await syncToEditor(processedContent); // Pass postprocessed content
                 await this._document.save();
                 console.log('Document saved via VS Code document');
               } else {
@@ -296,7 +360,7 @@ class EditorPanel {
                 if (this._uri) {
                   await vscode.workspace.fs.writeFile(
                     this._uri, 
-                    Buffer.from(message.content, 'utf8')
+                    Buffer.from(processedContent, 'utf8') // Use postprocessed content
                   );
                   console.log('Direct file write successful');
                 } else {
@@ -308,7 +372,7 @@ class EditorPanel {
               // Clear flag after minimal delay for realtime sync
               setTimeout(() => {
                 this._isUpdatingFromWebview = false;
-              }, 25); // Small delay to prevent race conditions with file change detection
+              }, 100); // Longer delay to prevent unnecessary webview updates after save
             }
             break;
           }
@@ -411,18 +475,21 @@ class EditorPanel {
     console.log('URI:', this._uri?.fsPath);
     console.log('IsUpdatingFromWebview flag:', this._isUpdatingFromWebview);
     
-    const md = this._document
+    const rawMd = this._document
       ? this._document.getText()
       : (await vscode.workspace.fs.readFile(this._uri)).toString();
     
-    console.log('Extension: File content length:', md.length);
-    console.log('Extension: File content preview:', md.substring(0, 200));
-    console.log('Extension: File content ending:', '...' + md.substring(md.length - 100));
-    console.log('Extension: Contains code blocks?', md.includes('```javascript'));
-    console.log('Extension: Ends with expected?', md.includes('explore all the features!'));
+    // Preprocess angle brackets for MDXEditor
+    const md = preprocessAngleBrackets(rawMd);
+    
+    console.log('Extension: Raw file content length:', rawMd.length);
+    console.log('Extension: Processed content length:', md.length);
+    console.log('Extension: File content preview:', rawMd.substring(0, 200));
+    console.log('Extension: Processed preview:', md.substring(0, 200));
+    console.log('Extension: Contains angle brackets?', rawMd.includes('<') && rawMd.includes('>'));
     
     // Count directives in the content we're about to send
-    const directiveMatches = md.match(/(:+)comment(?:\[[^\]]*\])?\{[^}]*\}/g);
+    const directiveMatches = rawMd.match(/(:+)comment(?:\[[^\]]*\])?\{[^}]*\}/g);
     console.log('Directives found in content:', directiveMatches?.length || 0);
     if (directiveMatches) {
       console.log('Directive samples:', directiveMatches.slice(0, 3));
@@ -430,7 +497,7 @@ class EditorPanel {
     
     const messageToSend = {
       command: 'update',
-      content: md,
+      content: md, // Send preprocessed content
       ...props,
     };
     

@@ -1,0 +1,15 @@
+# Ignore JSON files - they don't use semicolons
+*.json
+package*.json
+
+# Already ignored by .eslintrc.json but adding here for clarity
+out/
+dist/
+**/*.d.ts
+
+# Node modules
+node_modules/
+
+# Webview UI build artifacts
+webview-ui/dist/
+webview-ui/node_modules/

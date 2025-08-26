@@ -125,12 +125,8 @@ function EditorApp() {
 
   const handleMarkdownChange = (newMarkdown: string) => {
     setMarkdown(newMarkdown);
-    if (vscode) {
-      vscode.postMessage({
-        command: 'edit',
-        content: newMarkdown
-      });
-    }
+    // DISABLED: Don't send edit messages on every keystroke for better performance
+    // Only save messages are sent when user explicitly saves (Ctrl+S/Cmd+S)
   };
 
   const handleAddComment = (range: { start: number, end: number }, comment: string) => {

@@ -19,7 +19,7 @@
   padding: 0;
   /* Prevent scroll chaining to VS Code editor */
   overscroll-behavior: contain;
-  overflow: hidden; /* Ensure container manages its own scrolling */
+  overflow: hidden; /* Container manages scrolling through child elements */
 }
 
 /* Proper MDXEditor theming using semantic variables and VS Code integration */
@@ -73,6 +73,7 @@
   margin: 0;
   min-height: 100%;
   overflow-y: auto;
+  flex: 1;
 }
 
 /* Only target text elements that need font override */
@@ -173,6 +174,31 @@
 
 .mdx-content .cm-editor .cm-activeLine {
   background: var(--vscode-editor-lineHighlightBackground);
+}
+
+/* Fix 1: Differentiate line highlight from selection background */
+.mdx-content .cm-editor .cm-activeLine {
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+
+/* Dark theme specific line highlight - slightly different from selection */
+.dark-theme .mdx-content .cm-editor .cm-activeLine {
+  background: rgba(255, 255, 255, 0.06) !important;
+}
+
+/* Fix 2: Theme-aware bracket matching instead of stark white */
+.mdx-content .cm-editor .cm-matchingBracket {
+  background: var(--vscode-editor-findMatchHighlightBackground) !important;
+  color: inherit !important;
+  border: 1px solid var(--vscode-editor-findMatchBorder) !important;
+  border-radius: 2px !important;
+}
+
+.mdx-content .cm-editor .cm-nonmatchingBracket {
+  background: var(--vscode-inputValidation-errorBackground) !important;
+  color: var(--vscode-inputValidation-errorForeground) !important;
+  border: 1px solid var(--vscode-inputValidation-errorBorder) !important;
+  border-radius: 2px !important;
 }
 
 .mdx-content .cm-editor .cm-gutters {
@@ -321,12 +347,14 @@ button[role="combobox"][aria-label="Language"]:hover,
 .mdx-editor .mdxeditor-root-contenteditable {
   background: var(--baseBase);
   color: var(--baseText);
-  overflow-y: auto;
-  height: 100%;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  height: auto !important;
+  min-height: 100% !important;
+  max-height: none !important;
   padding: 0;
   margin: 0;
   flex: 1;
-  min-height: 0;
 }
 
 /* MDXEditor layout */
@@ -818,9 +846,12 @@ body {
   overflow-anchor: none !important;
 }
 
-/* Prevent any scroll events from bubbling up */
-.mdx-editor-container * {
+/* Allow scrolling but prevent bubbling */
+.mdx-editor-container .mdxeditor-root-contenteditable {
   overscroll-behavior: contain;
+  overflow-y: auto !important;
+  height: 100% !important;
+  max-height: none !important;
 }
 
 /* Ensure search UI appears correctly with proper z-index */
@@ -923,4 +954,109 @@ body {
   border-left: 2px solid rgba(0, 123, 255, 0.5) !important;
   box-shadow: inset 0 0 0 1px rgba(0, 123, 255, 0.2);
   transform: translateX(2px);
+}
+
+/* Diff/Source mode styling */
+.mdx-editor [data-diff-source-wrapper] button,
+.mdx-editor .mdxeditor-diff-source-toggle-wrapper button {
+  background: var(--vscode-button-secondaryBackground) !important;
+  color: var(--vscode-button-secondaryForeground) !important;
+  border: 1px solid var(--vscode-button-border) !important;
+  border-radius: 4px !important;
+  font-size: 12px !important;
+  padding: 4px 8px !important;
+}
+
+.mdx-editor [data-diff-source-wrapper] button:hover,
+.mdx-editor .mdxeditor-diff-source-toggle-wrapper button:hover {
+  background: var(--vscode-button-secondaryHoverBackground) !important;
+}
+
+.mdx-editor [data-diff-source-wrapper] button[data-state="on"],
+.mdx-editor .mdxeditor-diff-source-toggle-wrapper button[data-state="on"] {
+  background: var(--vscode-button-background) !important;
+  color: var(--vscode-button-foreground) !important;
+}
+
+/* Source mode editor styling */
+.mdx-editor .mdxeditor-source-editor {
+  background: var(--vscode-editor-background) !important;
+  color: var(--vscode-editor-foreground) !important;
+  border: 1px solid var(--vscode-input-border) !important;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace !important;
+  font-size: 13px !important;
+  line-height: 1.4 !important;
+}
+
+.mdx-editor .mdxeditor-source-editor:focus {
+  outline: 1px solid var(--vscode-focusBorder) !important;
+  outline-offset: -1px !important;
+}
+
+/* Angle bracket text styling - for generic type annotations */
+.angle-bracket-text {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace !important;
+  background-color: rgba(100, 150, 200, 0.15) !important;
+  border: 1px solid rgba(100, 150, 200, 0.3) !important;
+  border-radius: 3px !important;
+  padding: 1px 3px !important;
+  font-size: 0.9em !important;
+  color: #0066cc !important;
+  font-weight: 500 !important;
+}
+
+/* Dark theme adjustments for angle bracket text */
+.dark-theme .angle-bracket-text {
+  background-color: rgba(100, 150, 255, 0.2) !important;
+  border-color: rgba(100, 150, 255, 0.4) !important;
+  color: #66aaff !important;
+}
+
+/* Style mathematical angle brackets (⟨⟩) used for display */
+.mdx-content {
+  font-feature-settings: "liga" 0; /* Disable ligatures for cleaner angle bracket display */
+}
+
+/* Enhanced contrast for angle bracket content in different themes */
+.mdx-content:has(span:contains("⟨")):has(span:contains("⟩")) {
+  font-variant-ligatures: none;
+}
+
+/* Blockquote styling - beautiful, clean quotes */
+.mdx-content blockquote {
+  margin: 1.5em 0;
+  padding: 1em 1.2em;
+  border-left: 4px solid var(--vscode-textLink-foreground, #007acc);
+  background-color: var(--vscode-textBlockQuote-background, rgba(127, 127, 127, 0.1));
+  font-style: italic;
+  color: var(--vscode-textBlockQuote-foreground, var(--vscode-editor-foreground));
+  border-radius: 0 4px 4px 0;
+  position: relative;
+}
+
+.mdx-content blockquote p {
+  margin: 0.5em 0;
+  line-height: 1.6;
+}
+
+.mdx-content blockquote p:first-child {
+  margin-top: 0;
+}
+
+.mdx-content blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+/* Attribution styling within blockquotes */
+.mdx-content blockquote p:last-child:has(strong):before,
+.mdx-content blockquote p:last-child:has(em):before {
+  content: "— ";
+  font-weight: normal;
+  font-style: normal;
+}
+
+/* Dark theme adjustments */
+.dark-theme .mdx-content blockquote {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-left-color: var(--vscode-textLink-foreground, #4daafc);
 }
