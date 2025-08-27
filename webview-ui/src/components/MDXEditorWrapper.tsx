@@ -32,7 +32,11 @@ import {
   InsertCodeBlock,
   ConditionalContents,
   ChangeCodeMirrorLanguage,
-  CodeMirrorEditor
+  CodeMirrorEditor,
+  insertDirective$,
+  realmPlugin,
+  Cell,
+  Signal
 } from '@mdxeditor/editor';
 import { usePublisher } from '@mdxeditor/gurx';
 import '@mdxeditor/editor/style.css';
@@ -40,6 +44,7 @@ import { CommentWithAnchor } from '../types';
 import { CommentModal } from './CommentModal';
 import { DirectiveService } from '../../../src/services/directive';
 import { MermaidEditor } from './MermaidEditor';
+import { escapeDirectiveContent } from '../utils/textNormalization';
 import './MDXEditorWrapper.css';
 import './MermaidEditor.css';
 import { preprocessAngleBrackets, postprocessAngleBrackets } from './SimplifiedAngleBracketPlugin';
@@ -176,8 +181,8 @@ const ToolbarWithCommentButton = ({
       <Separator />
       <ConditionalContents
         options={[
-          { 
-            when: (editor) => editor?.editorType === 'codeblock', 
+          {
+            when: (editor) => editor?.editorType === 'codeblock',
             contents: () => null // Don't show language selector in main toolbar when in code block
           },
           {
@@ -286,6 +291,48 @@ const MDXInlineSearchInput = ({ searchInputRef }: { searchInputRef: React.RefObj
     </div>
   );
 };
+
+// Create a custom plugin for comment insertion that uses native insertDirective$
+const commentInsertionPlugin = realmPlugin<{
+  pendingComment?: { comment: string, commentId: string, selectedText: string, strategy: 'inline' | 'container' } | null;
+  onInsertComment?: (comment: { comment: string, commentId: string, selectedText: string, strategy: 'inline' | 'container' }) => void;
+}>({
+  init(realm, params) {
+    logger.debug('Comment insertion plugin initialized with native insertDirective$ support');
+  },
+
+  update(realm, params) {
+    // React to pending comment updates and insert directives using native MDX Editor signals
+    if (params?.pendingComment) {
+      const pendingComment = params.pendingComment;
+      logger.debug('Plugin received comment to insert using native insertDirective$:', pendingComment);
+
+      try {
+        // Use MDX Editor's native insertDirective$ signal - this is the key!
+        realm.pub(insertDirective$, {
+          name: 'comment',
+          type: pendingComment.strategy === 'container' ? 'containerDirective' : 'textDirective',
+          children: pendingComment.strategy === 'container'
+            ? [{ type: 'paragraph', children: [{ type: 'text', value: pendingComment.selectedText }] }]
+            : [{ type: 'text', value: pendingComment.selectedText }],
+          attributes: {
+            id: pendingComment.commentId,
+            text: escapeDirectiveContent(pendingComment.comment, pendingComment.strategy === 'container')
+          }
+        });
+
+        logger.debug('Comment directive inserted successfully via native insertDirective$');
+
+        // Call completion callback if provided
+        if (params?.onInsertComment) {
+          params.onInsertComment(pendingComment);
+        }
+      } catch (error) {
+        logger.error('Error inserting comment directive via insertDirective$:', error);
+      }
+    }
+  }
+});
 
 // Comment directive configuration supporting all directive types
 const createCommentDirectiveDescriptor = (focusedCommentId: string | null, setFocusedCommentId: (id: string | null) => void) => ({
@@ -430,8 +477,8 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   defaultFont = 'Arial'
 }) => {
   logger.debug('=== MDXEditorWrapper RENDER START ===');
-  logger.debug('Props received:', { 
-    markdownLength: markdown?.length, 
+  logger.debug('Props received:', {
+    markdownLength: markdown?.length,
     commentsLength: comments?.length,
     defaultFont,
     hasOnMarkdownChange: !!onMarkdownChange
@@ -450,6 +497,9 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
   // New state for Book view and Font selection
   const [isBookView, setIsBookView] = useState(false);
+
+  // Comment insertion state
+  const [pendingComment, setPendingComment] = useState<{ comment: string, commentId: string, selectedText: string, strategy: 'inline' | 'container' } | null>(null);
   const [selectedFont, setSelectedFont] = useState(defaultFont);
   const [editingComment, setEditingComment] = useState<any>(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -551,7 +601,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
   // Track if we just saved to prevent unnecessary reloads
   const justSavedRef = useRef(false);
-  
+
   // Timeout ref for debouncing dirty state notifications
   const dirtyStateTimeoutRef = useRef<NodeJS.Timeout>();
 
@@ -579,10 +629,10 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
           // Store current cursor position
           const selection = window.getSelection();
           const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
-          
+
           // Update the editor content
           editorRef.current.setMarkdown(markdown);
-          
+
           // Try to restore cursor position (best effort)
           if (range && selection) {
             try {
@@ -592,7 +642,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
               // Ignore cursor restore errors
             }
           }
-          
+
         } catch (error) {
           logger.error('Error updating editor content:', error);
         } finally {
@@ -671,10 +721,10 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
         if (typeof window !== 'undefined' && window.vscodeApi) {
           logger.debug('Sending save command with content length:', contentToSave.length);
-          
+
           // Set flag to prevent editor reload after save
           justSavedRef.current = true;
-          
+
           window.vscodeApi.postMessage({
             command: 'save',
             content: contentToSave
@@ -946,144 +996,66 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   };
 
   const handleSubmitComment = (comment: string) => {
-    logger.debug('handleSubmitComment called with:', comment);
+    logger.debug('Enhanced handleSubmitComment called with:', comment);
     logger.debug('Selected text:', selectedText);
     logger.debug('Selected text length:', selectedText.length);
     logger.debug('Comment length:', comment.trim().length);
 
-    if (comment.trim() && selectedText) {
-      const commentId = `comment-${Date.now()}`;
+    if (!comment.trim() || !selectedText) {
+      logger.warn('Missing comment or selected text');
+      setShowCommentModal(false);
+      return;
+    }
 
-      // Auto-extend selections to block boundaries for proper container directive support
-      let processedText = selectedText;
-      let isInlineComment = true;
+    if (!editorRef.current) {
+      logger.error('Editor ref not available');
+      setShowCommentModal(false);
+      return;
+    }
 
-      // Check if selection spans multiple paragraphs
-      const hasMultipleParagraphs = selectedText.includes('\n\n');
+    const commentId = `comment-${Date.now()}`;
+    const currentMarkdown = editorRef.current.getMarkdown();
 
-      if (hasMultipleParagraphs && editorRef.current) {
-        // Try to extend selection to full block boundaries for container directive
-        const currentMarkdown = editorRef.current.getMarkdown();
-        const selectionStartIndex = currentMarkdown.indexOf(selectedText);
+    try {
+      // With native directive insertion, we can handle most text reliably
+      // Check for problematic content that can't be commented on
+      const isInCodeBlock = detectCodeBlockSelection(currentMarkdown, selectedText);
+      const isMultiParagraph = selectedText.includes('\n\n');
 
-        if (selectionStartIndex !== -1) {
-          const beforeSelection = currentMarkdown.substring(0, selectionStartIndex);
-          const afterSelection = currentMarkdown.substring(selectionStartIndex + selectedText.length);
-
-          // Find the start of the block (last double newline before selection, or start of document)
-          const lastBlockBreakBefore = beforeSelection.lastIndexOf('\n\n');
-          const blockStart = lastBlockBreakBefore === -1 ? 0 : lastBlockBreakBefore + 2;
-
-          // Find the end of the block (next double newline after selection, or end of document)
-          const nextBlockBreakAfter = afterSelection.indexOf('\n\n');
-          const blockEnd = nextBlockBreakAfter === -1 ?
-            currentMarkdown.length :
-            selectionStartIndex + selectedText.length + nextBlockBreakAfter;
-
-          // Extract the full block-aligned content
-          const blockAlignedText = currentMarkdown.substring(blockStart, blockEnd);
-
-          // Only use container directive if we successfully extended to clean block boundaries
-          if (blockAlignedText !== selectedText &&
-            blockAlignedText.trim().length > 0 &&
-            !blockAlignedText.startsWith('\n') &&
-            !blockAlignedText.endsWith('\n')) {
-
-            processedText = blockAlignedText;
-            isInlineComment = false; // Use container directive
-
-            logger.debug('Extended selection to block boundaries:', {
-              originalText: selectedText.substring(0, 50) + '...',
-              extendedText: blockAlignedText.substring(0, 50) + '...',
-              originalLength: selectedText.length,
-              extendedLength: blockAlignedText.length
-            });
-          }
-        }
-      }
-
-      logger.debug('Comment directive logic:', {
-        selectedTextLength: selectedText.length,
-        isInlineComment,
-        selectedTextPreview: selectedText.substring(0, 50) + (selectedText.length > 50 ? '...' : '')
+      logger.debug('Smart context analysis:', {
+        isInCodeBlock,
+        isMultiParagraph,
+        selectedTextLength: selectedText.length
       });
 
-      if (editorRef.current) {
-        const currentMarkdown = editorRef.current.getMarkdown();
-
-        // Generate the directive text manually with escaping for all quotes
-        let directiveText;
-        // Use custom encoding that MDXEditor won't interfere with
-        const replacements = [
-          { regex: /\\/g, replacement: '__BSLASH__' },
-          { regex: /"/g, replacement: '__DQUOTE__' },
-          { regex: /'/g, replacement: '__SQUOTE__' },
-          { regex: /\n/g, replacement: '__NEWLINE__' },
-          { regex: /\v/g, replacement: '__VTAB__' },
-          { regex: /\r/g, replacement: '__CR__' }
-        ];
-        
-        const escapedComment = replacements.reduce((acc, replacement) => {
-          const before = acc;
-          const after = acc.replace(replacement.regex, replacement.replacement);
-          logger.debug(`Replacing ${replacement.regex} with ${replacement.replacement}:`);
-          logger.debug(`  Before: "${before}"`);
-          logger.debug(`  After: "${after}"`);
-          return after;
-        }, comment);
-        
-        logger.debug('=== ESCAPING DEBUG ===');
-        logger.debug('Original comment:', comment);
-        logger.debug('Escaped comment:', escapedComment);
-
-        if (isInlineComment) {
-          // For inline comments (single paragraph/block only), clean up whitespace with # notation
-          const cleanSelectedText = processedText.replace(/[ \t]+/g, ' ').trim();
-          directiveText = `:comment[${cleanSelectedText}]{#${commentId} text="${escapedComment}"}`;
-        } else {
-          // For container comments (multiple blocks), use the block-aligned text with # notation
-          directiveText = `:::comment{#${commentId} text="${escapedComment}"}\n${processedText}\n:::`;
-        }
-
-        logger.debug('Generated directive:', directiveText);
-        logger.debug('Directive length:', directiveText.length);
-        logger.debug('Contains escaped quotes?', directiveText.includes('\\"'));
-        logger.debug('Contains escaped equals?', directiveText.includes('\\='));
-        logger.debug('Original selected text length:', selectedText.length);
-        logger.debug('Selected text preview:', selectedText.substring(0, 100) + (selectedText.length > 100 ? '...' : ''));
-        logger.debug('Is inline comment:', isInlineComment);
-        logger.debug('Selected text contains newlines:', selectedText.includes('\n'));
-
-        // Replace the processed text (which may be extended to block boundaries) with the directive
-        const textIndex = currentMarkdown.indexOf(processedText);
-        if (textIndex === -1) {
-          logger.error('Processed text not found in markdown:', processedText.substring(0, 50));
-          setShowCommentModal(false);
-          setSelectedText('');
-          return;
-        }
-
-        const updatedMarkdown = currentMarkdown.substring(0, textIndex) +
-          directiveText +
-          currentMarkdown.substring(textIndex + processedText.length);
-
-        logger.debug('Replacing selected text with directive:', directiveText);
-        logger.debug('Original text:', selectedText);
-        logger.debug('=== MARKDOWN UPDATE ===');
-        logger.debug('Text index:', textIndex);
-        logger.debug('Updated markdown length:', updatedMarkdown.length);
-        logger.debug('Updated markdown preview:', updatedMarkdown.substring(Math.max(0, textIndex - 50), textIndex + directiveText.length + 50));
-
-        // Update parent state first
-        onMarkdownChange(updatedMarkdown);
-
-        // Notify extension about dirty state for tab title indicator
+      if (isInCodeBlock) {
+        // Code blocks can't be reliably commented - show error
+        logger.debug('Detected code block content, showing error message');
         if (window.vscodeApi) {
           window.vscodeApi.postMessage({
-            command: 'dirtyStateChanged',
-            isDirty: true
+            command: 'error',
+            content: 'Sorry, code blocks cannot be commented on directly. If you have ideas how to make this work, please let us know on our GitHub repo!'
           });
         }
+        return;
+      } else if (isMultiParagraph) {
+        // Multi-paragraph selections use container directive
+        logger.debug('Detected multi-paragraph content, using container directive');
+        handleHybridComment(comment, commentId, currentMarkdown);
+      } else {
+        // Regular text (including formatted text) uses inline directive with native insertion
+        logger.debug('Using native inline directive insertion for regular content');
+        handleInlineComment(comment, commentId, currentMarkdown);
+      }
+
+    } catch (error) {
+      logger.error('Error in comment submission:', error);
+      // Show error instead of falling back to sidebar
+      if (window.vscodeApi) {
+        window.vscodeApi.postMessage({
+          command: 'error',
+          content: 'Failed to add comment. Please try selecting different text or report this issue on our GitHub repo.'
+        });
       }
     }
 
@@ -1092,6 +1064,107 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     setSelectedText('');
     setCurrentSelection(null);
   };
+
+
+  // Handle standard inline comments using MDX Editor's native directive insertion
+  const handleInlineComment = (comment: string, commentId: string, currentMarkdown: string) => {
+    logger.debug('Creating inline comment using native directive insertion');
+
+    // Trigger plugin to insert comment directive
+    if (editorRef.current) {
+      // We'll use the plugin's signal to insert the directive
+      // This will be handled by the plugin within the MDX Editor's context
+      setCommentPendingForPlugin({
+        comment,
+        commentId,
+        selectedText,
+        strategy: 'inline'
+      });
+    }
+  };
+
+  // Handle hybrid comments (container directive for complex selections)
+  const handleHybridComment = (comment: string, commentId: string, currentMarkdown: string) => {
+    logger.debug('Creating hybrid comment using native container directive insertion');
+
+    // Trigger plugin to insert comment directive
+    if (editorRef.current) {
+      setCommentPendingForPlugin({
+        comment,
+        commentId,
+        selectedText,
+        strategy: 'container'
+      });
+    }
+  };
+
+  // Function to trigger comment insertion via plugin
+  const setCommentPendingForPlugin = (commentData: { comment: string, commentId: string, selectedText: string, strategy: 'inline' | 'container' }) => {
+    logger.debug('Setting comment pending for plugin insertion');
+    // The plugin will handle this through the cell subscription
+    // We need to publish to the cell from outside the plugin context
+    // This will be handled when the editor mounts
+    setPendingComment(commentData);
+  };
+
+  // Callback for when comment insertion is complete
+  const handleCommentInserted = () => {
+    logger.debug('Comment insertion completed');
+    setPendingComment(null);
+
+    // Trigger change event to save the updated markdown  
+    if (editorRef.current) {
+      const updatedMarkdown = editorRef.current.getMarkdown();
+      onMarkdownChange(updatedMarkdown);
+    }
+
+    // Notify extension about changes
+    if (window.vscodeApi) {
+      window.vscodeApi.postMessage({
+        command: 'dirtyStateChanged',
+        isDirty: true
+      });
+    }
+  };
+
+  // Effect to watch for pending comments and trigger plugin
+  React.useEffect(() => {
+    if (pendingComment) {
+      logger.debug('Triggering plugin comment insertion via cell update');
+      // Directly publish to the plugin's cell - the plugin will handle it
+      // This simulates what would happen if we published from within the MDX Editor context
+      try {
+        // We can't directly access the realm from here, but the plugin subscription will handle it
+        // For now, we'll use a workaround to communicate with the plugin
+        logger.debug('Pending comment set, plugin should pick it up:', pendingComment);
+      } catch (error) {
+        logger.error('Error triggering plugin comment insertion:', error);
+        setPendingComment(null);
+      }
+    }
+  }, [pendingComment]);
+
+  // Function to detect if selected text is within a code block
+  const detectCodeBlockSelection = (markdown: string, selectedText: string): boolean => {
+    // Look for the selected text in the markdown and check if it's within ``` blocks
+    const textIndex = markdown.indexOf(selectedText);
+    if (textIndex === -1) return false;
+
+    // Count code block markers before the selection
+    const beforeSelection = markdown.substring(0, textIndex);
+    const codeBlockMarkers = (beforeSelection.match(/```/g) || []).length;
+
+    // If odd number of markers, we're inside a code block
+    return codeBlockMarkers % 2 === 1;
+  };
+
+  // Function to trigger plugin comment insertion via cell publish
+  const triggerCommentInsertion = React.useCallback((commentData: any) => {
+    logger.debug('Direct cell publish for comment insertion');
+    // This will be handled by publishing directly to the cell from the plugin context
+    // We need a way to access the realm publisher from outside
+    setPendingComment(commentData);
+  }, []);
 
   const handleCloseModal = () => {
     logger.debug('handleCloseModal called');
@@ -1599,9 +1672,18 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
                   thematicBreakPlugin(),
                   markdownShortcutPlugin(),
                   searchPlugin(),
-                  
+
+                  // Custom comment insertion plugin using native insertDirective$
+                  commentInsertionPlugin({
+                    pendingComment: pendingComment,
+                    onInsertComment: (commentData) => {
+                      logger.debug('Comment inserted via plugin, triggering UI update');
+                      handleCommentInserted();
+                    }
+                  }),
+
                   // Removed angle bracket plugin for better performance
-                  
+
                   directivesPlugin({
                     directiveDescriptors: [
                       createCommentDirectiveDescriptor(focusedCommentId, setFocusedCommentId),
@@ -1615,56 +1697,56 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
                   (() => {
                     logger.debug('Initializing codeBlockPlugin with Mermaid support...');
                     try {
-                      const plugin = codeBlockPlugin({ 
+                      const plugin = codeBlockPlugin({
                         defaultCodeBlockLanguage: 'js',
                         codeBlockEditorDescriptors: [
                           // Mermaid diagram editor - highest priority
-                          { 
-                            priority: 10, 
+                          {
+                            priority: 10,
                             match: (language, _code) => language === 'mermaid',
                             Editor: MermaidEditor
                           },
                           // Specific mappings for common aliases
-                          { 
-                            priority: 5, 
+                          {
+                            priority: 5,
                             match: (language, _code) => language === 'javascript',
                             Editor: (props) => <CodeMirrorEditor {...props} language="js" />
                           },
-                          { 
-                            priority: 5, 
+                          {
+                            priority: 5,
                             match: (language, _code) => language === 'python',
                             Editor: (props) => <CodeMirrorEditor {...props} language="py" />
                           },
-                          { 
-                            priority: 5, 
+                          {
+                            priority: 5,
                             match: (language, _code) => language === 'typescript',
                             Editor: (props) => <CodeMirrorEditor {...props} language="ts" />
                           },
-                          { 
-                            priority: 5, 
+                          {
+                            priority: 5,
                             match: (language, _code) => language === 'markdown',
                             Editor: (props) => <CodeMirrorEditor {...props} language="md" />
                           },
-                          { 
-                            priority: 5, 
+                          {
+                            priority: 5,
                             match: (language, _code) => language === 'yml',
                             Editor: (props) => <CodeMirrorEditor {...props} language="yaml" />
                           },
-                          { 
-                            priority: 5, 
+                          {
+                            priority: 5,
                             match: (language, _code) => language === 'text',
                             Editor: (props) => <CodeMirrorEditor {...props} language="txt" />
                           },
-                          { 
-                            priority: 5, 
+                          {
+                            priority: 5,
                             match: (language, _code) => language === 'shell',
                             Editor: (props) => <CodeMirrorEditor {...props} language="sh" />
                           },
                           // Fallback editor for any other unknown languages
-                          { 
-                            priority: -10, 
-                            match: (_) => true, 
-                            Editor: CodeMirrorEditor 
+                          {
+                            priority: -10,
+                            match: (_) => true,
+                            Editor: CodeMirrorEditor
                           }
                         ]
                       });
@@ -1678,20 +1760,20 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
                   (() => {
                     logger.debug('Initializing codeMirrorPlugin (required for fenced block parsing)...');
                     try {
-                      const plugin = codeMirrorPlugin({ 
-                        codeBlockLanguages: { 
+                      const plugin = codeMirrorPlugin({
+                        codeBlockLanguages: {
                           js: 'JavaScript',
-                          css: 'CSS', 
-                          txt: 'Text', 
-                          md: 'Markdown', 
-                          ts: 'TypeScript', 
-                          html: 'HTML', 
-                          json: 'JSON', 
-                          yaml: 'YAML', 
-                          ini: 'INI', 
-                          toml: 'TOML', 
-                          xml: 'XML', 
-                          csv: 'CSV', 
+                          css: 'CSS',
+                          txt: 'Text',
+                          md: 'Markdown',
+                          ts: 'TypeScript',
+                          html: 'HTML',
+                          json: 'JSON',
+                          yaml: 'YAML',
+                          ini: 'INI',
+                          toml: 'TOML',
+                          xml: 'XML',
+                          csv: 'CSV',
                           sql: 'SQL',
                           py: 'Python',
                           bash: 'Bash',
@@ -1743,13 +1825,13 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
                               const content = ref.getMarkdown();
                               logger.debug('Editor content length after mount:', content.length);
                               logger.debug('Editor content preview:', content.substring(0, 500) + '...');
-                              
+
                               // Check DOM structure
                               const editorDOM = document.querySelector('.mdx-content') || document.querySelector('[contenteditable="true"]');
                               if (editorDOM) {
                                 logger.debug('Editor DOM found, innerHTML length:', editorDOM.innerHTML.length);
                                 logger.debug('Editor DOM preview:', editorDOM.innerHTML.substring(0, 500) + '...');
-                                
+
                                 // Check if code blocks exist in DOM
                                 const codeBlocks = editorDOM.querySelectorAll('pre, code, .cm-editor');
                                 logger.debug('Code blocks found in DOM:', codeBlocks.length);
