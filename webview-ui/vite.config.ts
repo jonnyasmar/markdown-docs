@@ -5,6 +5,7 @@ export default defineConfig({
   plugins: [react()],
   build: {
     outDir: '../dist/webview-ui',
+    emptyOutDir: true, // Clean the output directory before each build
     target: 'esnext',
     rollupOptions: {
       output: {

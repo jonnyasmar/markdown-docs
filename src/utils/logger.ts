@@ -1,4 +1,4 @@
-// Centralized logging utility for Markdown Docs extension
+// Centralized logging utility for Markdown Docs extension (Node.js/VS Code side)
 // All console output is prefixed for easy filtering
 
 const PREFIX = '[Markdown Docs]';
@@ -17,8 +17,10 @@ export const logger = {
   },
   
   debug: (message: string, ...args: any[]) => {
-    // Always log debug in webview (can be filtered in dev tools)
-    console.debug(`${PREFIX} DEBUG: ${message}`, ...args);
+    // Only log in development
+    if (process.env.NODE_ENV === 'development') {
+      console.debug(`${PREFIX} DEBUG: ${message}`, ...args);
+    }
   },
   
   info: (message: string, ...args: any[]) => {

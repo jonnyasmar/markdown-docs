@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { DirectiveService } from './services/directive';
+import { logger } from './utils/logger';
 // OLD: Removed unused imports: FrontmatterService, AnchorService, Comment
 
 // Angle bracket preprocessing functions
@@ -54,7 +55,8 @@ function postprocessAngleBrackets(markdown: string): string {
 }
 
 function debug(...args: any[]) {
-  console.log(...args);
+  // Debug logging disabled for production
+  // logger.debug(...args);
 }
 
 function showError(msg: string) {
@@ -62,7 +64,8 @@ function showError(msg: string) {
 }
 
 export function activate(context: vscode.ExtensionContext) {
-  console.log('Markdown Docs extension is now active!');
+  // Extension activated - debug logging disabled
+  // logger.debug('Markdown Docs extension is now active!');
 
   context.subscriptions.push(
     vscode.commands.registerCommand(
@@ -231,7 +234,7 @@ class EditorPanel {
       
       // Don't sync external changes if we're currently updating from webview or just saved
       if (this._isUpdatingFromWebview || this._justSaved) {
-        console.log('Ignoring external change during webview update or just after save');
+        logger.debug('Ignoring external change during webview update or just after save');
         if (this._justSaved) {
           this._justSaved = false; // Reset flag
         }
@@ -241,7 +244,7 @@ class EditorPanel {
       // For true realtime 2-way sync, update webview immediately with minimal debounce
       textEditTimer && clearTimeout(textEditTimer);
       textEditTimer = setTimeout(() => {
-        console.log('External file change detected (file is open), updating webview');
+        logger.debug('External file change detected (file is open), updating webview');
         this._update();
         this._updateEditTitle();
       }, 50); // Small delay to ensure webview flag is reset first
@@ -250,20 +253,20 @@ class EditorPanel {
     // Watch for external file saves to sync back to webview
     vscode.workspace.onDidSaveTextDocument((savedDocument) => {
       if (savedDocument.fileName === this._document.fileName) {
-        console.log('=== EXTERNAL SAVE EVENT DEBUG ===');
-        console.log('File saved externally, syncing to webview');
-        console.log('Document isDirty:', this._document.isDirty);
-        console.log('IsUpdatingFromWebview flag:', this._isUpdatingFromWebview);
+        logger.debug('=== EXTERNAL SAVE EVENT DEBUG ===');
+        logger.debug('File saved externally, syncing to webview');
+        logger.debug('Document isDirty:', this._document.isDirty);
+        logger.debug('IsUpdatingFromWebview flag:', this._isUpdatingFromWebview);
         
         // Don't sync back if we're in the middle of a webview update
         // This prevents circular updates and race conditions
         if (this._isUpdatingFromWebview) {
-          console.log('Skipping external save sync - webview update in progress');
+          logger.debug('Skipping external save sync - webview update in progress');
           return;
         }
         
         setTimeout(() => {
-          console.log('Executing delayed external save sync');
+          logger.debug('Executing delayed external save sync');
           this._update();
         }, 75); // Ensure this runs after webview flag reset (25ms + buffer)
       }
@@ -284,13 +287,13 @@ class EditorPanel {
           const openDocuments = vscode.workspace.textDocuments.map(doc => doc.uri.fsPath);
           const isDocumentOpen = openDocuments.includes(this._uri?.fsPath || '');
           
-          console.log('=== SYNC TO EDITOR DEBUG ===');
-          console.log('Target URI:', this._uri?.fsPath);
-          console.log('Open documents:', openDocuments);
-          console.log('Is document open:', isDocumentOpen);
-          console.log('Document exists:', !!this._document);
-          console.log('Document is closed:', this._document?.isClosed);
-          console.log('Content to write length:', contentToWrite.length);
+          logger.debug('=== SYNC TO EDITOR DEBUG ===');
+          logger.debug('Target URI:', this._uri?.fsPath);
+          logger.debug('Open documents:', openDocuments);
+          logger.debug('Is document open:', isDocumentOpen);
+          logger.debug('Document exists:', !!this._document);
+          logger.debug('Document is closed:', this._document?.isClosed);
+          logger.debug('Content to write length:', contentToWrite.length);
           
           // ALWAYS use direct file write to avoid opening files
           if (this._uri) {
@@ -298,17 +301,17 @@ class EditorPanel {
               this._uri, 
               Buffer.from(contentToWrite, 'utf8')
             );
-            console.log('Synced via direct file write (avoiding VS Code document operations)');
+            logger.debug('Synced via direct file write (avoiding VS Code document operations)');
           } else {
             showError(`Cannot find original file to save!`);
           }
         };
         
-        console.log('Extension received message:', message.command, message);
+        logger.debug('Extension received message:', message.command, message);
         
         switch (message.command) {
           case 'ready':
-            console.log('Received ready message, sending initial content');
+            logger.debug('Received ready message, sending initial content');
             this._update({
               type: 'init',
               theme: vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.Dark
@@ -323,21 +326,21 @@ class EditorPanel {
             showError(message.content);
             break;
           case 'edit': {
-            console.log('Edit message received - DISABLED auto-save to prevent cursor jumping');
+            logger.debug('Edit message received - DISABLED auto-save to prevent cursor jumping');
             // DISABLED: Real-time sync disabled to prevent cursor jumping during typing
             // Only save when user explicitly presses Ctrl+S/Cmd+S
-            console.log('Edit command ignored - use save command instead');
+            logger.debug('Edit command ignored - use save command instead');
             break;
           }
           case 'save': {
-            console.log('Save message received');
-            console.log('Document exists:', !!this._document);
-            console.log('Document URI:', this._uri?.fsPath);
+            logger.debug('Save message received');
+            logger.debug('Document exists:', !!this._document);
+            logger.debug('Document URI:', this._uri?.fsPath);
             
             // Postprocess content to remove angle bracket escaping
             const processedContent = postprocessAngleBrackets(message.content);
-            console.log('Original content length:', message.content.length);
-            console.log('Postprocessed content length:', processedContent.length);
+            logger.debug('Original content length:', message.content.length);
+            logger.debug('Postprocessed content length:', processedContent.length);
             
             // Set flags to prevent circular sync and webview updates
             this._isUpdatingFromWebview = true;
@@ -350,19 +353,19 @@ class EditorPanel {
               );
               
               if (isDocumentOpen && this._document && !this._document.isClosed) {
-                console.log('Document is open in VS Code, using document reference');
+                logger.debug('Document is open in VS Code, using document reference');
                 await syncToEditor(processedContent); // Pass postprocessed content
                 await this._document.save();
-                console.log('Document saved via VS Code document');
+                logger.debug('Document saved via VS Code document');
               } else {
-                console.log('Document not open in VS Code, using direct file write');
+                logger.debug('Document not open in VS Code, using direct file write');
                 // Direct file write without opening the document in VS Code
                 if (this._uri) {
                   await vscode.workspace.fs.writeFile(
                     this._uri, 
                     Buffer.from(processedContent, 'utf8') // Use postprocessed content
                   );
-                  console.log('Direct file write successful');
+                  logger.debug('Direct file write successful');
                 } else {
                   throw new Error('No URI available for file write');
                 }
@@ -387,10 +390,10 @@ class EditorPanel {
           // OLD: Extension-side delete handling removed
 
           case 'getFont': {
-            console.log('Get font requested');
+            logger.debug('Get font requested');
             const config = vscode.workspace.getConfiguration('markdown-docs');
             const defaultFont = config.get<string>('defaultFont', 'Arial');
-            console.log('Sending font to webview:', defaultFont);
+            logger.debug('Sending font to webview:', defaultFont);
             this._panel.webview.postMessage({
               command: 'fontUpdate',
               font: defaultFont
@@ -399,19 +402,79 @@ class EditorPanel {
           }
 
           case 'setFont': {
-            console.log('Set font requested:', message.font);
+            logger.debug('Set font requested:', message.font);
             if (message.font) {
               const config = vscode.workspace.getConfiguration('markdown-docs');
               await config.update('defaultFont', message.font, vscode.ConfigurationTarget.Global);
-              console.log('Font saved to settings:', message.font);
+              logger.debug('Font saved to settings:', message.font);
             }
             break;
           }
 
           case 'dirtyStateChanged': {
-            console.log('Dirty state changed:', message.isDirty);
+            logger.debug('Dirty state changed:', message.isDirty);
             this._isDirtyFromWebview = message.isDirty;
             this._updateEditTitle();
+            break;
+          }
+
+          case 'getImageUri': {
+            const { data } = message;
+            const uri = this._panel.webview.asWebviewUri(vscode.Uri.parse(data));
+            this._panel.webview.postMessage({
+              command: 'imageUri',
+              uri: uri.toString(),
+            });
+            break;
+          }
+          
+          case 'resolveImagePath': {
+            const { path: imagePath } = message;
+            logger.debug('Resolving image path:', imagePath);
+            
+            try {
+              // Resolve relative path relative to the current document's directory
+              const documentDir = this._uri ? vscode.Uri.file(path.dirname(this._uri.fsPath)) : undefined;
+              let resolvedPath: vscode.Uri;
+              
+              if (documentDir) {
+                // Join the image path with the document's directory
+                resolvedPath = vscode.Uri.joinPath(documentDir, imagePath);
+                logger.debug('Resolved absolute path:', resolvedPath.fsPath);
+              } else {
+                // Fallback to treating as absolute path
+                resolvedPath = vscode.Uri.file(imagePath);
+              }
+              
+              // Check if the file exists
+              vscode.workspace.fs.stat(resolvedPath).then(
+                () => {
+                  // File exists, convert to webview URI
+                  const webviewUri = this._panel.webview.asWebviewUri(resolvedPath);
+                  logger.debug('File exists, webview URI:', webviewUri.toString());
+                  
+                  this._panel.webview.postMessage({
+                    command: 'resolvedImageUri',
+                    uri: webviewUri.toString(),
+                  });
+                },
+                (error) => {
+                  // File doesn't exist, return original path
+                  logger.debug('File does not exist:', resolvedPath.fsPath, error);
+                  this._panel.webview.postMessage({
+                    command: 'resolvedImageUri',
+                    uri: imagePath, // Return original path as fallback
+                  });
+                }
+              );
+            } catch (error) {
+              console.error('Error resolving image path:', error);
+              // Return original path on error
+              this._panel.webview.postMessage({
+                command: 'resolvedImageUri',
+                uri: imagePath,
+              });
+            }
             break;
           }
         }
@@ -456,10 +519,10 @@ class EditorPanel {
         this._panel.title = `${path.basename(
           this._fsPath
         )}${isEdit ? `  ●` : ''}`;
-        console.log('Updated tab title with dirty state:', isEdit);
+        logger.debug('Updated tab title with dirty state:', isEdit);
       }
     } catch (error) {
-      console.log('Webview panel disposed, skipping title update');
+      logger.debug('Webview panel disposed, skipping title update');
     }
   }
 
@@ -469,30 +532,30 @@ class EditorPanel {
       theme?: 'dark' | 'light';
     } = {}
   ) {
-    console.log('=== _UPDATE DEBUG START ===');
-    console.log('_update called with props:', props);
-    console.log('Document:', this._document?.fileName);
-    console.log('URI:', this._uri?.fsPath);
-    console.log('IsUpdatingFromWebview flag:', this._isUpdatingFromWebview);
+    logger.debug('=== _UPDATE DEBUG START ===');
+    logger.debug('_update called with props:', props);
+    logger.debug('Document:', this._document?.fileName);
+    logger.debug('URI:', this._uri?.fsPath);
+    logger.debug('IsUpdatingFromWebview flag:', this._isUpdatingFromWebview);
     
     const rawMd = this._document
       ? this._document.getText()
       : (await vscode.workspace.fs.readFile(this._uri)).toString();
     
-    // Preprocess angle brackets for MDXEditor
+    // Preprocess angle brackets for MDXEditor  
     const md = preprocessAngleBrackets(rawMd);
     
-    console.log('Extension: Raw file content length:', rawMd.length);
-    console.log('Extension: Processed content length:', md.length);
-    console.log('Extension: File content preview:', rawMd.substring(0, 200));
-    console.log('Extension: Processed preview:', md.substring(0, 200));
-    console.log('Extension: Contains angle brackets?', rawMd.includes('<') && rawMd.includes('>'));
+    logger.debug('Extension: Raw file content length:', rawMd.length);
+    logger.debug('Extension: Processed content length:', md.length);
+    logger.debug('Extension: File content preview:', rawMd.substring(0, 200));
+    logger.debug('Extension: Processed preview:', md.substring(0, 200));
+    logger.debug('Extension: Contains angle brackets?', rawMd.includes('<') && rawMd.includes('>'));
     
     // Count directives in the content we're about to send
     const directiveMatches = rawMd.match(/(:+)comment(?:\[[^\]]*\])?\{[^}]*\}/g);
-    console.log('Directives found in content:', directiveMatches?.length || 0);
+    logger.debug('Directives found in content:', directiveMatches?.length || 0);
     if (directiveMatches) {
-      console.log('Directive samples:', directiveMatches.slice(0, 3));
+      logger.debug('Directive samples:', directiveMatches.slice(0, 3));
     }
     
     const messageToSend = {
@@ -501,14 +564,15 @@ class EditorPanel {
       ...props,
     };
     
-    console.log('Sending message to webview with', md.length, 'characters');
+    logger.debug('Sending message to webview with', md.length, 'characters');
     this._panel.webview.postMessage(messageToSend);
-    console.log('=== _UPDATE DEBUG END ===');
+    logger.debug('=== _UPDATE DEBUG END ===');
     
     // Comments are now parsed directly in webview from markdown content
   }
 
   // OLD: _sendCommentsToWebview removed - comments parsed directly in webview
+  
 
   private _getHtmlForWebview(webview: vscode.Webview) {
     const toUri = (f: string) =>
@@ -529,7 +593,8 @@ class EditorPanel {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline' https://fonts.googleapis.com; script-src 'nonce-${nonce}' 'unsafe-eval'; font-src ${webview.cspSource} https://fonts.gstatic.com; img-src ${webview.cspSource} data:;">
+  <base href="${baseHref}">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} https: http: data: blob:; style-src ${webview.cspSource} 'unsafe-inline' https://fonts.googleapis.com; script-src 'nonce-${nonce}' 'unsafe-eval'; font-src ${webview.cspSource} https://fonts.gstatic.com;">
   <link href="${styleUri}" rel="stylesheet">
   <title>Markdown Docs</title>
 </head>
@@ -538,7 +603,8 @@ class EditorPanel {
   <script nonce="${nonce}">
     // Make VS Code API globally available before loading the main script
     window.vscodeApi = acquireVsCodeApi();
-    console.log('VS Code API acquired in HTML:', !!window.vscodeApi);
+    // Debug: VS Code API acquisition
+    // logger.debug('VS Code API acquired in HTML:', !!window.vscodeApi);
     
     // Define environment for Vite compatibility
     window.__VITE_ENV__ = {

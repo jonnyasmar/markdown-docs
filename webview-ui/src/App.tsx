@@ -14,7 +14,8 @@ declare global {
 let vscode: any;
 if (typeof window !== 'undefined' && window.vscodeApi) {
   vscode = window.vscodeApi;
-  console.log('App.tsx using pre-acquired VS Code API:', !!vscode);
+  // Debug: VS Code API availability
+  // logger.debug('App.tsx using pre-acquired VS Code API:', !!vscode);
 } else {
   console.error('App.tsx: Pre-acquired VS Code API not found on window.vscodeApi');
 }
@@ -26,19 +27,19 @@ function App() {
     // Listen for messages from the extension
     const handleMessage = (event: MessageEvent<WebviewMessage>) => {
       const message = event.data;
-      
+
       switch (message.type) {
         case 'updateComments':
           setComments(message.comments || []);
           break;
         case 'hello':
-          console.log('Received hello from extension:', message.message);
+          logger.debug('Received hello from extension:', message.message);
           break;
       }
     };
 
     window.addEventListener('message', handleMessage);
-    
+
     // Request initial data
     vscode.postMessage({ type: 'requestComments' });
 
@@ -48,23 +49,23 @@ function App() {
   }, []);
 
   const handleNavigateToComment = (commentId: string) => {
-    vscode.postMessage({ 
-      type: 'navigateToComment', 
-      commentId 
+    vscode.postMessage({
+      type: 'navigateToComment',
+      commentId
     });
   };
 
   const handleEditComment = (commentId: string) => {
-    vscode.postMessage({ 
-      type: 'editComment', 
-      commentId 
+    vscode.postMessage({
+      type: 'editComment',
+      commentId
     });
   };
 
   const handleDeleteComment = (commentId: string) => {
-    vscode.postMessage({ 
-      type: 'deleteComment', 
-      commentId 
+    vscode.postMessage({
+      type: 'deleteComment',
+      commentId
     });
   };
 

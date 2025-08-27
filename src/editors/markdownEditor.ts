@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { logger } from '../utils/logger';
 
 export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
     public static register(context: vscode.ExtensionContext): vscode.Disposable {
@@ -105,22 +106,22 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 
     private navigateToComment(document: vscode.TextDocument, commentId: string) {
         // TODO: Implement comment navigation
-        console.log('Navigate to comment:', commentId);
+        logger.debug('Navigate to comment:', commentId);
     }
 
     private editComment(document: vscode.TextDocument, commentId: string) {
         // TODO: Implement comment editing
-        console.log('Edit comment:', commentId);
+        logger.debug('Edit comment:', commentId);
     }
 
     private deleteComment(document: vscode.TextDocument, commentId: string) {
         // TODO: Implement comment deletion
-        console.log('Delete comment:', commentId);
+        logger.debug('Delete comment:', commentId);
     }
 
     private addComment(document: vscode.TextDocument, range: { start: number, end: number }, comment: string) {
         // This would integrate with your comment system
         // For now, just log the comment
-        console.log('Adding comment:', comment, 'at range:', range);
+        logger.debug('Adding comment:', comment, 'at range:', range);
     }
 }

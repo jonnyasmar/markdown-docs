@@ -70,7 +70,7 @@ Visit the [Google website](https://www.google.com).
 
 ```javascript
 function helloWorld() {
-  console.log("Hello, Markdown Docs!");
+  logger.debug("Hello, Markdown Docs!");
 }
 helloWorld();
 ```
@@ -106,6 +106,12 @@ sequenceDiagram
 | :---------- | :---------- | :---------- |
 | Row 1 Col 1 | Row 1 Col 2 | Row 1 Col 3 |
 | Row 2 Col 1 | Row 2 Col 2 | Row 2 Col 3 |
+
+### Images
+
+Here's a screenshot showing the extension in action:
+
+![Markdown Docs Screenshot](media/screenshot.png)
 
 ***
 

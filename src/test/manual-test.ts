@@ -10,7 +10,7 @@ title: "Test Document"
 This is a test.`;
 
 const parsed = FrontmatterService.parse(testDoc);
-console.log('Parsed:', JSON.stringify(parsed, null, 2));
+logger.debug('Parsed:', JSON.stringify(parsed, null, 2));
 
 const frontmatter: CommentFrontmatter = {
     aiDocReviewerComments: [
@@ -24,4 +24,4 @@ const frontmatter: CommentFrontmatter = {
 };
 
 const stringified = FrontmatterService.stringify(testDoc, frontmatter);
-console.log('Stringified:', stringified);
+logger.debug('Stringified:', stringified);
