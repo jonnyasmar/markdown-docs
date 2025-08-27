@@ -1,4 +1,5 @@
 import React from 'react';
+import { logger } from '../utils/logger';
 import { realmPlugin } from '@mdxeditor/editor';
 import { Cell } from '@mdxeditor/gurx';
 import { $createTextNode } from 'lexical';
@@ -40,7 +41,7 @@ const AngleBracketImportVisitor = {
   
   visitNode({ mdastNode, actions }: any) {
     if (DEBUG_PLUGIN) {
-      console.log('AngleBracketPlugin: Processing text node:', mdastNode.value);
+      logger.debug('AngleBracketPlugin: Processing text node:', mdastNode.value);
     }
     
     let processedText = mdastNode.value;
@@ -49,7 +50,7 @@ const AngleBracketImportVisitor = {
     // Only process if enabled and contains angle brackets
     if (angleBracketEnabled$.getValue() && ANGLE_BRACKET_PATTERN.test(processedText)) {
       if (DEBUG_PLUGIN) {
-        console.log('AngleBracketPlugin: Found angle brackets in text:', processedText);
+        logger.debug('AngleBracketPlugin: Found angle brackets in text:', processedText);
       }
       
       // Reset the regex for fresh matching
@@ -57,13 +58,13 @@ const AngleBracketImportVisitor = {
       
       processedText = processedText.replace(ANGLE_BRACKET_PATTERN, (match, identifier, contents, offset) => {
         if (DEBUG_PLUGIN) {
-          console.log('AngleBracketPlugin: Processing match:', { match, identifier, contents });
+          logger.debug('AngleBracketPlugin: Processing match:', { match, identifier, contents });
         }
         
         // Skip if it's likely an HTML tag
         if (isLikelyHtmlTag(identifier)) {
           if (DEBUG_PLUGIN) {
-            console.log('AngleBracketPlugin: Skipping HTML tag:', identifier);
+            logger.debug('AngleBracketPlugin: Skipping HTML tag:', identifier);
           }
           return match;
         }
@@ -71,7 +72,7 @@ const AngleBracketImportVisitor = {
         // Skip if we're inside a code context (between backticks)
         if (isInCodeContext(mdastNode.value, offset)) {
           if (DEBUG_PLUGIN) {
-            console.log('AngleBracketPlugin: Skipping code context');
+            logger.debug('AngleBracketPlugin: Skipping code context');
           }
           return match;
         }
@@ -82,14 +83,14 @@ const AngleBracketImportVisitor = {
         // These won't be interpreted as HTML by the browser
         const result = `${identifier}⟨${contents}⟩`;
         if (DEBUG_PLUGIN) {
-          console.log('AngleBracketPlugin: Transformed:', match, '->', result);
+          logger.debug('AngleBracketPlugin: Transformed:', match, '->', result);
         }
         return result;
       });
     }
     
     if (DEBUG_PLUGIN && hasChanges) {
-      console.log('AngleBracketPlugin: Final processed text:', processedText);
+      logger.debug('AngleBracketPlugin: Final processed text:', processedText);
     }
     
     // Create the text node with processed content

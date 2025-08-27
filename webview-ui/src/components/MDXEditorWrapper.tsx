@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { logger } from '../utils/logger';
 import {
   MDXEditor,
   headingsPlugin,
@@ -290,9 +291,9 @@ const MDXInlineSearchInput = ({ searchInputRef }: { searchInputRef: React.RefObj
 const createCommentDirectiveDescriptor = (focusedCommentId: string | null, setFocusedCommentId: (id: string | null) => void) => ({
   name: 'comment',
   testNode(node: any) {
-    console.log('Comment directive test - node:', node);
+    logger.debug('Comment directive test - node:', node);
     const isComment = node && node.name === 'comment';
-    console.log('Is comment directive?', isComment);
+    logger.debug('Is comment directive?', isComment);
     return isComment;
   },
   attributes: ['id', 'text'],
@@ -302,7 +303,7 @@ const createCommentDirectiveDescriptor = (focusedCommentId: string | null, setFo
     const commentText = mdastNode.attributes?.text || 'Comment';
     const directiveType = mdastNode.type; // 'textDirective', 'leafDirective', or 'containerDirective'
 
-    console.log('Rendering comment directive:', { commentId, commentText, directiveType, mdastNode });
+    logger.debug('Rendering comment directive:', { commentId, commentText, directiveType, mdastNode });
 
     // Render differently for inline vs block directives
     const renderContent = () => {
@@ -325,7 +326,7 @@ const createCommentDirectiveDescriptor = (focusedCommentId: string | null, setFo
 
     const handleClick = (e: React.MouseEvent) => {
       e.preventDefault();
-      console.log('Clicked comment highlight:', commentId);
+      logger.debug('Clicked comment highlight:', commentId);
 
       // Set focus state for inline comment
       setFocusedCommentId(commentId);
@@ -375,14 +376,14 @@ const createCommentDirectiveDescriptor = (focusedCommentId: string | null, setFo
 const genericDirectiveDescriptor = {
   name: 'generic',
   testNode: (node: any) => {
-    console.log('Generic directive test - node:', node);
+    logger.debug('Generic directive test - node:', node);
 
     // If it's not our comment directive, catch it to prevent errors
     // This includes malformed directives with undefined names
     const isNotComment = !node || node.name !== 'comment';
     const shouldHandle = isNotComment;
 
-    console.log('Generic directive decision:', {
+    logger.debug('Generic directive decision:', {
       nodeName: node?.name,
       nodeType: node?.type,
       isNotComment,
@@ -395,11 +396,11 @@ const genericDirectiveDescriptor = {
   hasChildren: true,
   Editor: (props: any) => {
     // Custom minimal editor that doesn't show visible UI for malformed directives
-    console.log('Rendering generic directive with props:', props);
+    logger.debug('Rendering generic directive with props:', props);
 
     // If the directive has no name or is malformed, render nothing
     if (!props.mdastNode?.name || props.mdastNode.name === 'undefined') {
-      console.log('Rendering invisible placeholder for malformed directive');
+      logger.debug('Rendering invisible placeholder for malformed directive');
       return <span style={{ display: 'none' }} />;
     }
 
@@ -428,16 +429,16 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   onDeleteComment,
   defaultFont = 'Arial'
 }) => {
-  console.log('=== MDXEditorWrapper RENDER START ===');
-  console.log('Props received:', { 
+  logger.debug('=== MDXEditorWrapper RENDER START ===');
+  logger.debug('Props received:', { 
     markdownLength: markdown?.length, 
     commentsLength: comments?.length,
     defaultFont,
     hasOnMarkdownChange: !!onMarkdownChange
   });
-  console.log('MDXEditorWrapper received markdown ending:', '...' + markdown?.substring((markdown?.length || 0) - 100));
-  console.log('MDXEditorWrapper markdown contains code blocks?', markdown?.includes('```javascript'));
-  console.log('MDXEditorWrapper markdown ends with expected?', markdown?.includes('explore all the features!'));
+  logger.debug('MDXEditorWrapper received markdown ending:', '...' + markdown?.substring((markdown?.length || 0) - 100));
+  logger.debug('MDXEditorWrapper markdown contains code blocks?', markdown?.includes('```javascript'));
+  logger.debug('MDXEditorWrapper markdown ends with expected?', markdown?.includes('explore all the features!'));
   // UI state
   const [showCommentSidebar, setShowCommentSidebar] = useState(true);
   const [sidebarWidth, setSidebarWidth] = useState(300);
@@ -476,10 +477,10 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
   // Handle font changes and save to VS Code settings
   const handleFontChange = (fontName: string) => {
-    console.log('Font changed to:', fontName);
-    console.log('Current selected font:', selectedFont);
+    logger.debug('Font changed to:', fontName);
+    logger.debug('Current selected font:', selectedFont);
     const fontClassName = fontName.toLowerCase().replace(/\s+/g, '-');
-    console.log('Font class name will be:', `font-${fontClassName}`);
+    logger.debug('Font class name will be:', `font-${fontClassName}`);
 
     setSelectedFont(fontName);
 
@@ -531,7 +532,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         }));
         setParsedComments(commentsWithAnchor);
       } catch (error) {
-        console.error('Error parsing comments:', error);
+        logger.error('Error parsing comments:', error);
         setParsedComments([]);
       }
     }, 500); // 500ms debounce - only parse after user stops typing
@@ -559,7 +560,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     // Skip updates immediately after saving to prevent scroll jumping
     if (justSavedRef.current) {
       justSavedRef.current = false;
-      console.log('Skipping editor update - just saved');
+      logger.debug('Skipping editor update - just saved');
       return;
     }
 
@@ -569,7 +570,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
       // Only update if content has actually changed to avoid unnecessary updates
       if (currentContent !== markdown) {
-        console.log('External content change detected, updating editor...');
+        logger.debug('External content change detected, updating editor...');
 
         // Set external update flag to prevent circular updates
         isExternalUpdateRef.current = true;
@@ -593,7 +594,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
           }
           
         } catch (error) {
-          console.error('Error updating editor content:', error);
+          logger.error('Error updating editor content:', error);
         } finally {
           // Reset the flag after a brief delay
           setTimeout(() => {
@@ -637,7 +638,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   React.useEffect(() => {
     const handleSearchMessage = (event: MessageEvent) => {
       if (event.data.type === 'open-search') {
-        console.log('Received open-search message, triggering search');
+        logger.debug('Received open-search message, triggering search');
         // Find search button and click it programmatically
         const searchButton = document.querySelector('button[title*="Search"]');
         if (searchButton) {
@@ -657,7 +658,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
-        console.log('Save keyboard shortcut pressed');
+        logger.debug('Save keyboard shortcut pressed');
 
         // Get the current markdown from the editor
         let contentToSave = markdown;
@@ -665,11 +666,11 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
           const editorContent = editorRef.current.getMarkdown();
           // Apply postprocessing to convert mathematical angle brackets back to regular ones
           contentToSave = postprocessAngleBrackets(editorContent);
-          console.log('Got content from editor and postprocessed:', contentToSave.substring(0, 100));
+          logger.debug('Got content from editor and postprocessed:', contentToSave.substring(0, 100));
         }
 
         if (typeof window !== 'undefined' && window.vscodeApi) {
-          console.log('Sending save command with content length:', contentToSave.length);
+          logger.debug('Sending save command with content length:', contentToSave.length);
           
           // Set flag to prevent editor reload after save
           justSavedRef.current = true;
@@ -690,7 +691,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         }
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
         e.preventDefault();
-        console.log('Search keyboard shortcut pressed, focusing search input');
+        logger.debug('Search keyboard shortcut pressed, focusing search input');
         // Focus the inline search input
         if (searchInputRef.current) {
           searchInputRef.current.focus();
@@ -750,7 +751,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
         // Only show comment button if selection is within editor content
         if (!isWithinEditor(startContainer) || !isWithinEditor(endContainer)) {
-          console.log('Selection not within editor content area, hiding button');
+          logger.debug('Selection not within editor content area, hiding button');
           setShowFloatingButton(false);
           if (!showCommentModal && !showEditModal) {
             setSelectedText('');
@@ -763,8 +764,8 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         const containerRect = containerRef.current.getBoundingClientRect();
 
         const selectedTextContent = selection.toString().trim();
-        console.log('Text selected in editor:', selectedTextContent);
-        console.log('Selection rect:', rect);
+        logger.debug('Text selected in editor:', selectedTextContent);
+        logger.debug('Selection rect:', rect);
 
         // Position button on the right edge of the editor content area
         const editorContentRect = containerRef.current.querySelector('.mdx-editor-content')?.getBoundingClientRect();
@@ -783,7 +784,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
           end: range.endOffset
         });
       } else {
-        console.log('No text selected or selection cleared');
+        logger.debug('No text selected or selection cleared');
         setShowFloatingButton(false);
         // Don't clear selectedText immediately - keep it for the modal
         if (!showCommentModal && !showEditModal) {
@@ -812,7 +813,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       if (target && target.classList.contains('comment-highlight')) {
         const commentId = target.getAttribute('data-comment-id');
         if (commentId) {
-          console.log('Clicked on highlighted text for comment:', commentId);
+          logger.debug('Clicked on highlighted text for comment:', commentId);
 
           // Find and highlight the comment in the sidebar
           const commentElements = document.querySelectorAll('.comment-item');
@@ -821,7 +822,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
           // Find the comment in the sidebar using the comment ID
           const sidebarCommentElement = document.querySelector(`.comment-item[data-comment-id="${commentId}"]`);
           if (sidebarCommentElement) {
-            console.log('Found sidebar comment element for ID:', commentId);
+            logger.debug('Found sidebar comment element for ID:', commentId);
 
             // Add highlight animation
             sidebarCommentElement.classList.add('highlighted');
@@ -829,14 +830,14 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
             // Find the scrollable comments container - .comments-list is the actual scrollable part
             const commentsContainer = document.querySelector('.comments-list');
 
-            console.log('Comments container search result:', {
+            logger.debug('Comments container search result:', {
               container: commentsContainer,
               classList: commentsContainer?.classList.toString(),
               tagName: commentsContainer?.tagName
             });
 
             if (commentsContainer) {
-              console.log('Found scrollable comments container, checking scroll properties:', {
+              logger.debug('Found scrollable comments container, checking scroll properties:', {
                 scrollHeight: commentsContainer.scrollHeight,
                 clientHeight: commentsContainer.clientHeight,
                 isScrollable: commentsContainer.scrollHeight > commentsContainer.clientHeight
@@ -850,14 +851,14 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
               const isBelowViewport = commentRect.bottom > containerRect.bottom;
               const needsScroll = isAboveViewport || isBelowViewport;
 
-              console.log('Scroll needed:', needsScroll, { isAboveViewport, isBelowViewport });
+              logger.debug('Scroll needed:', needsScroll, { isAboveViewport, isBelowViewport });
 
               if (needsScroll) {
                 // Calculate scroll position to center the comment
                 const relativeTop = (sidebarCommentElement as HTMLElement).offsetTop;
                 const targetScrollTop = relativeTop - (containerRect.height / 2) + (commentRect.height / 2);
 
-                console.log('Scrolling sidebar only to position:', targetScrollTop);
+                logger.debug('Scrolling sidebar only to position:', targetScrollTop);
 
                 // Scroll ONLY the sidebar, not the whole page
                 commentsContainer.scrollTo({
@@ -866,10 +867,10 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
                 });
               }
             } else {
-              console.log('Comments container not found for scrolling');
+              logger.debug('Comments container not found for scrolling');
             }
           } else {
-            console.log('Sidebar comment element not found for ID:', commentId);
+            logger.debug('Sidebar comment element not found for ID:', commentId);
           }
         }
       }
@@ -929,7 +930,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   }, []);
 
   const handleOpenCommentModal = (text: string) => {
-    console.log('handleOpenCommentModal called with text:', text);
+    logger.debug('handleOpenCommentModal called with text:', text);
     const selection = window.getSelection();
     if (selection && selection.rangeCount > 0) {
       const range = selection.getRangeAt(0);
@@ -941,14 +942,14 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     }
     setSelectedText(text);
     setShowCommentModal(true);
-    console.log('Modal should be opening, showCommentModal set to true');
+    logger.debug('Modal should be opening, showCommentModal set to true');
   };
 
   const handleSubmitComment = (comment: string) => {
-    console.log('handleSubmitComment called with:', comment);
-    console.log('Selected text:', selectedText);
-    console.log('Selected text length:', selectedText.length);
-    console.log('Comment length:', comment.trim().length);
+    logger.debug('handleSubmitComment called with:', comment);
+    logger.debug('Selected text:', selectedText);
+    logger.debug('Selected text length:', selectedText.length);
+    logger.debug('Comment length:', comment.trim().length);
 
     if (comment.trim() && selectedText) {
       const commentId = `comment-${Date.now()}`;
@@ -991,7 +992,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
             processedText = blockAlignedText;
             isInlineComment = false; // Use container directive
 
-            console.log('Extended selection to block boundaries:', {
+            logger.debug('Extended selection to block boundaries:', {
               originalText: selectedText.substring(0, 50) + '...',
               extendedText: blockAlignedText.substring(0, 50) + '...',
               originalLength: selectedText.length,
@@ -1001,7 +1002,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         }
       }
 
-      console.log('Comment directive logic:', {
+      logger.debug('Comment directive logic:', {
         selectedTextLength: selectedText.length,
         isInlineComment,
         selectedTextPreview: selectedText.substring(0, 50) + (selectedText.length > 50 ? '...' : '')
@@ -1025,15 +1026,15 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         const escapedComment = replacements.reduce((acc, replacement) => {
           const before = acc;
           const after = acc.replace(replacement.regex, replacement.replacement);
-          console.log(`Replacing ${replacement.regex} with ${replacement.replacement}:`);
-          console.log(`  Before: "${before}"`);
-          console.log(`  After: "${after}"`);
+          logger.debug(`Replacing ${replacement.regex} with ${replacement.replacement}:`);
+          logger.debug(`  Before: "${before}"`);
+          logger.debug(`  After: "${after}"`);
           return after;
         }, comment);
         
-        console.log('=== ESCAPING DEBUG ===');
-        console.log('Original comment:', comment);
-        console.log('Escaped comment:', escapedComment);
+        logger.debug('=== ESCAPING DEBUG ===');
+        logger.debug('Original comment:', comment);
+        logger.debug('Escaped comment:', escapedComment);
 
         if (isInlineComment) {
           // For inline comments (single paragraph/block only), clean up whitespace with # notation
@@ -1044,19 +1045,19 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
           directiveText = `:::comment{#${commentId} text="${escapedComment}"}\n${processedText}\n:::`;
         }
 
-        console.log('Generated directive:', directiveText);
-        console.log('Directive length:', directiveText.length);
-        console.log('Contains escaped quotes?', directiveText.includes('\\"'));
-        console.log('Contains escaped equals?', directiveText.includes('\\='));
-        console.log('Original selected text length:', selectedText.length);
-        console.log('Selected text preview:', selectedText.substring(0, 100) + (selectedText.length > 100 ? '...' : ''));
-        console.log('Is inline comment:', isInlineComment);
-        console.log('Selected text contains newlines:', selectedText.includes('\n'));
+        logger.debug('Generated directive:', directiveText);
+        logger.debug('Directive length:', directiveText.length);
+        logger.debug('Contains escaped quotes?', directiveText.includes('\\"'));
+        logger.debug('Contains escaped equals?', directiveText.includes('\\='));
+        logger.debug('Original selected text length:', selectedText.length);
+        logger.debug('Selected text preview:', selectedText.substring(0, 100) + (selectedText.length > 100 ? '...' : ''));
+        logger.debug('Is inline comment:', isInlineComment);
+        logger.debug('Selected text contains newlines:', selectedText.includes('\n'));
 
         // Replace the processed text (which may be extended to block boundaries) with the directive
         const textIndex = currentMarkdown.indexOf(processedText);
         if (textIndex === -1) {
-          console.error('Processed text not found in markdown:', processedText.substring(0, 50));
+          logger.error('Processed text not found in markdown:', processedText.substring(0, 50));
           setShowCommentModal(false);
           setSelectedText('');
           return;
@@ -1066,12 +1067,12 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
           directiveText +
           currentMarkdown.substring(textIndex + processedText.length);
 
-        console.log('Replacing selected text with directive:', directiveText);
-        console.log('Original text:', selectedText);
-        console.log('=== MARKDOWN UPDATE ===');
-        console.log('Text index:', textIndex);
-        console.log('Updated markdown length:', updatedMarkdown.length);
-        console.log('Updated markdown preview:', updatedMarkdown.substring(Math.max(0, textIndex - 50), textIndex + directiveText.length + 50));
+        logger.debug('Replacing selected text with directive:', directiveText);
+        logger.debug('Original text:', selectedText);
+        logger.debug('=== MARKDOWN UPDATE ===');
+        logger.debug('Text index:', textIndex);
+        logger.debug('Updated markdown length:', updatedMarkdown.length);
+        logger.debug('Updated markdown preview:', updatedMarkdown.substring(Math.max(0, textIndex - 50), textIndex + directiveText.length + 50));
 
         // Update parent state first
         onMarkdownChange(updatedMarkdown);
@@ -1093,7 +1094,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   };
 
   const handleCloseModal = () => {
-    console.log('handleCloseModal called');
+    logger.debug('handleCloseModal called');
     setShowCommentModal(false);
     setSelectedText('');
     setCurrentSelection(null);
@@ -1101,7 +1102,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
   // Comment action handlers
   const handleNavigateToComment = (commentId: string) => {
-    console.log('Navigate to comment:', commentId);
+    logger.debug('Navigate to comment:', commentId);
     if (typeof window !== 'undefined' && window.vscodeApi) {
       window.vscodeApi.postMessage({
         command: 'navigateToComment',
@@ -1111,28 +1112,28 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   };
 
   const handleEditComment = (commentId: string) => {
-    console.log('Edit comment locally:', commentId);
+    logger.debug('Edit comment locally:', commentId);
 
     // Find the comment to edit in our parsed comments
     const commentToEdit = parsedComments.find(c => c.id === commentId);
     if (commentToEdit) {
-      console.log('Found comment to edit:', commentToEdit);
+      logger.debug('Found comment to edit:', commentToEdit);
       setEditingComment(commentToEdit);
       setShowEditModal(true);
     } else {
-      console.error('Comment not found for editing:', commentId);
+      logger.error('Comment not found for editing:', commentId);
     }
   };
 
   const handleDeleteComment = (commentId: string) => {
-    console.log('=== DELETE COMMENT DEBUG START ===');
-    console.log('Delete comment ID:', commentId);
-    console.log('Editor ref exists:', !!editorRef.current);
+    logger.debug('=== DELETE COMMENT DEBUG START ===');
+    logger.debug('Delete comment ID:', commentId);
+    logger.debug('Editor ref exists:', !!editorRef.current);
 
     if (editorRef.current) {
       const currentMarkdown = editorRef.current.getMarkdown();
-      console.log('Current markdown length:', currentMarkdown.length);
-      console.log('Searching for comment ID in markdown:', commentId);
+      logger.debug('Current markdown length:', currentMarkdown.length);
+      logger.debug('Searching for comment ID in markdown:', commentId);
 
       // Remove the directive from the markdown while preserving the original text
       // Handle different directive patterns (both id="value" and #value formats)
@@ -1163,35 +1164,35 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
       // Try inline patterns first
       [...inlinePatterns, ...containerPatterns].forEach((patternObj, index) => {
-        console.log(`Testing pattern ${index}:`, patternObj.regex);
+        logger.debug(`Testing pattern ${index}:`, patternObj.regex);
         const matches = updatedMarkdown.match(patternObj.regex);
         if (matches) {
-          console.log(`Pattern ${index} matched:`, matches);
-          console.log(`Will replace with:`, patternObj.replacement);
+          logger.debug(`Pattern ${index} matched:`, matches);
+          logger.debug(`Will replace with:`, patternObj.replacement);
           matchFound = true;
         }
         const beforeReplace = updatedMarkdown.length;
         updatedMarkdown = updatedMarkdown.replace(patternObj.regex, patternObj.replacement);
         const afterReplace = updatedMarkdown.length;
         if (beforeReplace !== afterReplace) {
-          console.log(`Pattern ${index} successfully removed ${beforeReplace - afterReplace} characters`);
+          logger.debug(`Pattern ${index} successfully removed ${beforeReplace - afterReplace} characters`);
         }
       });
 
       if (!matchFound) {
-        console.log('No patterns matched for comment ID:', commentId);
-        console.log('Available comment IDs in markdown:', currentMarkdown.match(/(id="[^"]*"|#[a-zA-Z0-9-_]+)/g));
+        logger.debug('No patterns matched for comment ID:', commentId);
+        logger.debug('Available comment IDs in markdown:', currentMarkdown.match(/(id="[^"]*"|#[a-zA-Z0-9-_]+)/g));
       }
 
       // Clean up extra whitespace
       updatedMarkdown = updatedMarkdown.replace(/\n\n\n+/g, '\n\n');
 
-      console.log('Updated markdown length after deletion:', updatedMarkdown.length);
-      console.log('Markdown changed:', currentMarkdown !== updatedMarkdown);
-      console.log('Characters removed:', currentMarkdown.length - updatedMarkdown.length);
+      logger.debug('Updated markdown length after deletion:', updatedMarkdown.length);
+      logger.debug('Markdown changed:', currentMarkdown !== updatedMarkdown);
+      logger.debug('Characters removed:', currentMarkdown.length - updatedMarkdown.length);
 
       if (currentMarkdown !== updatedMarkdown) {
-        console.log('Applying changes to editor and saving...');
+        logger.debug('Applying changes to editor and saving...');
         // Update editor - manual save only
         onMarkdownChange(updatedMarkdown);
         editorRef.current.setMarkdown(updatedMarkdown);
@@ -1206,12 +1207,12 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
         // Manual save only - removed auto-save after comment editing
       } else {
-        console.log('No changes made - comment ID not found or not matched');
+        logger.debug('No changes made - comment ID not found or not matched');
       }
     } else {
-      console.log('No editor ref available');
+      logger.debug('No editor ref available');
     }
-    console.log('=== DELETE COMMENT DEBUG END ===');
+    logger.debug('=== DELETE COMMENT DEBUG END ===');
   };
 
 
@@ -1224,7 +1225,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       // Only handle messages specific to MDXEditorWrapper
       switch (message.command) {
         case 'openEditModal':
-          console.log('Opening edit modal for comment:', message.comment);
+          logger.debug('Opening edit modal for comment:', message.comment);
           if (message.comment) {
             setEditingComment(message.comment);
             setShowEditModal(true);
@@ -1240,7 +1241,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
   // Advanced VS Code webview scroll containment
   React.useEffect(() => {
-    console.log('Setting up advanced VS Code scroll containment...');
+    logger.debug('Setting up advanced VS Code scroll containment...');
 
     // Method 1: Prevent wheel events from bubbling to VS Code only at scroll boundaries
     const handleWheel = (event: WheelEvent) => {
@@ -1258,7 +1259,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
         // Only prevent scroll chaining when at boundaries to avoid passing scroll to VS Code
         if ((event.deltaY > 0 && isAtBottom) || (event.deltaY < 0 && isAtTop)) {
-          console.log('Preventing scroll chaining at boundary');
+          logger.debug('Preventing scroll chaining at boundary');
           //event.preventDefault();
           //event.stopPropagation();
         }
@@ -1276,19 +1277,19 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
   // Handle clicking on comment in sidebar to scroll to highlight in editor
   const handleCommentClick = (commentId: string) => {
-    console.log('=== SIDEBAR COMMENT CLICK DEBUG ===');
-    console.log('Clicked on comment in sidebar:', commentId);
+    logger.debug('=== SIDEBAR COMMENT CLICK DEBUG ===');
+    logger.debug('Clicked on comment in sidebar:', commentId);
 
     // Set focus state for this comment
     setFocusedCommentId(commentId);
-    console.log('Editor ref exists:', !!editorRef.current);
+    logger.debug('Editor ref exists:', !!editorRef.current);
 
     // Get editor root element from ref if available
     let editorRootElement = null;
     if (editorRef.current) {
       // Try to access the editor's internal DOM structure
       const editorInstance = editorRef.current as any;
-      console.log('Editor instance methods:', Object.getOwnPropertyNames(editorInstance));
+      logger.debug('Editor instance methods:', Object.getOwnPropertyNames(editorInstance));
 
       // Look for common editor properties that might give us the root
       if (editorInstance._rootElement) {
@@ -1296,11 +1297,11 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       } else if (editorInstance.rootElement) {
         editorRootElement = editorInstance.rootElement;
       } else if (editorInstance.getEditorState) {
-        console.log('Editor has getEditorState method');
+        logger.debug('Editor has getEditorState method');
       }
     }
 
-    console.log('Editor root element from ref:', editorRootElement);
+    logger.debug('Editor root element from ref:', editorRootElement);
 
     // Try multiple selectors to find the comment directive in the editor
     const possibleSelectors = [
@@ -1315,13 +1316,13 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     let commentElement = null;
     for (const selector of possibleSelectors) {
       commentElement = document.querySelector(selector);
-      console.log(`Trying selector "${selector}":`, !!commentElement);
+      logger.debug(`Trying selector "${selector}":`, !!commentElement);
       if (commentElement) break;
     }
 
     // If still not found, try searching for elements with matching text or attributes
     if (!commentElement) {
-      console.log('Element not found by selectors, searching all elements...');
+      logger.debug('Element not found by selectors, searching all elements...');
 
       // Try to find directive elements using Lexical API if available
       if (editorRef.current) {
@@ -1336,7 +1337,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
             editorDOM = editorInstance._rootElement;
           }
 
-          console.log('Editor DOM from ref:', editorDOM);
+          logger.debug('Editor DOM from ref:', editorDOM);
 
           if (editorDOM) {
             // Search within the editor's DOM
@@ -1346,11 +1347,11 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
               editorDOM.querySelector(`div[title*="${commentId}"]`);
 
             if (commentElement) {
-              console.log('Found element via editor DOM search:', commentElement);
+              logger.debug('Found element via editor DOM search:', commentElement);
             }
           }
         } catch (error) {
-          console.error('Error accessing Lexical editor DOM:', error);
+          logger.error('Error accessing Lexical editor DOM:', error);
         }
       }
 
@@ -1363,7 +1364,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
           const innerHTML = el.innerHTML || '';
 
           if (attrs.includes(commentId) || textContent.includes(commentId) || innerHTML.includes(commentId)) {
-            console.log('Found element by comprehensive search:', el, {
+            logger.debug('Found element by comprehensive search:', el, {
               attrs,
               textContent: textContent.substring(0, 50),
               innerHTML: innerHTML.substring(0, 100)
@@ -1375,7 +1376,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       }
     }
 
-    console.log('Final comment element found:', {
+    logger.debug('Final comment element found:', {
       element: commentElement,
       hasElement: !!commentElement,
       tagName: commentElement?.tagName,
@@ -1397,7 +1398,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         document.querySelector('[contenteditable="true"]') ||
         document.querySelector('.ProseMirror');
 
-      console.log('Editor container found:', {
+      logger.debug('Editor container found:', {
         container: editorContainer,
         hasContainer: !!editorContainer,
         tagName: editorContainer?.tagName,
@@ -1409,7 +1410,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         const containerRect = editorContainer.getBoundingClientRect();
         const highlightRect = commentElement.getBoundingClientRect();
 
-        console.log('Scroll calculation:', {
+        logger.debug('Scroll calculation:', {
           containerRect: { top: containerRect.top, height: containerRect.height },
           highlightRect: { top: highlightRect.top, height: highlightRect.height },
           containerScrollTop: editorContainer.scrollTop
@@ -1418,7 +1419,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         // Calculate scroll position to center the highlight in the editor
         const targetScrollTop = editorContainer.scrollTop + (highlightRect.top - containerRect.top) - (containerRect.height / 2) + (highlightRect.height / 2);
 
-        console.log('Scrolling to target:', targetScrollTop);
+        logger.debug('Scrolling to target:', targetScrollTop);
 
         // Use advanced scroll containment to prevent VS Code editor from scrolling
         try {
@@ -1429,7 +1430,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
             inline: 'nearest'
           });
         } catch (scrollError) {
-          console.warn('scrollIntoView failed, trying manual scroll:', scrollError);
+          logger.warn('scrollIntoView failed, trying manual scroll:', scrollError);
 
           // Method 2: Manual scroll control as fallback
           const currentScrollTop = editorContainer.scrollTop;
@@ -1439,7 +1440,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
           const maxScroll = editorContainer.scrollHeight - editorContainer.clientHeight;
           const finalScrollTop = Math.min(targetScroll, maxScroll);
 
-          console.log('Manual scroll:', { currentScrollTop, targetScroll, maxScroll, finalScrollTop });
+          logger.debug('Manual scroll:', { currentScrollTop, targetScroll, maxScroll, finalScrollTop });
 
           editorContainer.scrollTo({
             top: finalScrollTop,
@@ -1461,7 +1462,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       const currentMarkdown = editorRef.current.getMarkdown();
       const commentId = editingComment.id;
 
-      console.log('Editing comment:', commentId, 'with new content:', newContent);
+      logger.debug('Editing comment:', commentId, 'with new content:', newContent);
 
       // Update the directive text attribute in the markdown
       // Handle different directive patterns (both id="value" and #value formats)
@@ -1497,7 +1498,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         updatedMarkdown = updatedMarkdown.replace(pattern.regex, pattern.replacement);
       });
 
-      console.log('Updated markdown after edit:', updatedMarkdown);
+      logger.debug('Updated markdown after edit:', updatedMarkdown);
 
       // Update editor - manual save only
       onMarkdownChange(updatedMarkdown);
@@ -1557,8 +1558,8 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     ));
   };
 
-  console.log('=== MDXEditorWrapper RENDER END - returning JSX ===');
-  console.log('Editor state:', {
+  logger.debug('=== MDXEditorWrapper RENDER END - returning JSX ===');
+  logger.debug('Editor state:', {
     showCommentSidebar,
     isBookView,
     selectedFont,
@@ -1579,8 +1580,8 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
           <div className="mdx-editor-with-sidebar">
             <div className="mdx-editor-content">
               {(() => {
-                console.log('=== MDXEDITOR COMPONENT RENDER START ===');
-                console.log('About to render MDXEditor with:', {
+                logger.debug('=== MDXEDITOR COMPONENT RENDER START ===');
+                logger.debug('About to render MDXEditor with:', {
                   markdown: markdown?.substring(0, 100) + '...',
                   markdownLength: markdown?.length,
                   selectedFont,
@@ -1612,7 +1613,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
                   // Enhanced code block plugin with Mermaid support
                   (() => {
-                    console.log('Initializing codeBlockPlugin with Mermaid support...');
+                    logger.debug('Initializing codeBlockPlugin with Mermaid support...');
                     try {
                       const plugin = codeBlockPlugin({ 
                         defaultCodeBlockLanguage: 'js',
@@ -1667,15 +1668,15 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
                           }
                         ]
                       });
-                      console.log('codeBlockPlugin initialized successfully with Mermaid support');
+                      logger.debug('codeBlockPlugin initialized successfully with Mermaid support');
                       return plugin;
                     } catch (error) {
-                      console.error('Error initializing codeBlockPlugin:', error);
+                      logger.error('Error initializing codeBlockPlugin:', error);
                       throw error;
                     }
                   })(),
                   (() => {
-                    console.log('Initializing codeMirrorPlugin (required for fenced block parsing)...');
+                    logger.debug('Initializing codeMirrorPlugin (required for fenced block parsing)...');
                     try {
                       const plugin = codeMirrorPlugin({ 
                         codeBlockLanguages: { 
@@ -1702,10 +1703,10 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
                         branchPrediction: false,
                         codeFolding: true
                       });
-                      console.log('codeMirrorPlugin initialized successfully with Mermaid support');
+                      logger.debug('codeMirrorPlugin initialized successfully with Mermaid support');
                       return plugin;
                     } catch (error) {
-                      console.error('Error initializing codeMirrorPlugin:', error);
+                      logger.error('Error initializing codeMirrorPlugin:', error);
                       throw error;
                     }
                   })(),
@@ -1725,9 +1726,9 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
                   })
                 ];
 
-                console.log('Plugins array length:', plugins.length);
-                console.log('Plugin names:', plugins.map(p => p.constructor?.name || 'Unknown'));
-                console.log('NOTE: Both codeBlockPlugin and codeMirrorPlugin enabled for fenced block support');
+                logger.debug('Plugins array length:', plugins.length);
+                logger.debug('Plugin names:', plugins.map(p => p.constructor?.name || 'Unknown'));
+                logger.debug('NOTE: Both codeBlockPlugin and codeMirrorPlugin enabled for fenced block support');
 
                 try {
                   const editorElement = (
@@ -1736,30 +1737,30 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
                         editorRef.current = ref;
                         // Add debugging when editor mounts
                         if (ref) {
-                          console.log('MDXEditor component mounted, checking content after 2 seconds...');
+                          logger.debug('MDXEditor component mounted, checking content after 2 seconds...');
                           setTimeout(() => {
                             try {
                               const content = ref.getMarkdown();
-                              console.log('Editor content length after mount:', content.length);
-                              console.log('Editor content preview:', content.substring(0, 500) + '...');
+                              logger.debug('Editor content length after mount:', content.length);
+                              logger.debug('Editor content preview:', content.substring(0, 500) + '...');
                               
                               // Check DOM structure
                               const editorDOM = document.querySelector('.mdx-content') || document.querySelector('[contenteditable="true"]');
                               if (editorDOM) {
-                                console.log('Editor DOM found, innerHTML length:', editorDOM.innerHTML.length);
-                                console.log('Editor DOM preview:', editorDOM.innerHTML.substring(0, 500) + '...');
+                                logger.debug('Editor DOM found, innerHTML length:', editorDOM.innerHTML.length);
+                                logger.debug('Editor DOM preview:', editorDOM.innerHTML.substring(0, 500) + '...');
                                 
                                 // Check if code blocks exist in DOM
                                 const codeBlocks = editorDOM.querySelectorAll('pre, code, .cm-editor');
-                                console.log('Code blocks found in DOM:', codeBlocks.length);
+                                logger.debug('Code blocks found in DOM:', codeBlocks.length);
                                 codeBlocks.forEach((block, index) => {
-                                  console.log(`Code block ${index}:`, block.tagName, block.className);
+                                  logger.debug(`Code block ${index}:`, block.tagName, block.className);
                                 });
                               } else {
-                                console.log('Editor DOM not found');
+                                logger.debug('Editor DOM not found');
                               }
                             } catch (err) {
-                              console.error('Error inspecting editor after mount:', err);
+                              logger.error('Error inspecting editor after mount:', err);
                             }
                           }, 2000);
                         }
@@ -1768,18 +1769,18 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
                       onChange={handleMarkdownChange}
                       suppressHtmlProcessing={true}
                       onError={(error) => {
-                        console.error('MDXEditor parsing error:', error);
-                        console.log('This error might be caused by angle brackets. Try using the source mode if available.');
+                        logger.error('MDXEditor parsing error:', error);
+                        logger.debug('This error might be caused by angle brackets. Try using the source mode if available.');
                       }}
                       className={`mdx-editor dark-theme font-${selectedFont.toLowerCase().replace(/\s+/g, '-')}`}
                       contentEditableClassName={`mdx-content font-${selectedFont.toLowerCase().replace(/\s+/g, '-')}`}
                       plugins={plugins}
                     />
                   );
-                  console.log('About to return MDXEditor element');
+                  logger.debug('About to return MDXEditor element');
                   return editorElement;
                 } catch (error) {
-                  console.error('=== MDXEDITOR RENDER ERROR ===', error);
+                  logger.error('=== MDXEDITOR RENDER ERROR ===', error);
                   return (
                     <div style={{ padding: '20px', background: '#ffe6e6', border: '1px solid #ff0000', borderRadius: '4px' }}>
                       <h3>Editor Error</h3>
@@ -1826,7 +1827,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
                         // Sort by actual appearance order in the document
                         if (!markdown) return 0;
 
-                        console.log('Sorting comments:', { aId: a.id, bId: b.id });
+                        logger.debug('Sorting comments:', { aId: a.id, bId: b.id });
 
                         // Find the position of each comment directive in the markdown
                         // Try multiple patterns to catch different directive formats
@@ -1862,7 +1863,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
                           }
                         }
 
-                        console.log('Position matches:', {
+                        logger.debug('Position matches:', {
                           aId: a.id,
                           aMatch,
                           bId: b.id,
@@ -1883,7 +1884,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
                         // Fallback to timestamp if positions not found
                         const aTime = new Date(a.timestamp).getTime();
                         const bTime = new Date(b.timestamp).getTime();
-                        console.log('Using timestamp fallback:', { aTime, bTime, result: aTime - bTime });
+                        logger.debug('Using timestamp fallback:', { aTime, bTime, result: aTime - bTime });
                         return aTime - bTime;
                       })
                       .map(comment => (
@@ -1948,7 +1949,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
             onMouseDown={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              console.log('Floating button mousedown with selected text:', selectedText);
+              logger.debug('Floating button mousedown with selected text:', selectedText);
               if (selectedText) {
                 setShowCommentModal(true);
                 setShowFloatingButton(false);
@@ -1957,7 +1958,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              console.log('Floating button clicked with selected text:', selectedText);
+              logger.debug('Floating button clicked with selected text:', selectedText);
               if (selectedText) {
                 setShowCommentModal(true);
                 setShowFloatingButton(false);

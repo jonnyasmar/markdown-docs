@@ -1,6 +1,7 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import mermaid from 'mermaid';
 import { CodeMirrorEditor } from '@mdxeditor/editor';
+import { logger } from '../utils/logger';
 
 interface MermaidEditorProps {
   code: string;
@@ -29,22 +30,36 @@ export const MermaidEditor: React.FC<MermaidEditorProps> = ({
   const splitContainerRef = useRef<HTMLDivElement>(null);
   const diagramId = useRef(`mermaid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
 
-  // Initialize mermaid
+  // Initialize mermaid with secure configuration
   useEffect(() => {
     mermaid.initialize({
       startOnLoad: false,
       theme: 'dark',
-      securityLevel: 'loose',
+      securityLevel: 'strict', // Changed from 'loose' to 'strict' for security
       fontFamily: 'inherit',
     });
   }, []);
 
-  // Render mermaid diagram
-  const renderMermaid = async () => {
-    console.log('renderMermaid called with code:', code.substring(0, 50));
+  // SVG sanitization function to prevent XSS
+  const sanitizeSVG = useCallback((svg: string): string => {
+    if (!svg || typeof svg !== 'string') return '';
     
+    return svg
+      // Remove script tags and their content
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+      // Remove event handlers (onclick, onload, etc.)
+      .replace(/on\w+=["'][^"']*["']/gi, '')
+      // Remove javascript: protocols
+      .replace(/javascript:/gi, '')
+      // Remove data: protocols except for safe image formats
+      .replace(/data:(?!image\/(png|jpg|jpeg|gif|svg|webp))[^;]*;/gi, '')
+      // Remove suspicious attributes
+      .replace(/\s*(href|src)=["'][^"']*javascript:[^"']*["']/gi, '');
+  }, []);
+
+  // Optimized mermaid rendering with security and performance improvements
+  const renderMermaid = useCallback(async () => {
     if (!code.trim()) {
-      console.log('No code to render, clearing diagram');
       setSvgContent('');
       setError('');
       return;
@@ -52,33 +67,39 @@ export const MermaidEditor: React.FC<MermaidEditorProps> = ({
 
     try {
       setError('');
-      // Clear any existing diagram
-      setSvgContent('');
+      setSvgContent(''); // Clear previous content
       
-      // Generate a new unique ID for each render to avoid conflicts
-      const newId = `mermaid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      diagramId.current = newId;
+      // Reuse the same diagram ID to prevent memory leaks
+      const { svg } = await mermaid.render(diagramId.current, code);
       
-      console.log('Rendering mermaid with ID:', newId);
-      
-      // Validate and render the diagram
-      const { svg } = await mermaid.render(newId, code);
-      console.log('Mermaid render successful, SVG length:', svg.length);
-      setSvgContent(svg);
+      // Sanitize SVG content before setting it
+      const sanitizedSVG = sanitizeSVG(svg);
+      setSvgContent(sanitizedSVG);
     } catch (err: any) {
-      console.error('Mermaid rendering error:', err);
-      setError(err.message || 'Failed to render mermaid diagram');
+      const errorMessage = err.message || 'Failed to render mermaid diagram';
+      setError(errorMessage);
       setSvgContent('');
+      
+      // Log error for debugging but don't expose sensitive information
+      logger.error('Mermaid rendering failed:', errorMessage);
     }
-  };
+  }, [code, sanitizeSVG]);
+
+  // Debounced rendering for performance optimization
+  const debouncedRenderMermaid = useMemo(() => {
+    let timeoutId: NodeJS.Timeout;
+    return () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(renderMermaid, 300); // 300ms debounce
+    };
+  }, [renderMermaid]);
 
   // Re-render when code changes and when in preview or split mode
   useEffect(() => {
-    console.log('useEffect triggered - viewMode:', viewMode, 'code length:', code.length);
     if (viewMode === 'preview' || viewMode === 'split') {
-      renderMermaid();
+      debouncedRenderMermaid();
     }
-  }, [code, viewMode]);
+  }, [code, viewMode, debouncedRenderMermaid]);
 
   // Let the split container grow naturally with its content
   // No height manipulation needed - CSS flexbox handles this
@@ -114,12 +135,10 @@ export const MermaidEditor: React.FC<MermaidEditorProps> = ({
     };
   }, [isResizing, viewMode]);
 
-  const switchToMode = async (mode: ViewMode) => {
-    console.log('switchToMode called - switching to:', mode);
+  const switchToMode = useCallback(async (mode: ViewMode) => {
     setViewMode(mode);
     
     if (mode === 'preview' || mode === 'split') {
-      console.log('Mode requires diagram rendering');
       // Force a re-render by updating the render key
       setRenderKey(prev => prev + 1);
       // Use a small timeout to ensure state has updated
@@ -127,7 +146,7 @@ export const MermaidEditor: React.FC<MermaidEditorProps> = ({
         renderMermaid();
       }, 100);
     }
-  };
+  }, [renderMermaid]);
 
   // Render diagram preview component
   const renderDiagramPreview = () => (
