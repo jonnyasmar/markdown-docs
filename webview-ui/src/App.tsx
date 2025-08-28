@@ -1,14 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { CommentWithAnchor, WebviewMessage } from './types';
 import { CommentList } from './components/CommentList';
+import { logger } from './utils/logger';
 import './App.css';
 
 // VS Code API for webview - use pre-acquired API
-declare global {
-  interface Window {
-    vscodeApi?: any;
-  }
-}
+// (Window type is already declared in types.ts)
 
 // Use ONLY the pre-acquired VS Code API from HTML template
 let vscode: any;

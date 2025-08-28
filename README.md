@@ -10,7 +10,7 @@ Whether you're collaborating with AI, taking personal notes, or working with a t
 
 ## A WYSIWYG Editor That Works for You
 
-At the heart of Markdown Docs is a state-of-the-art **What You See Is What You Get (WYSIWYG)** editor, powered by the acclaimed **MDX Editor**. This means you can say goodbye to constant context switching between raw Markdown and a preview pane. With Markdown Docs, you write and format your documents in a single, beautiful interface.
+At the heart of Markdown Docs is a state-of-the-art **What You See Is What You Get (WYSIWYG)** editor, powered by the acclaimed **MDX Editor**. This :comment[means]{#comment-1756395258698 text="test 123123123"} you can say goodbye to constant context switching between raw Markdown and a preview pane. With Markdown Docs, you write and format your documents in a single, beautiful interface.
 
 ### Effortless Formatting
 

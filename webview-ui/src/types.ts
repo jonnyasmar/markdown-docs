@@ -10,6 +10,9 @@ export interface CommentWithAnchor {
   anchor?: string;
   timestamp?: number;
   author?: string;
+  anchoredText?: string;
+  startPosition?: number;
+  endPosition?: number;
 }
 
 export interface WebviewMessage {
@@ -26,6 +29,10 @@ export interface WebviewMessage {
   error?: string;
   stack?: string;
   componentStack?: string;
+  type?: string;
+  message?: string;
+  isDirty?: boolean;
+  data?: any;
 }
 
 export interface VSCodeAPI {
