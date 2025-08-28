@@ -51,7 +51,7 @@ import './MermaidEditor.css';
 import { preprocessAngleBrackets, postprocessAngleBrackets } from './SimplifiedAngleBracketPlugin';
 
 // Inline search component for toolbar
-const InlineSearchInput = ({ searchInputRef }: { searchInputRef: React.RefObject<HTMLInputElement> }) => {
+const InlineSearchInput = ({ searchInputRef, isTyping }: { searchInputRef: React.RefObject<HTMLInputElement>, isTyping?: boolean }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
   const clearHighlights = () => {
@@ -67,6 +67,10 @@ const InlineSearchInput = ({ searchInputRef }: { searchInputRef: React.RefObject
   };
 
   const highlightMatches = (term: string) => {
+    // Skip highlighting during typing for performance
+    if (isTyping) {
+      return;
+    }
     clearHighlights();
     if (!term.trim()) {
       return;
@@ -168,7 +172,8 @@ const ToolbarWithCommentButton = ({
   availableFonts,
   setIsBookView,
   isBookView,
-  searchInputRef
+  searchInputRef,
+  isTyping
 }: any) => {
   return (
     <>
@@ -198,7 +203,7 @@ const ToolbarWithCommentButton = ({
       <InsertThematicBreak />
       <Separator />
       {/* Use the MDX-powered search input for stable focus and highlighting */}
-      <MDXInlineSearchInput searchInputRef={searchInputRef} />
+      <MDXInlineSearchInput searchInputRef={searchInputRef} isTyping={isTyping} />
       {/* LEAVE THIS OUT FOR NOW -- IT'S BROKEN <Button onClick={() => setIsBookView(!isBookView)}>
         📖 {isBookView ? 'Exit Book' : 'Book View'}
       </Button> */}
@@ -215,7 +220,7 @@ const ToolbarWithCommentButton = ({
 };
 
 // Stateless search input with debounced search operation based on ref value
-const MDXInlineSearchInput = ({ searchInputRef }: { searchInputRef: React.RefObject<HTMLInputElement> }) => {
+const MDXInlineSearchInput = ({ searchInputRef, isTyping }: { searchInputRef: React.RefObject<HTMLInputElement>, isTyping?: boolean }) => {
   const { setSearch, openSearch } = useEditorSearch();
   const debounceTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
   const [hasValue, setHasValue] = React.useState(false);
@@ -225,11 +230,15 @@ const MDXInlineSearchInput = ({ searchInputRef }: { searchInputRef: React.RefObj
     if (debounceTimeoutRef.current !== null) {
       clearTimeout(debounceTimeoutRef.current);
     }
+    
+    // Use longer debounce during active typing for better performance
+    const debounceTime = isTyping ? 300 : 150;
+    
     debounceTimeoutRef.current = setTimeout(() => {
       const currentValue = searchInputRef.current?.value || '';
       setSearch(currentValue);
-    }, 150); // 150ms debounce for responsive but not overwhelming updates
-  }, [setSearch, searchInputRef]);
+    }, debounceTime);
+  }, [setSearch, searchInputRef, isTyping]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     e.stopPropagation();
@@ -512,6 +521,10 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   const [editingComment, setEditingComment] = useState<any>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [focusedCommentId, setFocusedCommentId] = useState<string | null>(null);
+  
+  // Performance optimization: Track typing state to prevent expensive operations during typing
+  const [isTyping, setIsTyping] = useState(false);
+  const typingTimeoutRef = useRef<NodeJS.Timeout>();
 
   // Update selected font when defaultFont prop changes
   React.useEffect(() => {
@@ -578,7 +591,12 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       return;
     }
 
-    // Debounce comment parsing to avoid processing on every keystroke
+    // COMPLETELY skip comment parsing during typing for maximum performance
+    if (isTyping) {
+      return;
+    }
+
+    // Heavy debounce - only after user completely stops typing for 800ms
     const timeoutId = setTimeout(() => {
       try {
         const comments = DirectiveService.parseCommentDirectives(markdown);
@@ -593,16 +611,19 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         logger.error('Error parsing comments:', error);
         setParsedComments([]);
       }
-    }, 500); // 500ms debounce - only parse after user stops typing
+    }, 800); // Heavy debounce - only after complete typing pause
 
     return () => clearTimeout(timeoutId);
-  }, [markdown]);
+  }, [markdown, isTyping]);
 
-  // Cleanup timeout on unmount
+  // Cleanup timeouts on unmount
   React.useEffect(() => {
     return () => {
       if (dirtyStateTimeoutRef.current) {
         clearTimeout(dirtyStateTimeoutRef.current);
+      }
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
       }
     };
   }, []);
@@ -674,6 +695,11 @@ const handleMarkdownChange = (newMarkdown: string) => {
     return;
   }
 
+  // Mark as typing for performance optimizations
+  setIsTyping(true);
+  clearTimeout(typingTimeoutRef.current);
+  typingTimeoutRef.current = setTimeout(() => setIsTyping(false), 300);
+
   // Ultra-minimal processing for maximum typing speed
   const hasChanges = newMarkdown !== markdown;
   setHasUnsavedChanges(hasChanges);
@@ -684,11 +710,14 @@ const handleMarkdownChange = (newMarkdown: string) => {
     // Use a timeout to batch multiple rapid changes
     clearTimeout(dirtyStateTimeoutRef.current);
     dirtyStateTimeoutRef.current = setTimeout(() => {
-      window.vscodeApi.postMessage({
-        command: 'dirtyStateChanged',
-        isDirty: true
-      });
-    }, 200); // 200ms debounce
+      // Only send if still dirty and not in the middle of rapid typing
+      if (!isTyping) {
+        window.vscodeApi.postMessage({
+          command: 'dirtyStateChanged',
+          isDirty: true
+        });
+      }
+    }, isTyping ? 500 : 200); // Longer delay during typing
   }
 };
 
@@ -1885,6 +1914,7 @@ return (
                       setIsBookView={setIsBookView}
                       isBookView={isBookView}
                       searchInputRef={searchInputRef}
+                      isTyping={isTyping}
                     />
                   )
                 })
