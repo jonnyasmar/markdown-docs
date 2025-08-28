@@ -48,7 +48,7 @@ import { MermaidEditor } from './MermaidEditor';
 import { escapeDirectiveContent } from '../utils/textNormalization';
 import './MDXEditorWrapper.css';
 import './MermaidEditor.css';
-import { preprocessAngleBrackets, postprocessAngleBrackets } from './SimplifiedAngleBracketPlugin';
+import { preprocessAngleBrackets, postprocessAngleBrackets, preprocessCurlyBraces, postprocessCurlyBraces } from './SimplifiedAngleBracketPlugin';
 
 // Inline search component for toolbar
 const InlineSearchInput = ({ searchInputRef, isTyping }: { searchInputRef: React.RefObject<HTMLInputElement>, isTyping?: boolean }) => {
@@ -916,8 +916,11 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
           const selection = window.getSelection();
           const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
 
+          // Apply preprocessing to handle curly brace patterns
+          const processedMarkdown = preprocessCurlyBraces(markdown);
+
           // Update the editor content directly (images already preprocessed by extension)
-          editorRef.current?.setMarkdown(markdown);
+          editorRef.current?.setMarkdown(processedMarkdown);
 
           // Try to restore cursor position (best effort)
           if (range && selection) {
@@ -955,13 +958,16 @@ const handleMarkdownChange = useCallback((newMarkdown: string) => {
   clearTimeout(typingTimeoutRef.current);
   typingTimeoutRef.current = setTimeout(() => setIsTyping(false), 300);
 
+  // Apply postprocessing to restore curly brace patterns before saving
+  const processedMarkdown = postprocessCurlyBraces(newMarkdown);
+
   // Immediate response: Update the editor state synchronously
-  const hasChanges = newMarkdown !== markdown;
+  const hasChanges = processedMarkdown !== markdown;
   setHasUnsavedChanges(hasChanges);
 
   // Use React 18 startTransition for non-urgent updates that can be deferred
   startTransition(() => {
-    onMarkdownChange(newMarkdown);
+    onMarkdownChange(processedMarkdown);
   });
 
   // Clear any existing dirty state timeout
@@ -1039,7 +1045,10 @@ React.useEffect(() => {
         const contentWithRelativePaths = convertWebviewUrisToRelativePaths(editorContent);
 
         // Apply postprocessing to convert mathematical angle brackets back to regular ones
-        contentToSave = postprocessAngleBrackets(contentWithRelativePaths);
+        const contentWithAngleBrackets = postprocessAngleBrackets(contentWithRelativePaths);
+
+        // Apply postprocessing to restore curly brace patterns
+        contentToSave = postprocessCurlyBraces(contentWithAngleBrackets);
         logger.debug('Got content from editor, converted URIs, and postprocessed:', contentToSave.substring(0, 100));
       }
 
@@ -1857,7 +1866,7 @@ return (
                         }, 2000);
                       }
                     }}
-                    markdown={markdown || ''}
+                    markdown={preprocessCurlyBraces(markdown || '')}
                     onChange={handleMarkdownChange}
                     suppressHtmlProcessing={true}
                     onError={(error) => {

@@ -2,7 +2,7 @@
   "name": "markdown-docs",
   "displayName": "Markdown Docs & Comments",
   "description": "WYSIWYG Markdown Editor with Inline Commenting (great for working with AI!)",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "icon": "media/icon.png",
   "publisher": "jonnyasmar",
   "repository": {

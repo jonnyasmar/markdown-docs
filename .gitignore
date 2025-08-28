@@ -18,6 +18,7 @@ out/
 # Compiled output
 *.js
 !webpack.config.js # Explicitly unignore webpack.config.js
+!webview-ui/webpack.config.js # Explicitly unignore webview-ui webpack.config.js
 *.map
 
 # Logs
