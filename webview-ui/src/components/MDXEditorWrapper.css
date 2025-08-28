@@ -595,13 +595,23 @@ button[role="combobox"][aria-label="Language"]:hover,
 }
 
 /* Comment highlighting - theme-aware subtle inline indicators */
-.comment-highlight {
+.comment-highlight, mark {
   background-color: rgba(255, 255, 0, 0.25);
   padding: 0;
   transition: all 0.3s ease;
+  color: inherit;
 }
 
-.comment-highlight.editor-highlighted {
+/* Lexical highlight text format styling */
+.mdx-editor .text-highlight {
+  background-color: rgba(255, 255, 0, 0.25);
+  padding: 0;
+  transition: all 0.3s ease;
+  color: inherit;
+  cursor: pointer;
+}
+
+.comment-highlight.editor-highlighted, mark.editor-highlighted {
   background-color: rgba(0, 123, 255, 0.4);
   box-shadow: 0 0 8px rgba(0, 123, 255, 0.6);
   animation: pulse-editor-highlight 0.8s ease-out;
@@ -623,12 +633,12 @@ button[role="combobox"][aria-label="Language"]:hover,
 }
 
 /* Persistent focus state for inline comments - more subtle than animation */
-.comment-highlight.focused {
+.comment-highlight.focused, mark.focused {
   background-color: rgba(0, 123, 255, 0.2);
   border-radius: 2px;
 }
 
-.comment-item.highlighted {
+.comment-item.highlighted, mark.highlighted {
   background-color: rgba(0, 123, 255, 0.15);
   border-left: 3px solid #007bff;
   transform: translateX(4px);
@@ -997,169 +1007,6 @@ body {
   outline-offset: -1px !important;
 }
 
-/* ===== IMAGE DIALOG STYLING ===== */
-/* Style MDXEditor image dialog to match comment modal theme */
-
-/* Image dialog overlay */
-.mdx-editor [role="dialog"],
-.mdx-editor [data-radix-popper-content-wrapper],
-.mdx-editor [data-state="open"][role="dialog"] {
-  background: var(--vscode-editor-background) !important;
-  border: 1px solid var(--vscode-widget-border) !important;
-  border-radius: 8px !important;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
-  color: var(--vscode-foreground) !important;
-  backdrop-filter: blur(2px) !important;
-}
-
-/* Dialog content wrapper */
-.mdx-editor [role="dialog"] > div,
-.mdx-editor [data-radix-popper-content-wrapper] > div {
-  background: var(--vscode-editor-background) !important;
-  color: var(--vscode-foreground) !important;
-}
-
-/* Dialog header */
-.mdx-editor [role="dialog"] h2,
-.mdx-editor [role="dialog"] h3,
-.mdx-editor [role="dialog"] .dialog-title,
-.mdx-editor [data-radix-popper-content-wrapper] h2,
-.mdx-editor [data-radix-popper-content-wrapper] h3 {
-  color: var(--vscode-foreground) !important;
-  font-size: 16px !important;
-  font-weight: 600 !important;
-  margin: 0 0 16px 0 !important;
-  padding: 16px 20px 0 20px !important;
-  border-bottom: 1px solid var(--vscode-widget-border) !important;
-  background: var(--vscode-editorWidget-background) !important;
-}
-
-/* Dialog form fields */
-.mdx-editor [role="dialog"] input,
-.mdx-editor [role="dialog"] textarea,
-.mdx-editor [data-radix-popper-content-wrapper] input,
-.mdx-editor [data-radix-popper-content-wrapper] textarea {
-  background: var(--vscode-input-background) !important;
-  border: 1px solid var(--vscode-input-border) !important;
-  border-radius: 4px !important;
-  color: var(--vscode-input-foreground) !important;
-  font-family: inherit !important;
-  font-size: 14px !important;
-  padding: 12px !important;
-  width: 100% !important;
-  box-sizing: border-box !important;
-}
-
-.mdx-editor [role="dialog"] input:focus,
-.mdx-editor [role="dialog"] textarea:focus,
-.mdx-editor [data-radix-popper-content-wrapper] input:focus,
-.mdx-editor [data-radix-popper-content-wrapper] textarea:focus {
-  border-color: var(--vscode-focusBorder) !important;
-  box-shadow: 0 0 0 1px var(--vscode-focusBorder) !important;
-  outline: none !important;
-}
-
-.mdx-editor [role="dialog"] input::placeholder,
-.mdx-editor [role="dialog"] textarea::placeholder,
-.mdx-editor [data-radix-popper-content-wrapper] input::placeholder,
-.mdx-editor [data-radix-popper-content-wrapper] textarea::placeholder {
-  color: var(--vscode-input-placeholderForeground) !important;
-}
-
-/* Dialog labels */
-.mdx-editor [role="dialog"] label,
-.mdx-editor [data-radix-popper-content-wrapper] label {
-  color: var(--vscode-foreground) !important;
-  font-size: 14px !important;
-  font-weight: 500 !important;
-  margin-bottom: 4px !important;
-  display: block !important;
-}
-
-/* Dialog buttons */
-.mdx-editor [role="dialog"] button,
-.mdx-editor [data-radix-popper-content-wrapper] button {
-  background: var(--vscode-button-background) !important;
-  border: 1px solid var(--vscode-button-border) !important;
-  border-radius: 4px !important;
-  color: var(--vscode-button-foreground) !important;
-  cursor: pointer !important;
-  font-size: 14px !important;
-  font-weight: 500 !important;
-  padding: 8px 16px !important;
-  transition: all 0.15s ease !important;
-}
-
-.mdx-editor [role="dialog"] button:hover,
-.mdx-editor [data-radix-popper-content-wrapper] button:hover {
-  background: var(--vscode-button-hoverBackground) !important;
-}
-
-.mdx-editor [role="dialog"] button:focus,
-.mdx-editor [data-radix-popper-content-wrapper] button:focus {
-  outline: 1px solid var(--vscode-focusBorder) !important;
-  outline-offset: 2px !important;
-}
-
-/* Cancel/secondary buttons */
-.mdx-editor [role="dialog"] button[type="button"]:not([type="submit"]),
-.mdx-editor [role="dialog"] button:not([type="submit"]):not([type="button"]),
-.mdx-editor [data-radix-popper-content-wrapper] button[type="button"]:not([type="submit"]) {
-  background: var(--vscode-button-secondaryBackground) !important;
-  color: var(--vscode-button-secondaryForeground) !important;
-}
-
-.mdx-editor [role="dialog"] button[type="button"]:hover,
-.mdx-editor [data-radix-popper-content-wrapper] button[type="button"]:hover {
-  background: var(--vscode-button-secondaryHoverBackground) !important;
-}
-
-/* Dialog body padding */
-.mdx-editor [role="dialog"] > div > div,
-.mdx-editor [data-radix-popper-content-wrapper] > div > div {
-  padding: 20px !important;
-}
-
-/* Dialog footer */
-.mdx-editor [role="dialog"] .dialog-footer,
-.mdx-editor [role="dialog"] div:last-child,
-.mdx-editor [data-radix-popper-content-wrapper] div:last-child {
-  display: flex !important;
-  justify-content: flex-end !important;
-  gap: 12px !important;
-  padding: 16px 20px !important;
-  border-top: 1px solid var(--vscode-widget-border) !important;
-  background: var(--vscode-editor-background) !important;
-  margin-top: 16px !important;
-}
-
-/* Close button */
-.mdx-editor [role="dialog"] button[aria-label="Close"],
-.mdx-editor [role="dialog"] .close-button,
-.mdx-editor [data-radix-popper-content-wrapper] button[aria-label="Close"] {
-  position: absolute !important;
-  top: 16px !important;
-  right: 16px !important;
-  background: transparent !important;
-  border: none !important;
-  color: var(--vscode-foreground) !important;
-  cursor: pointer !important;
-  font-size: 20px !important;
-  padding: 4px !important;
-  width: 32px !important;
-  height: 32px !important;
-  border-radius: 4px !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-}
-
-.mdx-editor [role="dialog"] button[aria-label="Close"]:hover,
-.mdx-editor [role="dialog"] .close-button:hover,
-.mdx-editor [data-radix-popper-content-wrapper] button[aria-label="Close"]:hover {
-  background: var(--vscode-toolbar-hoverBackground) !important;
-}
-
 /* Angle bracket text styling - for generic type annotations */
 .angle-bracket-text {
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace !important;
@@ -1234,4 +1081,96 @@ body {
 .dark-theme .mdx-content blockquote {
   background-color: rgba(255, 255, 255, 0.05);
   border-left-color: var(--vscode-textLink-foreground, #4daafc);
+}
+
+/* ===== IMAGE UPLOAD DIALOG STYLING ===== */
+/* EXTREMELY SPECIFIC targeting to avoid conflicts - target MDXEditor image dialog only */
+
+/* Use more general approach - target any dialog with image-related content */
+.mdx-editor-container [role="dialog"],
+.mdx-editor [role="dialog"] {
+  background: var(--vscode-editor-background) !important;
+  border: 1px solid var(--vscode-widget-border) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
+  color: var(--vscode-foreground) !important;
+  padding: 24px !important;
+  min-width: 480px !important;
+  max-width: 520px !important;
+  max-height: 70vh !important;
+  overflow: visible !important;
+  font-family: var(--vscode-font-family) !important;
+}
+
+/* Section labels and text */
+.mdx-editor [role="dialog"] p,
+.mdx-editor [role="dialog"] label {
+  color: var(--vscode-foreground) !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  margin: 0 0 8px 0 !important;
+  display: block !important;
+  line-height: 1.4 !important;
+}
+
+/* Better spacing between sections */
+.mdx-editor [role="dialog"] > * + * {
+  margin-top: 20px !important;
+}
+
+/* All input styling */
+.mdx-editor [role="dialog"] input {
+  background: var(--vscode-input-background) !important;
+  color: var(--vscode-input-foreground) !important;
+  border: 1px solid var(--vscode-input-border) !important;
+  border-radius: 4px !important;
+  padding: 12px !important;
+  font-size: 14px !important;
+  font-family: inherit !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  margin-bottom: 16px !important;
+}
+
+.mdx-editor [role="dialog"] input[type="file"] {
+  background: var(--vscode-button-secondaryBackground) !important;
+  color: var(--vscode-button-secondaryForeground) !important;
+  cursor: pointer !important;
+}
+
+.mdx-editor [role="dialog"] input:focus {
+  border-color: var(--vscode-focusBorder) !important;
+  outline: none !important;
+}
+
+.mdx-editor [role="dialog"] input::placeholder {
+  color: var(--vscode-input-placeholderForeground) !important;
+}
+
+/* Dialog buttons */
+.mdx-editor [role="dialog"] button {
+  background: var(--vscode-button-background) !important;
+  color: var(--vscode-button-foreground) !important;
+  border: 1px solid var(--vscode-button-border) !important;
+  border-radius: 4px !important;
+  padding: 10px 16px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  margin-right: 8px !important;
+  margin-top: 16px !important;
+}
+
+.mdx-editor [role="dialog"] button:hover {
+  background: var(--vscode-button-hoverBackground) !important;
+}
+
+/* Secondary button (Cancel) */
+.mdx-editor [role="dialog"] button:first-of-type {
+  background: var(--vscode-button-secondaryBackground) !important;
+  color: var(--vscode-button-secondaryForeground) !important;
+}
+
+.mdx-editor [role="dialog"] button:first-of-type:hover {
+  background: var(--vscode-button-secondaryHoverBackground) !important;
 }
