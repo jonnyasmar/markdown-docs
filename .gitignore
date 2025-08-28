@@ -19,6 +19,7 @@ out/
 *.js
 !webpack.config.js # Explicitly unignore webpack.config.js
 !webview-ui/webpack.config.js # Explicitly unignore webview-ui webpack.config.js
+!rspack.config.js # Explicitly unignore rspack.config.js
 *.map
 
 # Logs
