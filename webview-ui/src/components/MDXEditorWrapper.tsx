@@ -1044,11 +1044,8 @@ React.useEffect(() => {
         // Convert webview URIs back to relative paths
         const contentWithRelativePaths = convertWebviewUrisToRelativePaths(editorContent);
 
-        // Apply postprocessing to convert mathematical angle brackets back to regular ones
-        const contentWithAngleBrackets = postprocessAngleBrackets(contentWithRelativePaths);
-
-        // Apply postprocessing to restore curly brace patterns
-        contentToSave = postprocessCurlyBraces(contentWithAngleBrackets);
+        // Apply postprocessing to convert mathematical angle brackets back to regular ones and restore curly braces
+        contentToSave = postprocessAngleBrackets(contentWithRelativePaths);
         logger.debug('Got content from editor, converted URIs, and postprocessed:', contentToSave.substring(0, 100));
       }
 

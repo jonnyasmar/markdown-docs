@@ -80,6 +80,9 @@ export const postprocessAngleBrackets = (markdown: string): string => {
   // First restore curly brace patterns
   let result = postprocessCurlyBraces(markdown);
   
+  // Also fix any escaped underscores that might have been created by MDX
+  result = unescapeUnderscoresInCurlyBraces(result);
+  
   // Then remove backslash escaping from < characters (we no longer escape >)
   return result.replace(/\\</g, '<');
 };
@@ -91,6 +94,16 @@ export const postprocessCurlyBraces = (markdown: string): string => {
     // Replace placeholders back to underscores
     const restoredContent = content.replace(/___UNDERSCORE___/g, '_');
     return `{{${restoredContent}}}`;
+  });
+};
+
+// Additional function to unescape any underscores that got escaped by MDX
+export const unescapeUnderscoresInCurlyBraces = (markdown: string): string => {
+  // Find and fix any escaped underscores inside {{ }} patterns
+  return markdown.replace(/\{\{([^}]*)\}\}/g, (match, content) => {
+    // Remove backslash escaping from underscores within curly braces
+    const unescapedContent = content.replace(/\\_/g, '_');
+    return `{{${unescapedContent}}}`;
   });
 };
 
