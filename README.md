@@ -12,7 +12,7 @@ Whether you're collaborating with AI, taking personal notes, or working with a t
 
 At the heart of Markdown Docs is a state-of-the-art **What You See Is What You Get (WYSIWYG)** editor, powered by the acclaimed **MDX Editor**. This means you can say goodbye to constant context switching between raw Markdown and a preview pane. With Markdown Docs, you write and format your documents in a single, beautiful interface.
 
-{{test\_test\_test}}
+{{test_test_test}}
 
 ### Effortless Formatting
 
