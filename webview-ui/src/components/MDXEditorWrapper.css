@@ -42,19 +42,19 @@
   --baseText: var(--vscode-editor-foreground);
   --baseTextContrast: var(--vscode-editor-foreground);
   
-  /* Accent colors - interactive elements */
-  --accentBase: var(--vscode-button-background);
+  /* Accent colors - use proper VS Code widget borders instead of button borders */
+  --accentBase: var(--vscode-button-secondaryBackground);
   --accentBgSubtle: var(--vscode-button-secondaryBackground);
-  --accentBg: var(--vscode-button-background);
-  --accentBgHover: var(--vscode-button-hoverBackground);
-  --accentBgActive: var(--vscode-button-hoverBackground);
-  --accentLine: var(--vscode-button-border);
-  --accentBorder: var(--vscode-button-border);
-  --accentBorderHover: var(--vscode-button-border);
-  --accentSolid: var(--vscode-button-background);
-  --accentSolidHover: var(--vscode-button-hoverBackground);
-  --accentText: var(--vscode-button-foreground);
-  --accentTextContrast: var(--vscode-button-foreground);
+  --accentBg: var(--vscode-button-secondaryBackground);
+  --accentBgHover: var(--vscode-button-secondaryHoverBackground);
+  --accentBgActive: var(--vscode-button-secondaryHoverBackground);
+  --accentLine: var(--vscode-widget-border);
+  --accentBorder: var(--vscode-widget-border);
+  --accentBorderHover: var(--vscode-widget-border);
+  --accentSolid: var(--vscode-button-secondaryBackground);
+  --accentSolidHover: var(--vscode-button-secondaryHoverBackground);
+  --accentText: var(--vscode-button-secondaryForeground);
+  --accentTextContrast: var(--vscode-button-secondaryForeground);
 
   /* Layout and structure */
   background: var(--vscode-editor-background);
@@ -146,7 +146,7 @@
   background: var(--vscode-textCodeBlock-background);
   color: var(--vscode-editor-foreground);
   border-radius: 4px;
-  border: 1px solid rgba(128, 128, 128, 0.2);
+  border: 1px solid var(--vscode-editorWidget-border, rgba(128, 128, 128, 0.2));
   font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
   font-size: 13px;
   line-height: 1.4;
@@ -299,7 +299,7 @@ button[role="combobox"][aria-label="Language"],
 [data-code-block-editor] button {
   background: var(--vscode-button-secondaryBackground) !important;
   color: var(--vscode-button-secondaryForeground) !important;
-  border: 1px solid var(--vscode-button-border) !important;
+  border: 1px solid var(--vscode-editorWidget-border) !important;
   border-radius: 4px !important;
   font-size: 12px !important;
   padding: 4px 8px !important;
@@ -327,7 +327,7 @@ button[role="combobox"][aria-label="Language"]:hover,
 .mdxeditor-code-block [data-radix-select-trigger] {
   background: var(--vscode-button-secondaryBackground) !important;
   color: var(--vscode-button-secondaryForeground) !important;
-  border: 1px solid var(--vscode-button-border) !important;
+  border: 1px solid var(--vscode-editorWidget-border) !important;
   border-radius: 4px !important;
 }
 
@@ -527,7 +527,7 @@ button[role="combobox"][aria-label="Language"]:hover,
   font-size: 12px;
   background: var(--vscode-button-secondaryBackground);
   color: var(--vscode-button-secondaryForeground);
-  border: 1px solid var(--vscode-button-border);
+  border: 1px solid var(--vscode-widget-border);
   border-radius: 4px;
   cursor: pointer;
 }
@@ -565,7 +565,7 @@ button[role="combobox"][aria-label="Language"]:hover,
   transform: translateY(-50%);
   background: var(--vscode-button-background);
   color: var(--vscode-button-foreground);
-  border: 1px solid var(--vscode-button-border);
+  border: 1px solid var(--vscode-widget-border);
   border-radius: 20px;
   padding: 8px 12px;
   cursor: pointer;
@@ -583,7 +583,7 @@ button[role="combobox"][aria-label="Language"]:hover,
   position: absolute;
   background: var(--vscode-button-background);
   color: var(--vscode-button-foreground);
-  border: 1px solid var(--vscode-button-border);
+  border: 1px solid var(--vscode-widget-border);
   border-radius: 50%;
   padding: 8px;
   font-size: 16px;
@@ -618,7 +618,7 @@ button[role="combobox"][aria-label="Language"]:hover,
 .mdx-comment-button {
   background: var(--vscode-button-secondaryBackground);
   color: var(--vscode-button-secondaryForeground);
-  border: 1px solid var(--vscode-button-border);
+  border: 1px solid var(--vscode-widget-border);
   border-radius: 3px;
   padding: 6px 8px;
   font-size: 13px;
@@ -1033,9 +1033,9 @@ body {
 
 /* Persistent focus state for sidebar comments - more subtle than highlight animation */
 .comment-item.focused {
-  background-color: rgba(var(--vscode-focusBorder-rgba, 0, 123, 255), 0.08) !important;
-  border-left: 2px solid var(--vscode-focusBorder) !important;
-  box-shadow: inset 0 0 0 1px rgba(var(--vscode-focusBorder-rgba, 0, 123, 255), 0.2);
+  background-color: rgba(0, 123, 255, 0.08) !important;
+  border-left: 4px solid #007acc !important; /* Blue focus border, thicker */
+  box-shadow: inset 0 0 0 1px rgba(0, 123, 255, 0.2);
   transform: translateX(2px);
 }
 
@@ -1044,7 +1044,7 @@ body {
 .mdx-editor .mdxeditor-diff-source-toggle-wrapper button {
   background: var(--vscode-button-secondaryBackground) !important;
   color: var(--vscode-button-secondaryForeground) !important;
-  border: 1px solid var(--vscode-button-border) !important;
+  border: 1px solid var(--vscode-widget-border) !important;
   border-radius: 4px !important;
   font-size: 12px !important;
   padding: 4px 8px !important;
@@ -1253,7 +1253,7 @@ body {
 .mdx-editor [role="dialog"] button {
   background: var(--vscode-button-background) !important;
   color: var(--vscode-button-foreground) !important;
-  border: 1px solid var(--vscode-button-border) !important;
+  border: 1px solid var(--vscode-widget-border) !important;
   border-radius: 4px !important;
   padding: 10px 16px !important;
   font-size: 13px !important;
@@ -1276,3 +1276,4 @@ body {
 .mdx-editor [role="dialog"] button:first-of-type:hover {
   background: var(--vscode-button-secondaryHoverBackground) !important;
 }
+
