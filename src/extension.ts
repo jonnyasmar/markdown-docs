@@ -50,8 +50,15 @@ function preprocessAngleBrackets(markdown: string): string {
 }
 
 function postprocessAngleBrackets(markdown: string): string {
-  // Only remove backslash escaping from < characters (we no longer escape >)
-  return markdown.replace(/\\</g, '<');
+  // First clean up escaped underscores inside curly braces
+  let result = markdown.replace(/\{\{([^}]*)\}\}/g, (match, content) => {
+    // Remove backslash escaping from underscores within curly braces
+    const unescapedContent = content.replace(/\\_/g, '_');
+    return `{{${unescapedContent}}}`;
+  });
+  
+  // Then remove backslash escaping from < characters (we no longer escape >)
+  return result.replace(/\\</g, '<');
 }
 
 function debug(...args: any[]) {

@@ -1,0 +1,19 @@
+# Source files
+/src/**
+/test/**
+
+# Development files
+.vscode/**
+.gitignore
+webpack.config.js
+*.log
+.DS_Store
+
+# Webview source
+/webview-ui/src/**
+/webview-ui/node_modules/**
+/webview-ui/package-lock.json
+/webview-ui/tsconfig.json
+
+# Keep everything in dist - it's already built
+# dist/** is needed for the extension to work

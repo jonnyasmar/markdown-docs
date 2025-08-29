@@ -48,7 +48,7 @@ import { MermaidEditor } from './MermaidEditor';
 import { escapeDirectiveContent } from '../utils/textNormalization';
 import './MDXEditorWrapper.css';
 import './MermaidEditor.css';
-import { preprocessAngleBrackets, postprocessAngleBrackets, preprocessCurlyBraces, postprocessCurlyBraces } from './SimplifiedAngleBracketPlugin';
+import { preprocessAngleBrackets, postprocessAngleBrackets, preprocessCurlyBraces, postprocessCurlyBraces, displayCurlyBraces } from './SimplifiedAngleBracketPlugin';
 
 // Inline search component for toolbar
 const InlineSearchInput = ({ searchInputRef, isTyping }: { searchInputRef: React.RefObject<HTMLInputElement>, isTyping?: boolean }) => {
@@ -916,8 +916,8 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
           const selection = window.getSelection();
           const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
 
-          // Apply preprocessing to handle curly brace patterns
-          const processedMarkdown = preprocessCurlyBraces(markdown);
+          // Extension already preprocessed everything, use content directly
+          const processedMarkdown = markdown;
 
           // Update the editor content directly (images already preprocessed by extension)
           editorRef.current?.setMarkdown(processedMarkdown);
@@ -958,8 +958,8 @@ const handleMarkdownChange = useCallback((newMarkdown: string) => {
   clearTimeout(typingTimeoutRef.current);
   typingTimeoutRef.current = setTimeout(() => setIsTyping(false), 300);
 
-  // Apply postprocessing to restore curly brace patterns before saving
-  const processedMarkdown = postprocessCurlyBraces(newMarkdown);
+  // Apply postprocessing to convert mathematical angle brackets back to regular ones and restore curly braces
+  const processedMarkdown = postprocessAngleBrackets(newMarkdown);
 
   // Immediate response: Update the editor state synchronously
   const hasChanges = processedMarkdown !== markdown;
@@ -1863,7 +1863,7 @@ return (
                         }, 2000);
                       }
                     }}
-                    markdown={preprocessCurlyBraces(markdown || '')}
+                    markdown={markdown || ''}
                     onChange={handleMarkdownChange}
                     suppressHtmlProcessing={true}
                     onError={(error) => {

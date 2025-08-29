@@ -13,7 +13,6 @@ out/
 # VS Code
 .vscode/
 .vscode-test/
-.vscodeignore
 
 # Compiled output
 *.js

@@ -63,14 +63,19 @@ export const preprocessCurlyBraces = (markdown: string): string => {
   // Replace underscores only inside {{ }} patterns with a placeholder
   // This prevents MDX from treating them as italic markdown syntax
   return markdown.replace(/\{\{([^}]*)\}\}/g, (match, content) => {
+    // Skip if already processed (contains placeholder)
+    if (content.includes('UUUNDERSCOREUUU')) {
+      return match;
+    }
+    
     // Only replace if we're not in a code context
     const matchIndex = markdown.indexOf(match);
     if (isInInlineCode(markdown, matchIndex) || isInCodeBlock(markdown, matchIndex)) {
       return match; // Preserve as-is in code contexts
     }
     
-    // Replace underscores with placeholder
-    const protectedContent = content.replace(/_/g, '___UNDERSCORE___');
+    // Replace underscores with a unique placeholder (no underscores in placeholder!)
+    const protectedContent = content.replace(/_/g, 'UUUNDERSCOREUUU');
     return `{{${protectedContent}}}`;
   });
 };
@@ -92,7 +97,7 @@ export const postprocessCurlyBraces = (markdown: string): string => {
   // Restore underscores that were protected as placeholders
   return markdown.replace(/\{\{([^}]*)\}\}/g, (match, content) => {
     // Replace placeholders back to underscores
-    const restoredContent = content.replace(/___UNDERSCORE___/g, '_');
+    const restoredContent = content.replace(/UUUNDERSCOREUUU/g, '_');
     return `{{${restoredContent}}}`;
   });
 };
@@ -104,6 +109,15 @@ export const unescapeUnderscoresInCurlyBraces = (markdown: string): string => {
     // Remove backslash escaping from underscores within curly braces
     const unescapedContent = content.replace(/\\_/g, '_');
     return `{{${unescapedContent}}}`;
+  });
+};
+
+// Display function to show clean underscores in editor while maintaining placeholders internally
+export const displayCurlyBraces = (markdown: string): string => {
+  // Convert placeholders back to underscores for display only
+  return markdown.replace(/\{\{([^}]*)\}\}/g, (match, content) => {
+    const displayContent = content.replace(/UUUNDERSCOREUUU/g, '_');
+    return `{{${displayContent}}}`;
   });
 };
 
