@@ -3,11 +3,11 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "dev": "webpack --config webpack.config.js --watch",
-    "build": "webpack --config webpack.config.js",
+    "dev": "vite",
+    "build": "vite build",
+    "build:webpack": "webpack --config webpack.config.js",
     "build:rspack": "rspack build -c rspack.config.js",
-    "preview": "vite preview",
-    "build:vite": "vite build"
+    "preview": "vite preview"
   },
   "keywords": [],
   "author": "",

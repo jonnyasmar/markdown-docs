@@ -30,12 +30,12 @@ export const MermaidEditor: React.FC<MermaidEditorProps> = ({
   const splitContainerRef = useRef<HTMLDivElement>(null);
   const diagramId = useRef(`mermaid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
 
-  // Initialize mermaid with secure configuration
+  // Initialize mermaid
   useEffect(() => {
     mermaid.initialize({
       startOnLoad: false,
       theme: 'dark',
-      securityLevel: 'strict', // Changed from 'loose' to 'strict' for security
+      securityLevel: 'loose',
       fontFamily: 'inherit',
     });
   }, []);

@@ -44,6 +44,13 @@ export function CommentItem({ comment, onNavigate, onEdit, onDelete }: CommentIt
                 >
                     Edit
                 </button>
+                <button
+                    className="btn btn-primary"
+                    onClick={() => onNavigate(comment.id)}
+                    title="Go to comment in editor"
+                >
+                    Go to
+                </button>
             </div>
         </div>
     );

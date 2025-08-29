@@ -2,7 +2,7 @@
   "name": "markdown-docs",
   "displayName": "Markdown Docs & Comments",
   "description": "WYSIWYG Markdown Editor with Inline Commenting (great for working with AI!)",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "icon": "media/icon.png",
   "publisher": "jonnyasmar",
   "repository": {
@@ -64,16 +64,22 @@
       "properties": {
         "markdown-docs.defaultFont": {
           "type": "string",
-          "default": "Arial",
+          "default": "Default",
           "description": "Default font family for the markdown editor",
           "enum": [
+            "Default",
             "Arial",
             "Times New Roman",
             "Roboto",
             "Georgia",
             "Calibri",
             "Garamond",
-            "Book Antiqua"
+            "Book Antiqua",
+            "Courier New",
+            "Open Sans",
+            "Lato",
+            "Montserrat",
+            "Source Sans Pro"
           ]
         }
       }

@@ -537,7 +537,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   onNavigateToComment,
   onEditComment,
   onDeleteComment,
-  defaultFont = 'Arial'
+  defaultFont = 'Default'
 }) => {
   logger.debug('🚀 MDXEditorWrapper rendered with markdown length:', markdown?.length || 0);
   if (markdown && markdown.includes('![')) {
@@ -621,13 +621,19 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
   // Available fonts
   const availableFonts = [
+    'Default',
     'Arial',
     'Times New Roman',
     'Roboto',
     'Georgia',
     'Calibri',
     'Garamond',
-    'Book Antiqua'
+    'Book Antiqua',
+    'Courier New',
+    'Open Sans',
+    'Lato',
+    'Montserrat',
+    'Source Sans Pro'
   ];
   const editorRef = useRef<MDXEditorMethods>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -754,6 +760,11 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     setFocusedCommentId(commentId);
     logger.debug('Editor ref exists:', !!editorRef.current);
 
+    // Call external navigation handler if provided
+    if (onNavigateToComment) {
+      onNavigateToComment(commentId);
+    }
+
     // Get editor root element from ref if available
     let editorRootElement = null;
     if (editorRef.current) {
@@ -773,10 +784,19 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
     logger.debug('Editor root element from ref:', editorRootElement);
 
-    // Find comment directive element in the editor
+    // Find comment directive element in the editor - try multiple selectors
     const containerElement = containerRef.current || document;
-    const commentElement = containerElement.querySelector(`[data-directive-key*="${commentId}"]`) as HTMLElement;
-    logger.debug('Found comment element:', commentElement);
+    let commentElement = containerElement.querySelector(`[data-comment-id="${commentId}"]`) as HTMLElement;
+    
+    // Fallback selectors if the first doesn't work
+    if (!commentElement) {
+      commentElement = containerElement.querySelector(`[data-directive-key*="${commentId}"]`) as HTMLElement;
+    }
+    if (!commentElement) {
+      commentElement = containerElement.querySelector(`.comment-highlight[title*="${commentId}"]`) as HTMLElement;
+    }
+    
+    logger.debug('Found comment element:', commentElement, 'with selector for ID:', commentId);
 
     if (commentElement) {
       logger.debug('Scrolling to comment element and highlighting it');
@@ -789,11 +809,17 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       });
 
       // Add highlight class for visual feedback
+      // First, force a reflow to ensure the scroll completes
+      commentElement.offsetHeight;
+      
+      // Add the highlight class immediately
       commentElement.classList.add('editor-highlighted');
-
-      // Remove highlight after animation
+      
+      // Remove highlight after animation completes
       setTimeout(() => {
-        commentElement.classList.remove('editor-highlighted');
+        if (commentElement.classList.contains('editor-highlighted')) {
+          commentElement.classList.remove('editor-highlighted');
+        }
       }, 2000);
     }
   }, []);

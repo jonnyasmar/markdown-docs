@@ -2,6 +2,10 @@
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Garamond:wght@400;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Book+Antiqua:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;700&display=swap');
 
 /* Import Radix UI colors for dark theme */
 @import '@radix-ui/colors/slate.css';
@@ -123,7 +127,7 @@
   font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
 }
 
-/* Pre-formatted code blocks */
+/* Pre-formatted code blocks - auto-sizing to content */
 .mdx-content pre {
   background: var(--vscode-textCodeBlock-background);
   color: var(--vscode-editor-foreground);
@@ -132,24 +136,57 @@
   overflow-x: auto;
   font-size: 13px;
   font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  min-height: auto;
+  height: auto;
+  max-height: none;
 }
 
-/* CodeMirror editor theming - clean approach using proper CSS cascade */
+/* CODE BLOCKS: Single focused solution for CodeMirror height control */
 .mdx-content .cm-editor {
   background: var(--vscode-textCodeBlock-background);
   color: var(--vscode-editor-foreground);
   border-radius: 4px;
-  border: 1px solid var(--vscode-panel-border);
+  border: 1px solid rgba(128, 128, 128, 0.2);
   font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
   font-size: 13px;
   line-height: 1.4;
+  /* Force compact sizing for code blocks */
+  min-height: fit-content;
+  height: fit-content;
+  max-height: fit-content;
 }
 
 .mdx-content .cm-editor .cm-content {
-  background: var(--vscode-textCodeBlock-background);
-  color: var(--vscode-editor-foreground);
+  min-height: fit-content;
+  height: fit-content;
+  max-height: fit-content;
   padding: 8px 12px;
-  font-family: inherit; /* Inherit from parent */
+}
+
+.mdx-content .cm-editor .cm-scroller {
+  min-height: fit-content;
+  height: fit-content;
+  max-height: fit-content;
+}
+
+/* Override any inline styles that might be applied by JavaScript */
+.mdx-content .cm-editor[style],
+.mdx-content .cm-editor .cm-content[style],
+.mdx-content .cm-editor .cm-scroller[style] {
+  height: fit-content !important;
+  min-height: fit-content !important;
+  max-height: fit-content !important;
+}
+
+/* Preserve mermaid auto-sizing behavior - exclude from height restrictions */
+.mdx-content .cm-editor[data-language="mermaid"],
+.mdx-content .cm-editor[data-language="mermaid"] .cm-content,
+.mdx-content .cm-editor[data-language="mermaid"] .cm-scroller,
+.mdx-content pre[data-language="mermaid"],
+.mdx-content .mermaid-container {
+  height: auto !important;
+  min-height: 200px !important;
+  max-height: none !important;
 }
 
 .mdx-content .cm-editor .cm-line {
@@ -349,19 +386,18 @@ button[role="combobox"][aria-label="Language"]:hover,
   color: var(--baseText);
   overflow-y: auto !important;
   overflow-x: hidden !important;
-  height: auto !important;
-  min-height: 100% !important;
-  max-height: none !important;
+  flex: 1; /* Take remaining space after toolbar */
+  min-height: 0; /* Allow flex item to shrink */
   padding: 0;
   margin: 0;
-  flex: 1;
 }
 
-/* MDXEditor layout */
+/* MDXEditor layout - ensure proper flex sizing */
 .mdx-editor {
-  height: 100%;
+  flex: 1; /* Take remaining space after toolbar */
   display: flex;
   flex-direction: column;
+  min-height: 0; /* Allow flex item to shrink below content size */
 }
 
 /* Toolbar styling with proper spacing */
@@ -612,37 +648,37 @@ button[role="combobox"][aria-label="Language"]:hover,
 }
 
 .comment-highlight.editor-highlighted, mark.editor-highlighted {
-  background-color: rgba(0, 123, 255, 0.4);
-  box-shadow: 0 0 8px rgba(0, 123, 255, 0.6);
+  background-color: rgba(var(--vscode-focusBorder-rgba, 0, 123, 255), 0.4);
+  box-shadow: 0 0 8px rgba(var(--vscode-focusBorder-rgba, 0, 123, 255), 0.6);
   animation: pulse-editor-highlight 0.8s ease-out;
 }
 
 @keyframes pulse-editor-highlight {
   0% {
-    background-color: rgba(0, 123, 255, 0.6);
+    background-color: rgba(var(--vscode-focusBorder-rgba, 0, 123, 255), 0.6);
     transform: scale(1);
   }
   50% {
-    background-color: rgba(0, 123, 255, 0.5);
+    background-color: rgba(var(--vscode-focusBorder-rgba, 0, 123, 255), 0.5);
     transform: scale(1.02);
   }
   100% {
-    background-color: rgba(0, 123, 255, 0.4);
+    background-color: rgba(var(--vscode-focusBorder-rgba, 0, 123, 255), 0.4);
     transform: scale(1);
   }
 }
 
 /* Persistent focus state for inline comments - more subtle than animation */
 .comment-highlight.focused, mark.focused {
-  background-color: rgba(0, 123, 255, 0.2);
+  background-color: rgba(var(--vscode-focusBorder-rgba, 0, 123, 255), 0.2);
   border-radius: 2px;
 }
 
 .comment-item.highlighted, mark.highlighted {
-  background-color: rgba(0, 123, 255, 0.15);
-  border-left: 3px solid #007bff;
+  background-color: rgba(var(--vscode-focusBorder-rgba, 0, 123, 255), 0.15);
+  border-left: 3px solid var(--vscode-focusBorder);
   transform: translateX(4px);
-  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.2);
+  box-shadow: 0 2px 8px rgba(var(--vscode-focusBorder-rgba, 0, 123, 255), 0.2);
   transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
   animation: pulse-highlight 0.6s ease-out;
 }
@@ -650,15 +686,15 @@ button[role="combobox"][aria-label="Language"]:hover,
 @keyframes pulse-highlight {
   0% {
     transform: translateX(0px) scale(1);
-    background-color: rgba(0, 123, 255, 0.3);
+    background-color: rgba(var(--vscode-focusBorder-rgba, 0, 123, 255), 0.3);
   }
   50% {
     transform: translateX(6px) scale(1.02);
-    background-color: rgba(0, 123, 255, 0.25);
+    background-color: rgba(var(--vscode-focusBorder-rgba, 0, 123, 255), 0.25);
   }
   100% {
     transform: translateX(4px) scale(1);
-    background-color: rgba(0, 123, 255, 0.15);
+    background-color: rgba(var(--vscode-focusBorder-rgba, 0, 123, 255), 0.15);
   }
 }
 
@@ -721,10 +757,41 @@ button[role="combobox"][aria-label="Language"]:hover,
   font-family: "Book Antiqua", serif;
 }
 
+/* Default Font - Uses the editor's configured font */
+.mdx-content.font-default h1, .mdx-content.font-default h2, .mdx-content.font-default h3,
+.mdx-content.font-default h4, .mdx-content.font-default h5, .mdx-content.font-default h6,
+.mdx-content.font-default p, .mdx-content.font-default li, .mdx-content.font-default td {
+  font-family: var(--vscode-editor-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif);
+}
+
 .mdx-content.font-courier-new h1, .mdx-content.font-courier-new h2, .mdx-content.font-courier-new h3,
 .mdx-content.font-courier-new h4, .mdx-content.font-courier-new h5, .mdx-content.font-courier-new h6,
 .mdx-content.font-courier-new p, .mdx-content.font-courier-new li, .mdx-content.font-courier-new td {
   font-family: "Courier New", Courier, monospace;
+}
+
+.mdx-content.font-open-sans h1, .mdx-content.font-open-sans h2, .mdx-content.font-open-sans h3,
+.mdx-content.font-open-sans h4, .mdx-content.font-open-sans h5, .mdx-content.font-open-sans h6,
+.mdx-content.font-open-sans p, .mdx-content.font-open-sans li, .mdx-content.font-open-sans td {
+  font-family: "Open Sans", Arial, sans-serif;
+}
+
+.mdx-content.font-lato h1, .mdx-content.font-lato h2, .mdx-content.font-lato h3,
+.mdx-content.font-lato h4, .mdx-content.font-lato h5, .mdx-content.font-lato h6,
+.mdx-content.font-lato p, .mdx-content.font-lato li, .mdx-content.font-lato td {
+  font-family: "Lato", Arial, sans-serif;
+}
+
+.mdx-content.font-montserrat h1, .mdx-content.font-montserrat h2, .mdx-content.font-montserrat h3,
+.mdx-content.font-montserrat h4, .mdx-content.font-montserrat h5, .mdx-content.font-montserrat h6,
+.mdx-content.font-montserrat p, .mdx-content.font-montserrat li, .mdx-content.font-montserrat td {
+  font-family: "Montserrat", Arial, sans-serif;
+}
+
+.mdx-content.font-source-sans-pro h1, .mdx-content.font-source-sans-pro h2, .mdx-content.font-source-sans-pro h3,
+.mdx-content.font-source-sans-pro h4, .mdx-content.font-source-sans-pro h5, .mdx-content.font-source-sans-pro h6,
+.mdx-content.font-source-sans-pro p, .mdx-content.font-source-sans-pro li, .mdx-content.font-source-sans-pro td {
+  font-family: "Source Sans Pro", Arial, sans-serif;
 }
 
 /* Book view styling */
@@ -825,11 +892,12 @@ button[role="combobox"][aria-label="Language"]:hover,
   counter-increment: page;
 }
 
-/* MDXEditor toolbar custom components styling */
+/* MDXEditor toolbar custom components styling - improved contrast */
 .mdx-editor .mdxeditor-toolbar button[data-state="on"],
 .mdx-editor .mdxeditor-toolbar button.active {
-  background-color: var(--vscode-button-background);
-  color: var(--vscode-button-foreground);
+  background-color: rgba(var(--vscode-foreground-rgba, 128, 128, 128), 0.15);
+  color: var(--vscode-foreground);
+  border: 1px solid rgba(var(--vscode-foreground-rgba, 128, 128, 128), 0.3);
 }
 
 .mdx-editor .mdxeditor-toolbar [data-radix-select-trigger] {
@@ -850,7 +918,8 @@ button[role="combobox"][aria-label="Language"]:hover,
   overflow-anchor: none !important; /* Prevent anchor scrolling */
 }
 
-[contenteditable="true"] {
+/* Only apply bottom padding to the main editor content area, not code blocks or table cells */
+.mdx-content[contenteditable="true"] {
   padding-bottom: 50vh !important;
 }
 
@@ -964,9 +1033,9 @@ body {
 
 /* Persistent focus state for sidebar comments - more subtle than highlight animation */
 .comment-item.focused {
-  background-color: rgba(0, 123, 255, 0.08) !important;
-  border-left: 2px solid rgba(0, 123, 255, 0.5) !important;
-  box-shadow: inset 0 0 0 1px rgba(0, 123, 255, 0.2);
+  background-color: rgba(var(--vscode-focusBorder-rgba, 0, 123, 255), 0.08) !important;
+  border-left: 2px solid var(--vscode-focusBorder) !important;
+  box-shadow: inset 0 0 0 1px rgba(var(--vscode-focusBorder-rgba, 0, 123, 255), 0.2);
   transform: translateX(2px);
 }
 
@@ -1036,12 +1105,45 @@ body {
   font-variant-ligatures: none;
 }
 
-/* Simple thematic break (HR) styling */
+/* TABLE CELLS: Single focused solution for table height control */
+.mdx-content table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+}
+
+.mdx-content table th,
+.mdx-content table td {
+  border: 1px solid var(--vscode-editorWidget-border, rgba(128, 128, 128, 0.3));
+  padding: 8px 12px;
+  text-align: left;
+  vertical-align: top;
+  line-height: 1.4;
+  /* Force compact sizing for table cells */
+  height: fit-content;
+  min-height: fit-content;
+  max-height: fit-content;
+}
+
+/* Override any inline styles that might be applied */
+.mdx-content table th[style],
+.mdx-content table td[style] {
+  height: fit-content !important;
+  min-height: fit-content !important;
+  max-height: fit-content !important;
+}
+
+.mdx-content table th {
+  background-color: var(--vscode-editorWidget-background);
+  font-weight: bold;
+}
+
+/* Simple thematic break (HR) styling - reduced margin by 50% */
 .mdx-content hr {
   border: none;
   height: 1px;
   background: var(--vscode-editorWidget-border, rgba(128, 128, 128, 0.3));
-  margin: 2rem 0;
+  margin: 1rem 0;
 }
 
 /* Blockquote styling - beautiful, clean quotes */

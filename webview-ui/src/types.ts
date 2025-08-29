@@ -57,7 +57,7 @@ export interface ErrorBoundaryState {
 }
 
 // Utility types for better type safety
-export type FontFamily = 'Arial' | 'Times New Roman' | 'Roboto' | 'Georgia' | 'Calibri' | 'Garamond' | 'Book Antiqua';
+export type FontFamily = 'Default' | 'Arial' | 'Times New Roman' | 'Roboto' | 'Georgia' | 'Calibri' | 'Garamond' | 'Book Antiqua' | 'Courier New' | 'Open Sans' | 'Lato' | 'Montserrat' | 'Source Sans Pro';
 
 // Global window interface extension
 declare global {
