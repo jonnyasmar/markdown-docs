@@ -509,6 +509,8 @@ class EditorPanel {
     const webview = this._panel.webview;
     this._panel.webview.html = this._getHtmlForWebview(webview);
     this._panel.title = path.basename(this._fsPath);
+    // Set markdown icon for the tab
+    this._panel.iconPath = new vscode.ThemeIcon('markdown');
   }
   
   private _isEdit = false;

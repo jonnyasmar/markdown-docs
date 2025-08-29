@@ -9,6 +9,9 @@
     "type": "git",
     "url": "https://github.com/jonnyasmar/markdown-docs"
   },
+  "sponsor": {
+    "url": "https://buymeacoffee.com/jonnygravity"
+  },
   "engines": {
     "vscode": "^1.74.0"
   },
