@@ -279,6 +279,7 @@
   background: var(--vscode-dropdown-background);
   color: var(--vscode-dropdown-foreground);
   border: 1px solid var(--vscode-dropdown-border);
+  border-radius: 0;
 }
 
 /* Radix UI Select component theming */
@@ -303,6 +304,10 @@ button[role="combobox"][aria-label="Language"],
   border-radius: 4px !important;
   font-size: 12px !important;
   padding: 4px 8px !important;
+}
+
+.toolbar-group.display-font-group [role="combobox"]{
+  width: 110px;
 }
 
 /* Language selector hover state */
@@ -406,11 +411,157 @@ button[role="combobox"][aria-label="Language"]:hover,
   min-height: 44px;
   height: auto;
   max-height: none;
-  overflow: visible;
-  overflow-x: auto;
+  overflow: visible; /* Allow overflow menu to appear outside toolbar */
   flex-wrap: nowrap;
   padding: 8px;
+  border-radius: 0;
+  position: relative; /* Enable absolute positioning for overflow menu */
 }
+
+/* Responsive toolbar layout */
+.responsive-toolbar {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 0;
+  position: relative;
+  
+  /* Responsive breakpoint thresholds - adjust these to refine when groups hide */
+  --breakpoint-font-style: 1200px;   /* Font selection dropdown */
+  --breakpoint-blocks: 1000px;       /* Codeblock, Link, Table, Thematic Break */
+  --breakpoint-lists: 850px;         /* Lists toggle */
+  --breakpoint-formatting: 700px;    /* Bold, Italic, Underline */
+  --breakpoint-display-font: 550px;  /* Block type select (H1, H2, etc) */
+  --breakpoint-undo-redo: 400px;     /* Undo/Redo */
+  
+  /* Width sizing variables - adjust these to change component sizes */
+  --text-style-width: 96px; /* 120px * 0.8 = 20% reduction */
+  --search-width: 130px;     /* 200px * 0.8 = 20% reduction */
+}
+
+.toolbar-main {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 0;
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+}
+
+.toolbar-search {
+  flex-shrink: 0;
+}
+
+.toolbar-overflow {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.overflow-trigger {
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+  border: 1px solid var(--vscode-input-border);
+  border-radius: 4px;
+  padding: 6px 8px;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  min-width: 32px;
+  text-align: center;
+  display: none; /* Hidden by default, shown when needed */
+}
+
+.overflow-trigger.visible {
+  display: block;
+}
+
+.overflow-trigger:hover {
+  background: var(--vscode-button-secondaryHoverBackground);
+}
+
+/* Toolbar-based overflow menu (no portal) */
+.overflow-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: var(--vscode-dropdown-background);
+  border: 1px solid var(--vscode-dropdown-border);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  max-width: 80vw;
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8px);
+  transition: all 0.15s ease-out;
+  pointer-events: none;
+}
+
+.overflow-menu.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  pointer-events: all;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.overflow-menu-content {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px;
+  flex-wrap: wrap;
+}
+
+/* Overflow menu groups - controlled by JavaScript hiddenGroups state */
+.overflow-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0 auto;
+}
+
+.overflow-separator {
+  color: var(--vscode-descriptionForeground);
+  margin: 0 8px;
+  font-size: 12px;
+  opacity: 0.8;
+  font-weight: normal;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* Text style and search field widths using CSS variables - stronger selectors */
+.responsive-toolbar .font-style-group [data-radix-select-trigger],
+.responsive-toolbar .overflow-font-style [data-radix-select-trigger] {
+  min-width: var(--text-style-width) !important;
+  width: var(--text-style-width) !important;
+}
+
+.responsive-toolbar .search-input-wrapper {
+  min-width: var(--search-width) !important;
+  max-width: var(--search-width) !important;
+}
+
+/* Override any conflicting rules */
+.mdx-editor .mdxeditor-toolbar [data-radix-select-trigger] {
+  min-width: var(--text-style-width) !important;
+}
+
+/* JavaScript-controlled responsive behavior - no more media queries needed */
 
 /* Comments Sidebar - positioned on the right side */
 .comments-sidebar {
@@ -794,6 +945,124 @@ button[role="combobox"][aria-label="Language"]:hover,
   font-family: "Source Sans Pro", Arial, sans-serif;
 }
 
+/* Font option styling in dropdown - target Radix UI structure */
+/* Use JavaScript to add data attributes and target those */
+.mdxeditor-select-content [role="option"] {
+  /* Base styling for all options */
+}
+
+/* Target specific font options using their IDs or content */
+[role="option"][aria-labelledby] span,
+._selectItem_1e2ox_301 span {
+  /* This will be overridden by JavaScript for specific fonts */
+}
+
+/* Fallback styles using more specific selectors */
+.mdxeditor-select-content [role="option"]:nth-child(1) span {
+  font-family: var(--vscode-editor-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif) !important; /* Default */
+}
+
+.mdxeditor-select-content [role="option"]:nth-child(2) span {
+  font-family: Arial, sans-serif !important; /* Arial */
+}
+
+.mdxeditor-select-content [role="option"]:nth-child(3) span {
+  font-family: "Times New Roman", Times, serif !important; /* Times New Roman */
+}
+
+.mdxeditor-select-content [role="option"]:nth-child(4) span {
+  font-family: Roboto, Arial, sans-serif !important; /* Roboto */
+}
+
+.mdxeditor-select-content [role="option"]:nth-child(5) span {
+  font-family: Georgia, serif !important; /* Georgia */
+}
+
+.mdxeditor-select-content [role="option"]:nth-child(6) span {
+  font-family: Calibri, sans-serif !important; /* Calibri */
+}
+
+.mdxeditor-select-content [role="option"]:nth-child(7) span {
+  font-family: Garamond, serif !important; /* Garamond */
+}
+
+.mdxeditor-select-content [role="option"]:nth-child(8) span {
+  font-family: "Book Antiqua", serif !important; /* Book Antiqua */
+}
+
+.mdxeditor-select-content [role="option"]:nth-child(9) span {
+  font-family: "Courier New", monospace !important; /* Courier New */
+}
+
+.mdxeditor-select-content [role="option"]:nth-child(10) span {
+  font-family: "Open Sans", Arial, sans-serif !important; /* Open Sans */
+}
+
+.mdxeditor-select-content [role="option"]:nth-child(11) span {
+  font-family: "Lato", Arial, sans-serif !important; /* Lato */
+}
+
+.mdxeditor-select-content [role="option"]:nth-child(12) span {
+  font-family: "Montserrat", Arial, sans-serif !important; /* Montserrat */
+}
+
+.mdxeditor-select-content [role="option"]:nth-child(13) span {
+  font-family: "Source Sans Pro", Arial, sans-serif !important; /* Source Sans Pro */
+}
+
+/* Additional selectors for different dropdown implementations */
+.font-option-default {
+  font-family: var(--vscode-editor-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif) !important;
+}
+
+.font-option-arial {
+  font-family: Arial, sans-serif !important;
+}
+
+.font-option-times-new-roman {
+  font-family: "Times New Roman", Times, serif !important;
+}
+
+.font-option-roboto {
+  font-family: Roboto, Arial, sans-serif !important;
+}
+
+.font-option-georgia {
+  font-family: Georgia, serif !important;
+}
+
+.font-option-calibri {
+  font-family: Calibri, sans-serif !important;
+}
+
+.font-option-garamond {
+  font-family: Garamond, serif !important;
+}
+
+.font-option-book-antiqua {
+  font-family: "Book Antiqua", serif !important;
+}
+
+.font-option-courier-new {
+  font-family: "Courier New", monospace !important;
+}
+
+.font-option-open-sans {
+  font-family: "Open Sans", Arial, sans-serif !important;
+}
+
+.font-option-lato {
+  font-family: "Lato", Arial, sans-serif !important;
+}
+
+.font-option-montserrat {
+  font-family: "Montserrat", Arial, sans-serif !important;
+}
+
+.font-option-source-sans-pro {
+  font-family: "Source Sans Pro", Arial, sans-serif !important;
+}
+
 /* Book view styling */
 .mdx-editor-container.book-view {
   background: #f5f5f5 !important;
@@ -904,7 +1173,6 @@ button[role="combobox"][aria-label="Language"]:hover,
   background: var(--vscode-dropdown-background);
   color: var(--vscode-dropdown-foreground);
   border: 1px solid var(--vscode-dropdown-border);
-  border-radius: 3px;
   min-width: 120px;
 }
 
@@ -992,6 +1260,10 @@ body {
   flex: 1;
   height: 100%;
   padding: 0;
+  width: 130px;
+  padding-left: 30px;
+  margin-left: -30px;
+  padding-right: 20px;
 }
 
 .inline-search-input::placeholder {
@@ -1004,7 +1276,7 @@ body {
   color: var(--vscode-descriptionForeground);
   cursor: pointer;
   padding: 0 4px;
-  margin-left: 6px;
+  margin-left: -20px;
   font-size: 16px;
   line-height: 1;
   border-radius: 2px;

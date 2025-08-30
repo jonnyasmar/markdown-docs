@@ -1,4 +1,5 @@
 import React, { useState, useRef, useTransition, startTransition, useMemo, useCallback } from 'react';
+import ReactDOM from 'react-dom';
 import { logger } from '../utils/logger';
 import {
   MDXEditor,
@@ -165,6 +166,110 @@ const InlineSearchInput = ({ searchInputRef, isTyping }: { searchInputRef: React
 
 
 
+// No longer using portal - overflow menu is within toolbar context
+
+// Common toolbar groups component to reduce duplication
+const ToolbarGroups = React.memo(({
+  selectedFont,
+  handleFontChange,
+  availableFonts,
+  isOverflow = false,
+  hiddenGroups = []
+}: {
+  selectedFont: string;
+  handleFontChange: (font: string) => void;
+  availableFonts: string[];
+  isOverflow?: boolean;
+  hiddenGroups?: string[];
+}) => {
+  const groupClass = isOverflow ? 'overflow-group' : 'toolbar-group';
+
+  const shouldShowGroup = (groupName: string) => {
+    return isOverflow ? hiddenGroups.includes(groupName) : !hiddenGroups.includes(groupName);
+  };
+
+  return (
+    <>
+      {shouldShowGroup('undo-redo') && (
+        <>
+          <UndoRedo />
+          {!isOverflow && <Separator />}
+        </>
+      )}
+
+      {/* Block Type (text style) - before font selection */}
+      {shouldShowGroup('display-font') && (
+        <>
+          <div className={`${groupClass} ${isOverflow ? 'overflow-group verflow-display-font' : 'display-font-group'}`}>
+            <BlockTypeSelect />
+            {!isOverflow && <Separator />}
+          </div>
+        </>
+      )}
+
+      {/* Font Selection - now properly positioned */}
+      {shouldShowGroup('font-style') && (
+        <>
+          <div className={`${groupClass} ${isOverflow ? 'overflow-group overflow-font-style' : 'font-style-group'}`}>
+            <Select
+              value={selectedFont}
+              onChange={handleFontChange}
+              triggerTitle="Select Font"
+              placeholder="Font"
+              items={availableFonts.map((font: string) => ({ 
+                value: font, 
+                label: font,
+                className: `font-option-${font.toLowerCase().replace(/\s+/g, '-')}`
+              }))}
+            />
+            {!isOverflow && <Separator />}
+          </div>
+        </>
+      )}
+
+      {shouldShowGroup('formatting') && (
+        <>
+          <div className={`${groupClass} ${isOverflow ? 'overflow-group overflow-formatting' : 'formatting-group'}`}>
+            <BoldItalicUnderlineToggles />
+            {!isOverflow && <Separator />}
+          </div>
+        </>
+      )}
+
+      {shouldShowGroup('lists') && (
+        <>
+          <div className={`${groupClass} ${isOverflow ? 'overflow-group overflow-lists' : 'lists-group'}`}>
+            <ListsToggle />
+            {!isOverflow && <Separator />}
+          </div>
+        </>
+      )}
+
+      {shouldShowGroup('blocks') && (
+        <>
+          <div className={`${groupClass} ${isOverflow ? 'overflow-group overflow-blocks' : 'blocks-group'}`}>
+            <ConditionalContents
+              options={[
+                {
+                  when: (editor) => editor?.editorType === 'codeblock',
+                  contents: () => null
+                },
+                {
+                  fallback: () => <InsertCodeBlock />
+                }
+              ]}
+            />
+            <CreateLink />
+            <InsertTable />
+            <InsertThematicBreak />
+            {!isOverflow && <Separator />}
+          </div>
+        </>
+      )}
+    </>
+  );
+});
+
 // Memoized custom toolbar component to prevent unnecessary re-renders
 const ToolbarWithCommentButton = React.memo(({
   selectedFont,
@@ -175,47 +280,110 @@ const ToolbarWithCommentButton = React.memo(({
   searchInputRef,
   isTyping
 }: any) => {
+  const [isOverflowOpen, setIsOverflowOpen] = useState(false);
+  const [hiddenGroups, setHiddenGroups] = useState<string[]>([]);
+  const overflowTriggerRef = useRef<HTMLButtonElement>(null);
+  const toolbarRef = useRef<HTMLDivElement>(null);
+
+  const handleOverflowToggle = () => {
+    setIsOverflowOpen(!isOverflowOpen);
+  };
+
+  const handleOverflowClose = () => {
+    setIsOverflowOpen(false);
+  };
+
+  const updateResponsiveState = useCallback(() => {
+    if (!toolbarRef.current) return;
+
+    const width = toolbarRef.current.offsetWidth;
+    const newHidden: string[] = [];
+
+    // Use the same thresholds from CSS variables
+    if (width < 930 - 34) newHidden.push('blocks');
+    if (width < 810 - 34) newHidden.push('lists');
+    if (width < 690 - 34) newHidden.push('formatting');
+    if (width < 590 - 34) newHidden.push('font-style');
+    if (width < 430 - 34) newHidden.push('display-font');
+    if (width < 270 - 34) newHidden.push('undo-redo');
+
+    setHiddenGroups(newHidden);
+  }, []);
+
+  // Handle click outside to close overflow menu
+  React.useEffect(() => {
+    if (!isOverflowOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (overflowTriggerRef.current &&
+        !overflowTriggerRef.current.contains(event.target as Node) &&
+        !(event.target as Element).closest('.overflow-menu')) {
+        setIsOverflowOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOverflowOpen]);
+
+  // Set up ResizeObserver to watch toolbar width changes
+  React.useEffect(() => {
+    if (!toolbarRef.current) return;
+
+    const resizeObserver = new ResizeObserver(() => {
+      updateResponsiveState();
+    });
+
+    resizeObserver.observe(toolbarRef.current);
+
+    // Initial measurement
+    updateResponsiveState();
+
+    return () => resizeObserver.disconnect();
+  }, [updateResponsiveState]);
+
   return (
-    <>
-      <UndoRedo />
-      <Separator />
-      <BoldItalicUnderlineToggles />
-      <Separator />
-      <BlockTypeSelect />
-      <Separator />
-      <ListsToggle />
-      <Separator />
-      <ConditionalContents
-        options={[
-          {
-            when: (editor) => editor?.editorType === 'codeblock',
-            contents: () => null // Don't show language selector in main toolbar when in code block
-          },
-          {
-            fallback: () => (
-              <InsertCodeBlock />
-            )
-          }
-        ]}
-      />
-      <CreateLink />
-      <InsertTable />
-      <InsertThematicBreak />
-      <Separator />
-      {/* Use the MDX-powered search input for stable focus and highlighting */}
-      <MDXInlineSearchInput searchInputRef={searchInputRef} isTyping={isTyping} />
-      {/* LEAVE THIS OUT FOR NOW -- IT'S BROKEN <Button onClick={() => setIsBookView(!isBookView)}>
-        📖 {isBookView ? 'Exit Book' : 'Book View'}
-      </Button> */}
-      <Separator />
-      <Select
-        value={selectedFont}
-        onChange={handleFontChange}
-        triggerTitle="Select Font"
-        placeholder="Font"
-        items={availableFonts.map((font: string) => ({ value: font, label: font }))}
-      />
-    </>
+    <div ref={toolbarRef} className="responsive-toolbar">
+      {/* Main toolbar content - always visible */}
+      <div className="toolbar-main">
+        <ToolbarGroups
+          selectedFont={selectedFont}
+          handleFontChange={handleFontChange}
+          availableFonts={availableFonts}
+          isOverflow={false}
+          hiddenGroups={hiddenGroups}
+        />
+
+        {/* Search - in the flow at the end of toolbar items */}
+        <div className="toolbar-search">
+          <MDXInlineSearchInput searchInputRef={searchInputRef} isTyping={isTyping} />
+        </div>
+      </div>
+
+      {/* Overflow menu trigger */}
+      <div className="toolbar-overflow">
+        <button
+          ref={overflowTriggerRef}
+          className={`overflow-trigger ${hiddenGroups.length > 0 ? 'visible' : ''}`}
+          title="More options"
+          onClick={handleOverflowToggle}
+        >
+          ⋮
+        </button>
+
+        <div className={`overflow-menu ${isOverflowOpen ? 'visible' : ''}`}>
+          <div className="overflow-menu-content">
+            <ToolbarGroups
+              selectedFont={selectedFont}
+              handleFontChange={handleFontChange}
+              availableFonts={availableFonts}
+              isOverflow={true}
+              hiddenGroups={hiddenGroups}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
   );
 });
 
@@ -230,10 +398,10 @@ const MDXInlineSearchInput = ({ searchInputRef, isTyping }: { searchInputRef: Re
     if (debounceTimeoutRef.current !== null) {
       clearTimeout(debounceTimeoutRef.current);
     }
-    
+
     // Use longer debounce during active typing for better performance
     const debounceTime = isTyping ? 300 : 150;
-    
+
     debounceTimeoutRef.current = setTimeout(() => {
       const currentValue = searchInputRef.current?.value || '';
       // Use startTransition for non-urgent search updates
@@ -574,7 +742,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   const [editingComment, setEditingComment] = useState<any>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [focusedCommentId, setFocusedCommentId] = useState<string | null>(null);
-  
+
   // Performance optimization: Track typing state to prevent expensive operations during typing
   const [isTyping, setIsTyping] = useState(false);
   const [isPending, startTransitionInternal] = useTransition();
@@ -619,25 +787,65 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     }
   };
 
-  // Available fonts
-  const availableFonts = [
-    'Default',
-    'Arial',
-    'Times New Roman',
-    'Roboto',
-    'Georgia',
-    'Calibri',
-    'Garamond',
-    'Book Antiqua',
-    'Courier New',
-    'Open Sans',
-    'Lato',
-    'Montserrat',
-    'Source Sans Pro'
-  ];
+  // Available fonts with their CSS font-family values
+  const fontFamilyMap = {
+    'Default': 'var(--vscode-editor-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif)',
+    'Arial': 'Arial, sans-serif',
+    'Times New Roman': '"Times New Roman", Times, serif',
+    'Roboto': 'Roboto, Arial, sans-serif',
+    'Georgia': 'Georgia, serif',
+    'Calibri': 'Calibri, sans-serif',
+    'Garamond': 'Garamond, serif',
+    'Book Antiqua': '"Book Antiqua", serif',
+    'Courier New': '"Courier New", monospace',
+    'Open Sans': '"Open Sans", Arial, sans-serif',
+    'Lato': '"Lato", Arial, sans-serif',
+    'Montserrat': '"Montserrat", Arial, sans-serif',
+    'Source Sans Pro': '"Source Sans Pro", Arial, sans-serif'
+  };
+
+  const availableFonts = Object.keys(fontFamilyMap);
   const editorRef = useRef<MDXEditorMethods>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Apply font styles to dropdown options
+  React.useEffect(() => {
+    const styleDropdownOptions = () => {
+      // Wait for dropdown to be rendered
+      setTimeout(() => {
+        const options = document.querySelectorAll('.mdxeditor-select-content [role="option"] span');
+        options.forEach((option, index) => {
+          const fontName = availableFonts[index];
+          if (fontName && fontFamilyMap[fontName as keyof typeof fontFamilyMap]) {
+            (option as HTMLElement).style.fontFamily = fontFamilyMap[fontName as keyof typeof fontFamilyMap];
+          }
+        });
+      }, 50);
+    };
+
+    // Watch for dropdown opening
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'childList') {
+          const addedNodes = Array.from(mutation.addedNodes);
+          const hasDropdown = addedNodes.some(node => 
+            node instanceof Element && node.querySelector('.mdxeditor-select-content')
+          );
+          if (hasDropdown) {
+            styleDropdownOptions();
+          }
+        }
+      });
+    });
+
+    // Watch for dropdown elements being added to the DOM
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [availableFonts, fontFamilyMap]);
 
   // Parse comments from markdown
   const [parsedComments, setParsedComments] = useState<CommentWithAnchor[]>([]);
@@ -687,12 +895,12 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     logger.debug('Attempting to delete comment:', commentId);
     logger.debug('Current markdown length:', markdown?.length);
     logger.debug('Current parsed comments count:', parsedComments.length);
-    
+
     if (!markdown) {
       logger.error('No markdown content to delete comment from');
       return;
     }
-    
+
     const patterns = [
       // Inline comment patterns - try multiple formats
       `:comment\\[([^\\]]*)\\]\\{[^}]*(?:id="${commentId}"|#${commentId})[^}]*\\}`,
@@ -701,21 +909,21 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       `:::comment\\{[^}]*(?:id="${commentId}"|#${commentId})[^}]*\\}[\\s\\S]*?:::`,
       `:::comment\\{[^}]*(?:id="${commentId}"|#${commentId})[^}]*\\}.*?\\n\\s*:::`
     ];
-    
+
     let updatedMarkdown = markdown;
     let found = false;
-    
+
     for (const pattern of patterns) {
       logger.debug('Trying pattern:', pattern);
       const regex = new RegExp(pattern, 'g');
       const matches = [...markdown.matchAll(regex)];
       logger.debug('Pattern matches found:', matches.length);
-      
+
       if (matches.length > 0) {
         matches.forEach((match, index) => {
           logger.debug(`Match ${index}:`, match[0]);
         });
-        
+
         updatedMarkdown = updatedMarkdown.replace(regex, (match, capturedContent) => {
           // For inline comments, return the captured content (the original text)
           // For container comments, we need to extract the content between the directives
@@ -733,7 +941,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         break;
       }
     }
-    
+
     if (!found) {
       logger.error('Could not find comment directive to delete for ID:', commentId);
       logger.debug('Available comment IDs in parsed comments:', parsedComments.map(c => c.id));
@@ -787,7 +995,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     // Find comment directive element in the editor - try multiple selectors
     const containerElement = containerRef.current || document;
     let commentElement = containerElement.querySelector(`[data-comment-id="${commentId}"]`) as HTMLElement;
-    
+
     // Fallback selectors if the first doesn't work
     if (!commentElement) {
       commentElement = containerElement.querySelector(`[data-directive-key*="${commentId}"]`) as HTMLElement;
@@ -795,15 +1003,15 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     if (!commentElement) {
       commentElement = containerElement.querySelector(`.comment-highlight[title*="${commentId}"]`) as HTMLElement;
     }
-    
+
     logger.debug('Found comment element:', commentElement, 'with selector for ID:', commentId);
 
     if (commentElement) {
       logger.debug('Scrolling to comment element and highlighting it');
 
       // Scroll element into view
-      commentElement.scrollIntoView({ 
-        behavior: 'smooth', 
+      commentElement.scrollIntoView({
+        behavior: 'smooth',
         block: 'center',
         inline: 'nearest'
       });
@@ -811,10 +1019,10 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       // Add highlight class for visual feedback
       // First, force a reflow to ensure the scroll completes
       commentElement.offsetHeight;
-      
+
       // Add the highlight class immediately
       commentElement.classList.add('editor-highlighted');
-      
+
       // Remove highlight after animation completes
       setTimeout(() => {
         if (commentElement.classList.contains('editor-highlighted')) {
@@ -827,21 +1035,21 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   // Memoized sorted comments using cached positions - MASSIVE performance improvement
   const sortedCommentItems = useMemo(() => {
     if (parsedComments.length === 0) return [];
-    
+
     const sortedComments = parsedComments.sort((a, b) => {
       // Use cached positions for O(1) sorting instead of O(n*m) regex searches
       const aPos = commentPositions.get(a.id) ?? -1;
       const bPos = commentPositions.get(b.id) ?? -1;
-      
+
       // Both positions found - sort by cached position (ultra-fast)
       if (aPos !== -1 && bPos !== -1) {
         return aPos - bPos;
       }
-      
+
       // One position missing - prioritize found position
       if (aPos !== -1 && bPos === -1) return -1;
       if (bPos !== -1 && aPos === -1) return 1;
-      
+
       // Both missing - fallback to timestamp
       const aTime = new Date(a.timestamp).getTime();
       const bTime = new Date(b.timestamp).getTime();
@@ -969,1054 +1177,1054 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     }
   }, [markdown]);
 
-// True realtime sync state management
-const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-const isExternalUpdateRef = useRef(false);
+  // True realtime sync state management
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const isExternalUpdateRef = useRef(false);
 
-const handleMarkdownChange = useCallback((newMarkdown: string) => {
-  // Skip if this change is from an external update
-  if (isExternalUpdateRef.current) {
-    return;
-  }
+  const handleMarkdownChange = useCallback((newMarkdown: string) => {
+    // Skip if this change is from an external update
+    if (isExternalUpdateRef.current) {
+      return;
+    }
 
-  // Mark as typing for performance optimizations
-  setIsTyping(true);
-  clearTimeout(typingTimeoutRef.current);
-  typingTimeoutRef.current = setTimeout(() => setIsTyping(false), 300);
+    // Mark as typing for performance optimizations
+    setIsTyping(true);
+    clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => setIsTyping(false), 300);
 
-  // Apply postprocessing to convert mathematical angle brackets back to regular ones and restore curly braces
-  const processedMarkdown = postprocessAngleBrackets(newMarkdown);
+    // Apply postprocessing to convert mathematical angle brackets back to regular ones and restore curly braces
+    const processedMarkdown = postprocessAngleBrackets(newMarkdown);
 
-  // Immediate response: Update the editor state synchronously
-  const hasChanges = processedMarkdown !== markdown;
-  setHasUnsavedChanges(hasChanges);
+    // Immediate response: Update the editor state synchronously
+    const hasChanges = processedMarkdown !== markdown;
+    setHasUnsavedChanges(hasChanges);
 
-  // Use React 18 startTransition for non-urgent updates that can be deferred
-  startTransition(() => {
-    onMarkdownChange(processedMarkdown);
-  });
+    // Use React 18 startTransition for non-urgent updates that can be deferred
+    startTransition(() => {
+      onMarkdownChange(processedMarkdown);
+    });
 
-  // Clear any existing dirty state timeout
-  clearTimeout(deferredMessageTimeoutRef.current);
-  
-  // Schedule dirty state notification with debouncing
-  deferredMessageTimeoutRef.current = setTimeout(() => {
-    if (hasChanges && window.vscodeApi) {
+    // Clear any existing dirty state timeout
+    clearTimeout(deferredMessageTimeoutRef.current);
+
+    // Schedule dirty state notification with debouncing
+    deferredMessageTimeoutRef.current = setTimeout(() => {
+      if (hasChanges && window.vscodeApi) {
+        window.vscodeApi.postMessage({
+          command: 'dirtyStateChanged',
+          isDirty: true
+        });
+      }
+    }, 100); // Short delay to batch rapid changes
+  }, [markdown, onMarkdownChange]);
+
+
+  // Handle internal search messages
+  React.useEffect(() => {
+    const handleSearchMessage = (event: MessageEvent) => {
+      if (event.data.type === 'open-search') {
+        logger.debug('Received open-search message, triggering search');
+        // Find search button and click it programmatically
+        const searchButton = document.querySelector('button[title*="Search"]');
+        if (searchButton) {
+          (searchButton as HTMLButtonElement).click();
+        }
+      }
+    };
+
+    window.addEventListener('message', handleSearchMessage);
+    return () => window.removeEventListener('message', handleSearchMessage);
+  }, []);
+
+  // Manual save only - removed auto-save after comment operations
+
+  // Function to convert webview URIs back to relative paths for saving
+  const convertWebviewUrisToRelativePaths = useCallback((content: string): string => {
+    // Convert vscode-webview:// URIs back to relative paths for file storage
+    const webviewUriRegex = /!\[([^\]]*)\]\(vscode-webview:\/\/[^\/]+\/([^)]+)\)/g;
+
+    return content.replace(webviewUriRegex, (match, alt, encodedPath) => {
+      try {
+        // Decode the URI path
+        const decodedPath = decodeURIComponent(encodedPath);
+        logger.debug(`Converting webview URI back to relative path: ${decodedPath}`);
+
+        // Extract just the relative portion if it's an absolute path
+        // This assumes the current document is in the same directory structure
+        const relativePath = decodedPath.includes('media/') ?
+          decodedPath.substring(decodedPath.lastIndexOf('media/')) :
+          decodedPath;
+
+        return `![${alt}](${relativePath})`;
+      } catch (error) {
+        logger.error('Error converting webview URI:', error);
+        return match; // Return original if conversion fails
+      }
+    });
+  }, []);
+
+  // Handle Ctrl+S / Cmd+S for saving and Ctrl+F / Cmd+F for search
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        logger.debug('Save keyboard shortcut pressed');
+
+        // Get the current markdown from the editor
+        let contentToSave = markdown;
+        if (editorRef.current) {
+          const editorContent = editorRef.current.getMarkdown();
+
+          // Convert webview URIs back to relative paths
+          const contentWithRelativePaths = convertWebviewUrisToRelativePaths(editorContent);
+
+          // Apply postprocessing to convert mathematical angle brackets back to regular ones and restore curly braces
+          contentToSave = postprocessAngleBrackets(contentWithRelativePaths);
+          logger.debug('Got content from editor, converted URIs, and postprocessed:', contentToSave.substring(0, 100));
+        }
+
+        if (typeof window !== 'undefined' && window.vscodeApi) {
+          logger.debug('Sending save command with content length:', contentToSave.length);
+
+          // Set flag to prevent editor reload after save
+          justSavedRef.current = true;
+
+          window.vscodeApi.postMessage({
+            command: 'save',
+            content: contentToSave
+          });
+          setHasUnsavedChanges(false);
+
+          // Notify extension that changes are saved for tab title indicator
+          if (window.vscodeApi) {
+            window.vscodeApi.postMessage({
+              command: 'dirtyStateChanged',
+              isDirty: false
+            });
+          }
+        }
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        e.preventDefault();
+        logger.debug('Search keyboard shortcut pressed, focusing search input');
+        // Focus the inline search input
+        if (searchInputRef.current) {
+          searchInputRef.current.focus();
+          searchInputRef.current.select();
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [hasUnsavedChanges, markdown, convertWebviewUrisToRelativePaths]);
+
+  // Text selection handling for floating comment button
+  React.useEffect(() => {
+    const handleSelectionChange = () => {
+      // Don't update selection if comment modal is open - lock the selection
+      if (showCommentModal || showEditModal) {
+        return;
+      }
+
+      const selection = window.getSelection();
+      if (selection && selection.toString().trim() && containerRef.current) {
+        const range = selection.getRangeAt(0);
+
+        // Check if the selection is within the editor content area, not in search input or other UI elements
+        const startContainer = range.startContainer;
+        const endContainer = range.endContainer;
+
+        // Find if selection is within editor content
+        const isWithinEditor = (node: Node): boolean => {
+          let current: Node | null = node;
+          while (current) {
+            if (current.nodeType === Node.ELEMENT_NODE) {
+              const element = current as Element;
+              // Check if it's within the MDX editor content area
+              if (element.classList.contains('mdx-content') ||
+                element.classList.contains('mdx-editor-content') ||
+                element.closest('.mdx-content') ||
+                element.closest('.mdx-editor-content') ||
+                element.closest('[contenteditable="true"]')) {
+                return true;
+              }
+              // Exclude search input and other UI elements
+              if (element.classList.contains('inline-search-input') ||
+                element.closest('.inline-search-container') ||
+                element.closest('.comments-sidebar') ||
+                element.closest('.toolbar')) {
+                return false;
+              }
+            }
+            current = current.parentNode;
+          }
+          return false;
+        };
+
+        // Only show comment button if selection is within editor content
+        if (!isWithinEditor(startContainer) || !isWithinEditor(endContainer)) {
+          logger.debug('Selection not within editor content area, hiding button');
+          setShowFloatingButton(false);
+          if (!showCommentModal && !showEditModal) {
+            setSelectedText('');
+            setCurrentSelection(null);
+          }
+          return;
+        }
+
+        const rect = range.getBoundingClientRect();
+        const containerRect = containerRef.current.getBoundingClientRect();
+
+        const selectedTextContent = selection.toString().trim();
+        logger.debug('Text selected in editor:', selectedTextContent);
+        logger.debug('Selection rect:', rect);
+
+        // Position button on the right edge of the editor content area
+        const editorContentRect = containerRef.current.querySelector('.mdx-editor-content')?.getBoundingClientRect();
+        const rightEdgeX = editorContentRect ? editorContentRect.right - containerRect.left - 50 : containerRect.width - 60;
+
+        setFloatingButtonPosition({
+          x: rightEdgeX,
+          y: rect.top - containerRect.top + rect.height / 2 - 20
+        });
+        setSelectedText(selectedTextContent);
+        setShowFloatingButton(true);
+
+        // Store the actual selected text range
+        setCurrentSelection({
+          start: range.startOffset,
+          end: range.endOffset
+        });
+      } else {
+        logger.debug('No text selected or selection cleared');
+        setShowFloatingButton(false);
+        // Don't clear selectedText immediately - keep it for the modal
+        if (!showCommentModal && !showEditModal) {
+          setSelectedText('');
+          setCurrentSelection(null);
+        }
+      }
+    };
+
+    document.addEventListener('selectionchange', handleSelectionChange);
+    return () => {
+      document.removeEventListener('selectionchange', handleSelectionChange);
+    };
+  }, [showCommentModal, showEditModal]);
+
+  // Handle clicks on highlighted text to highlight corresponding comment
+  React.useEffect(() => {
+    const handleDocumentClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+
+      // Clear focus if clicking outside comments
+      if (!target.closest('.comment-highlight') && !target.closest('.comment-item')) {
+        setFocusedCommentId(null);
+      }
+
+      if (target && target.classList.contains('comment-highlight')) {
+        const commentId = target.getAttribute('data-comment-id');
+        if (commentId) {
+          logger.debug('Clicked on highlighted text for comment:', commentId);
+
+          // Find and highlight the comment in the sidebar
+          const commentElements = document.querySelectorAll('.comment-item');
+          commentElements.forEach(el => el.classList.remove('highlighted'));
+
+          // Find the comment in the sidebar using the comment ID
+          const sidebarCommentElement = document.querySelector(`.comment-item[data-comment-id="${commentId}"]`);
+          if (sidebarCommentElement) {
+            logger.debug('Found sidebar comment element for ID:', commentId);
+
+            // Add highlight animation
+            sidebarCommentElement.classList.add('highlighted');
+
+            // Find the scrollable comments container - .comments-list is the actual scrollable part
+            const commentsContainer = document.querySelector('.comments-list');
+
+            logger.debug('Comments container search result:', {
+              container: commentsContainer,
+              classList: commentsContainer?.classList.toString(),
+              tagName: commentsContainer?.tagName
+            });
+
+            if (commentsContainer) {
+              logger.debug('Found scrollable comments container, checking scroll properties:', {
+                scrollHeight: commentsContainer.scrollHeight,
+                clientHeight: commentsContainer.clientHeight,
+                isScrollable: commentsContainer.scrollHeight > commentsContainer.clientHeight
+              });
+
+              // Check if we need to scroll (comment is outside viewport)
+              const containerRect = commentsContainer.getBoundingClientRect();
+              const commentRect = sidebarCommentElement.getBoundingClientRect();
+
+              const isAboveViewport = commentRect.top < containerRect.top;
+              const isBelowViewport = commentRect.bottom > containerRect.bottom;
+              const needsScroll = isAboveViewport || isBelowViewport;
+
+              logger.debug('Scroll needed:', needsScroll, { isAboveViewport, isBelowViewport });
+
+              if (needsScroll) {
+                // Calculate scroll position to center the comment
+                const relativeTop = (sidebarCommentElement as HTMLElement).offsetTop;
+                const targetScrollTop = relativeTop - (containerRect.height / 2) + (commentRect.height / 2);
+
+                logger.debug('Scrolling sidebar only to position:', targetScrollTop);
+
+                // Scroll ONLY the sidebar, not the whole page
+                commentsContainer.scrollTo({
+                  top: Math.max(0, targetScrollTop),
+                  behavior: 'smooth'
+                });
+              }
+            } else {
+              logger.debug('Comments container not found for scrolling');
+            }
+          } else {
+            logger.debug('Sidebar comment element not found for ID:', commentId);
+          }
+        }
+      }
+    };
+
+    document.addEventListener('click', handleDocumentClick);
+    return () => {
+      document.removeEventListener('click', handleDocumentClick);
+    };
+  }, []);
+
+  // Sidebar resizing logic
+  React.useEffect(() => {
+    let isResizing = false;
+
+    const handleMouseDown = (e: MouseEvent) => {
+      if ((e.target as HTMLElement).classList.contains('sidebar-resize-handle')) {
+        isResizing = true;
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+      }
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isResizing && containerRef.current) {
+        const containerRect = containerRef.current.getBoundingClientRect();
+        const newWidth = containerRect.right - e.clientX;
+        setSidebarWidth(Math.max(280, Math.min(600, newWidth)));
+      }
+    };
+
+    const handleMouseUp = () => {
+      if (isResizing) {
+        isResizing = false;
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      }
+    };
+
+    document.addEventListener('mousedown', handleMouseDown);
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousedown', handleMouseDown);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
+
+  // Cleanup on unmount
+  React.useEffect(() => {
+    return () => {
+      // Clear external update flag on unmount
+      isExternalUpdateRef.current = false;
+    };
+  }, []);
+
+  const handleOpenCommentModal = (text: string) => {
+    logger.debug('handleOpenCommentModal called with text:', text);
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      // Simple range calculation - in a real app you'd want more sophisticated text position tracking
+      setCurrentSelection({
+        start: range.startOffset,
+        end: range.endOffset
+      });
+    }
+    setSelectedText(text);
+    setShowCommentModal(true);
+    logger.debug('Modal should be opening, showCommentModal set to true');
+  };
+
+  const handleSubmitComment = (comment: string) => {
+    logger.debug('Enhanced handleSubmitComment called with:', comment);
+    logger.debug('Selected text:', selectedText);
+    logger.debug('Selected text length:', selectedText.length);
+    logger.debug('Comment length:', comment.trim().length);
+
+    if (!comment.trim() || !selectedText) {
+      logger.warn('Missing comment or selected text');
+      setShowCommentModal(false);
+      return;
+    }
+
+    if (!editorRef.current) {
+      logger.error('Editor ref not available');
+      setShowCommentModal(false);
+      return;
+    }
+
+    const commentId = `comment-${Date.now()}`;
+    const currentMarkdown = editorRef.current.getMarkdown();
+
+    try {
+      // With native directive insertion, we can handle most text reliably
+      // Check for problematic content that can't be commented on
+      const isInCodeBlock = detectCodeBlockSelection(currentMarkdown, selectedText);
+      const isMultiParagraph = selectedText.includes('\n\n');
+
+      logger.debug('Smart context analysis:', {
+        isInCodeBlock,
+        isMultiParagraph,
+        selectedTextLength: selectedText.length
+      });
+
+      if (isInCodeBlock) {
+        // Code blocks can't be reliably commented - show error
+        logger.debug('Detected code block content, showing error message');
+        if (window.vscodeApi) {
+          window.vscodeApi.postMessage({
+            command: 'error',
+            content: 'Sorry, code blocks cannot be commented on directly. If you have ideas how to make this work, please let us know on our GitHub repo!'
+          });
+        }
+        return;
+      } else if (isMultiParagraph) {
+        // Multi-paragraph selections use container directive
+        logger.debug('Detected multi-paragraph content, using container directive');
+        handleHybridComment(comment, commentId, currentMarkdown);
+      } else {
+        // Regular text (including formatted text) uses inline directive with native insertion
+        logger.debug('Using native inline directive insertion for regular content');
+        handleInlineComment(comment, commentId, currentMarkdown);
+      }
+
+    } catch (error) {
+      logger.error('Error in comment submission:', error);
+      // Show error instead of falling back to sidebar
+      if (window.vscodeApi) {
+        window.vscodeApi.postMessage({
+          command: 'error',
+          content: 'Failed to add comment. Please try selecting different text or report this issue on our GitHub repo.'
+        });
+      }
+    }
+
+    // Close modal
+    setShowCommentModal(false);
+    setSelectedText('');
+    setCurrentSelection(null);
+  };
+
+
+  // Handle standard inline comments using MDX Editor's native directive insertion
+  const handleInlineComment = (comment: string, commentId: string, currentMarkdown: string) => {
+    logger.debug('Creating inline comment using native directive insertion');
+
+    // Trigger plugin to insert comment directive
+    if (editorRef.current) {
+      // We'll use the plugin's signal to insert the directive
+      // This will be handled by the plugin within the MDX Editor's context
+      setCommentPendingForPlugin({
+        comment,
+        commentId,
+        selectedText,
+        strategy: 'inline'
+      });
+    }
+  };
+
+  // Handle hybrid comments (container directive for complex selections)
+  const handleHybridComment = (comment: string, commentId: string, currentMarkdown: string) => {
+    logger.debug('Creating hybrid comment using native container directive insertion');
+
+    // Trigger plugin to insert comment directive
+    if (editorRef.current) {
+      setCommentPendingForPlugin({
+        comment,
+        commentId,
+        selectedText,
+        strategy: 'container'
+      });
+    }
+  };
+
+  // Function to trigger comment insertion via plugin
+  const setCommentPendingForPlugin = (commentData: { comment: string, commentId: string, selectedText: string, strategy: 'inline' | 'container' }) => {
+    logger.debug('Setting comment pending for plugin insertion');
+    // The plugin will handle this through the cell subscription
+    // We need to publish to the cell from outside the plugin context
+    // This will be handled when the editor mounts
+    setPendingComment(commentData);
+  };
+
+  // Callback for when comment insertion is complete
+  const handleCommentInserted = () => {
+    logger.debug('=== COMMENT INSERTION COMPLETED ===');
+    logger.debug('Pending comment before clearing:', pendingComment);
+    setPendingComment(null);
+
+    // Trigger change event to save the updated markdown  
+    if (editorRef.current) {
+      const updatedMarkdown = editorRef.current.getMarkdown();
+      logger.debug('Markdown after insertion:', updatedMarkdown.substring(0, 200) + '...');
+      logger.debug('Calling onMarkdownChange with updated markdown');
+      onMarkdownChange(updatedMarkdown);
+    } else {
+      logger.error('No editor ref available in handleCommentInserted');
+    }
+
+    // Notify extension about changes
+    if (window.vscodeApi) {
       window.vscodeApi.postMessage({
         command: 'dirtyStateChanged',
         isDirty: true
       });
     }
-  }, 100); // Short delay to batch rapid changes
-}, [markdown, onMarkdownChange]);
+  };
 
-
-// Handle internal search messages
-React.useEffect(() => {
-  const handleSearchMessage = (event: MessageEvent) => {
-    if (event.data.type === 'open-search') {
-      logger.debug('Received open-search message, triggering search');
-      // Find search button and click it programmatically
-      const searchButton = document.querySelector('button[title*="Search"]');
-      if (searchButton) {
-        (searchButton as HTMLButtonElement).click();
+  // Effect to watch for pending comments and trigger plugin
+  React.useEffect(() => {
+    if (pendingComment) {
+      logger.debug('Triggering plugin comment insertion via cell update');
+      // Directly publish to the plugin's cell - the plugin will handle it
+      // This simulates what would happen if we published from within the MDX Editor context
+      try {
+        // We can't directly access the realm from here, but the plugin subscription will handle it
+        // For now, we'll use a workaround to communicate with the plugin
+        logger.debug('Pending comment set, plugin should pick it up:', pendingComment);
+      } catch (error) {
+        logger.error('Error triggering plugin comment insertion:', error);
+        setPendingComment(null);
       }
     }
+  }, [pendingComment]);
+
+  // Function to detect if selected text is within a code block
+  const detectCodeBlockSelection = (markdown: string, selectedText: string): boolean => {
+    // Look for the selected text in the markdown and check if it's within ``` blocks
+    const textIndex = markdown.indexOf(selectedText);
+    if (textIndex === -1) return false;
+
+    // Count code block markers before the selection
+    const beforeSelection = markdown.substring(0, textIndex);
+    const codeBlockMarkers = (beforeSelection.match(/```/g) || []).length;
+
+    // If odd number of markers, we're inside a code block
+    return codeBlockMarkers % 2 === 1;
   };
 
-  window.addEventListener('message', handleSearchMessage);
-  return () => window.removeEventListener('message', handleSearchMessage);
-}, []);
+  // Function to trigger plugin comment insertion via cell publish
+  const triggerCommentInsertion = useCallback((commentData: any) => {
+    logger.debug('Direct cell publish for comment insertion');
+    // This will be handled by publishing directly to the cell from the plugin context
+    // We need a way to access the realm publisher from outside
+    setPendingComment(commentData);
+  }, []);
 
-// Manual save only - removed auto-save after comment operations
-
-// Function to convert webview URIs back to relative paths for saving
-const convertWebviewUrisToRelativePaths = useCallback((content: string): string => {
-  // Convert vscode-webview:// URIs back to relative paths for file storage
-  const webviewUriRegex = /!\[([^\]]*)\]\(vscode-webview:\/\/[^\/]+\/([^)]+)\)/g;
-
-  return content.replace(webviewUriRegex, (match, alt, encodedPath) => {
-    try {
-      // Decode the URI path
-      const decodedPath = decodeURIComponent(encodedPath);
-      logger.debug(`Converting webview URI back to relative path: ${decodedPath}`);
-
-      // Extract just the relative portion if it's an absolute path
-      // This assumes the current document is in the same directory structure
-      const relativePath = decodedPath.includes('media/') ?
-        decodedPath.substring(decodedPath.lastIndexOf('media/')) :
-        decodedPath;
-
-      return `![${alt}](${relativePath})`;
-    } catch (error) {
-      logger.error('Error converting webview URI:', error);
-      return match; // Return original if conversion fails
-    }
-  });
-}, []);
-
-// Handle Ctrl+S / Cmd+S for saving and Ctrl+F / Cmd+F for search
-React.useEffect(() => {
-  const handleKeyDown = (e: KeyboardEvent) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-      e.preventDefault();
-      logger.debug('Save keyboard shortcut pressed');
-
-      // Get the current markdown from the editor
-      let contentToSave = markdown;
-      if (editorRef.current) {
-        const editorContent = editorRef.current.getMarkdown();
-
-        // Convert webview URIs back to relative paths
-        const contentWithRelativePaths = convertWebviewUrisToRelativePaths(editorContent);
-
-        // Apply postprocessing to convert mathematical angle brackets back to regular ones and restore curly braces
-        contentToSave = postprocessAngleBrackets(contentWithRelativePaths);
-        logger.debug('Got content from editor, converted URIs, and postprocessed:', contentToSave.substring(0, 100));
-      }
-
-      if (typeof window !== 'undefined' && window.vscodeApi) {
-        logger.debug('Sending save command with content length:', contentToSave.length);
-
-        // Set flag to prevent editor reload after save
-        justSavedRef.current = true;
-
-        window.vscodeApi.postMessage({
-          command: 'save',
-          content: contentToSave
-        });
-        setHasUnsavedChanges(false);
-
-        // Notify extension that changes are saved for tab title indicator
-        if (window.vscodeApi) {
-          window.vscodeApi.postMessage({
-            command: 'dirtyStateChanged',
-            isDirty: false
-          });
-        }
-      }
-    } else if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
-      e.preventDefault();
-      logger.debug('Search keyboard shortcut pressed, focusing search input');
-      // Focus the inline search input
-      if (searchInputRef.current) {
-        searchInputRef.current.focus();
-        searchInputRef.current.select();
-      }
-    }
-  };
-
-  document.addEventListener('keydown', handleKeyDown);
-  return () => {
-    document.removeEventListener('keydown', handleKeyDown);
-  };
-}, [hasUnsavedChanges, markdown, convertWebviewUrisToRelativePaths]);
-
-// Text selection handling for floating comment button
-React.useEffect(() => {
-  const handleSelectionChange = () => {
-    // Don't update selection if comment modal is open - lock the selection
-    if (showCommentModal || showEditModal) {
-      return;
-    }
-
-    const selection = window.getSelection();
-    if (selection && selection.toString().trim() && containerRef.current) {
-      const range = selection.getRangeAt(0);
-
-      // Check if the selection is within the editor content area, not in search input or other UI elements
-      const startContainer = range.startContainer;
-      const endContainer = range.endContainer;
-
-      // Find if selection is within editor content
-      const isWithinEditor = (node: Node): boolean => {
-        let current: Node | null = node;
-        while (current) {
-          if (current.nodeType === Node.ELEMENT_NODE) {
-            const element = current as Element;
-            // Check if it's within the MDX editor content area
-            if (element.classList.contains('mdx-content') ||
-              element.classList.contains('mdx-editor-content') ||
-              element.closest('.mdx-content') ||
-              element.closest('.mdx-editor-content') ||
-              element.closest('[contenteditable="true"]')) {
-              return true;
-            }
-            // Exclude search input and other UI elements
-            if (element.classList.contains('inline-search-input') ||
-              element.closest('.inline-search-container') ||
-              element.closest('.comments-sidebar') ||
-              element.closest('.toolbar')) {
-              return false;
-            }
-          }
-          current = current.parentNode;
-        }
-        return false;
-      };
-
-      // Only show comment button if selection is within editor content
-      if (!isWithinEditor(startContainer) || !isWithinEditor(endContainer)) {
-        logger.debug('Selection not within editor content area, hiding button');
-        setShowFloatingButton(false);
-        if (!showCommentModal && !showEditModal) {
-          setSelectedText('');
-          setCurrentSelection(null);
-        }
-        return;
-      }
-
-      const rect = range.getBoundingClientRect();
-      const containerRect = containerRef.current.getBoundingClientRect();
-
-      const selectedTextContent = selection.toString().trim();
-      logger.debug('Text selected in editor:', selectedTextContent);
-      logger.debug('Selection rect:', rect);
-
-      // Position button on the right edge of the editor content area
-      const editorContentRect = containerRef.current.querySelector('.mdx-editor-content')?.getBoundingClientRect();
-      const rightEdgeX = editorContentRect ? editorContentRect.right - containerRect.left - 50 : containerRect.width - 60;
-
-      setFloatingButtonPosition({
-        x: rightEdgeX,
-        y: rect.top - containerRect.top + rect.height / 2 - 20
-      });
-      setSelectedText(selectedTextContent);
-      setShowFloatingButton(true);
-
-      // Store the actual selected text range
-      setCurrentSelection({
-        start: range.startOffset,
-        end: range.endOffset
-      });
-    } else {
-      logger.debug('No text selected or selection cleared');
-      setShowFloatingButton(false);
-      // Don't clear selectedText immediately - keep it for the modal
-      if (!showCommentModal && !showEditModal) {
-        setSelectedText('');
-        setCurrentSelection(null);
-      }
-    }
-  };
-
-  document.addEventListener('selectionchange', handleSelectionChange);
-  return () => {
-    document.removeEventListener('selectionchange', handleSelectionChange);
-  };
-}, [showCommentModal, showEditModal]);
-
-// Handle clicks on highlighted text to highlight corresponding comment
-React.useEffect(() => {
-  const handleDocumentClick = (e: MouseEvent) => {
-    const target = e.target as HTMLElement;
-
-    // Clear focus if clicking outside comments
-    if (!target.closest('.comment-highlight') && !target.closest('.comment-item')) {
-      setFocusedCommentId(null);
-    }
-
-    if (target && target.classList.contains('comment-highlight')) {
-      const commentId = target.getAttribute('data-comment-id');
-      if (commentId) {
-        logger.debug('Clicked on highlighted text for comment:', commentId);
-
-        // Find and highlight the comment in the sidebar
-        const commentElements = document.querySelectorAll('.comment-item');
-        commentElements.forEach(el => el.classList.remove('highlighted'));
-
-        // Find the comment in the sidebar using the comment ID
-        const sidebarCommentElement = document.querySelector(`.comment-item[data-comment-id="${commentId}"]`);
-        if (sidebarCommentElement) {
-          logger.debug('Found sidebar comment element for ID:', commentId);
-
-          // Add highlight animation
-          sidebarCommentElement.classList.add('highlighted');
-
-          // Find the scrollable comments container - .comments-list is the actual scrollable part
-          const commentsContainer = document.querySelector('.comments-list');
-
-          logger.debug('Comments container search result:', {
-            container: commentsContainer,
-            classList: commentsContainer?.classList.toString(),
-            tagName: commentsContainer?.tagName
-          });
-
-          if (commentsContainer) {
-            logger.debug('Found scrollable comments container, checking scroll properties:', {
-              scrollHeight: commentsContainer.scrollHeight,
-              clientHeight: commentsContainer.clientHeight,
-              isScrollable: commentsContainer.scrollHeight > commentsContainer.clientHeight
-            });
-
-            // Check if we need to scroll (comment is outside viewport)
-            const containerRect = commentsContainer.getBoundingClientRect();
-            const commentRect = sidebarCommentElement.getBoundingClientRect();
-
-            const isAboveViewport = commentRect.top < containerRect.top;
-            const isBelowViewport = commentRect.bottom > containerRect.bottom;
-            const needsScroll = isAboveViewport || isBelowViewport;
-
-            logger.debug('Scroll needed:', needsScroll, { isAboveViewport, isBelowViewport });
-
-            if (needsScroll) {
-              // Calculate scroll position to center the comment
-              const relativeTop = (sidebarCommentElement as HTMLElement).offsetTop;
-              const targetScrollTop = relativeTop - (containerRect.height / 2) + (commentRect.height / 2);
-
-              logger.debug('Scrolling sidebar only to position:', targetScrollTop);
-
-              // Scroll ONLY the sidebar, not the whole page
-              commentsContainer.scrollTo({
-                top: Math.max(0, targetScrollTop),
-                behavior: 'smooth'
-              });
-            }
-          } else {
-            logger.debug('Comments container not found for scrolling');
-          }
-        } else {
-          logger.debug('Sidebar comment element not found for ID:', commentId);
-        }
-      }
-    }
-  };
-
-  document.addEventListener('click', handleDocumentClick);
-  return () => {
-    document.removeEventListener('click', handleDocumentClick);
-  };
-}, []);
-
-// Sidebar resizing logic
-React.useEffect(() => {
-  let isResizing = false;
-
-  const handleMouseDown = (e: MouseEvent) => {
-    if ((e.target as HTMLElement).classList.contains('sidebar-resize-handle')) {
-      isResizing = true;
-      document.body.style.cursor = 'col-resize';
-      document.body.style.userSelect = 'none';
-    }
-  };
-
-  const handleMouseMove = (e: MouseEvent) => {
-    if (isResizing && containerRef.current) {
-      const containerRect = containerRef.current.getBoundingClientRect();
-      const newWidth = containerRect.right - e.clientX;
-      setSidebarWidth(Math.max(280, Math.min(600, newWidth)));
-    }
-  };
-
-  const handleMouseUp = () => {
-    if (isResizing) {
-      isResizing = false;
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-    }
-  };
-
-  document.addEventListener('mousedown', handleMouseDown);
-  document.addEventListener('mousemove', handleMouseMove);
-  document.addEventListener('mouseup', handleMouseUp);
-
-  return () => {
-    document.removeEventListener('mousedown', handleMouseDown);
-    document.removeEventListener('mousemove', handleMouseMove);
-    document.removeEventListener('mouseup', handleMouseUp);
-  };
-}, []);
-
-// Cleanup on unmount
-React.useEffect(() => {
-  return () => {
-    // Clear external update flag on unmount
-    isExternalUpdateRef.current = false;
-  };
-}, []);
-
-const handleOpenCommentModal = (text: string) => {
-  logger.debug('handleOpenCommentModal called with text:', text);
-  const selection = window.getSelection();
-  if (selection && selection.rangeCount > 0) {
-    const range = selection.getRangeAt(0);
-    // Simple range calculation - in a real app you'd want more sophisticated text position tracking
-    setCurrentSelection({
-      start: range.startOffset,
-      end: range.endOffset
-    });
-  }
-  setSelectedText(text);
-  setShowCommentModal(true);
-  logger.debug('Modal should be opening, showCommentModal set to true');
-};
-
-const handleSubmitComment = (comment: string) => {
-  logger.debug('Enhanced handleSubmitComment called with:', comment);
-  logger.debug('Selected text:', selectedText);
-  logger.debug('Selected text length:', selectedText.length);
-  logger.debug('Comment length:', comment.trim().length);
-
-  if (!comment.trim() || !selectedText) {
-    logger.warn('Missing comment or selected text');
+  const handleCloseModal = () => {
+    logger.debug('handleCloseModal called');
     setShowCommentModal(false);
-    return;
-  }
+    setSelectedText('');
+    setCurrentSelection(null);
+  };
 
-  if (!editorRef.current) {
-    logger.error('Editor ref not available');
-    setShowCommentModal(false);
-    return;
-  }
-
-  const commentId = `comment-${Date.now()}`;
-  const currentMarkdown = editorRef.current.getMarkdown();
-
-  try {
-    // With native directive insertion, we can handle most text reliably
-    // Check for problematic content that can't be commented on
-    const isInCodeBlock = detectCodeBlockSelection(currentMarkdown, selectedText);
-    const isMultiParagraph = selectedText.includes('\n\n');
-
-    logger.debug('Smart context analysis:', {
-      isInCodeBlock,
-      isMultiParagraph,
-      selectedTextLength: selectedText.length
-    });
-
-    if (isInCodeBlock) {
-      // Code blocks can't be reliably commented - show error
-      logger.debug('Detected code block content, showing error message');
-      if (window.vscodeApi) {
-        window.vscodeApi.postMessage({
-          command: 'error',
-          content: 'Sorry, code blocks cannot be commented on directly. If you have ideas how to make this work, please let us know on our GitHub repo!'
-        });
-      }
-      return;
-    } else if (isMultiParagraph) {
-      // Multi-paragraph selections use container directive
-      logger.debug('Detected multi-paragraph content, using container directive');
-      handleHybridComment(comment, commentId, currentMarkdown);
-    } else {
-      // Regular text (including formatted text) uses inline directive with native insertion
-      logger.debug('Using native inline directive insertion for regular content');
-      handleInlineComment(comment, commentId, currentMarkdown);
-    }
-
-  } catch (error) {
-    logger.error('Error in comment submission:', error);
-    // Show error instead of falling back to sidebar
-    if (window.vscodeApi) {
+  // Comment action handlers
+  const handleNavigateToComment = useCallback((commentId: string) => {
+    logger.debug('Navigate to comment:', commentId);
+    if (typeof window !== 'undefined' && window.vscodeApi) {
       window.vscodeApi.postMessage({
-        command: 'error',
-        content: 'Failed to add comment. Please try selecting different text or report this issue on our GitHub repo.'
+        command: 'navigateToComment',
+        commentId: commentId
       });
     }
-  }
+  }, []);
 
-  // Close modal
-  setShowCommentModal(false);
-  setSelectedText('');
-  setCurrentSelection(null);
-};
+  // handleEditComment is already defined earlier in the file
 
-
-// Handle standard inline comments using MDX Editor's native directive insertion
-const handleInlineComment = (comment: string, commentId: string, currentMarkdown: string) => {
-  logger.debug('Creating inline comment using native directive insertion');
-
-  // Trigger plugin to insert comment directive
-  if (editorRef.current) {
-    // We'll use the plugin's signal to insert the directive
-    // This will be handled by the plugin within the MDX Editor's context
-    setCommentPendingForPlugin({
-      comment,
-      commentId,
-      selectedText,
-      strategy: 'inline'
-    });
-  }
-};
-
-// Handle hybrid comments (container directive for complex selections)
-const handleHybridComment = (comment: string, commentId: string, currentMarkdown: string) => {
-  logger.debug('Creating hybrid comment using native container directive insertion');
-
-  // Trigger plugin to insert comment directive
-  if (editorRef.current) {
-    setCommentPendingForPlugin({
-      comment,
-      commentId,
-      selectedText,
-      strategy: 'container'
-    });
-  }
-};
-
-// Function to trigger comment insertion via plugin
-const setCommentPendingForPlugin = (commentData: { comment: string, commentId: string, selectedText: string, strategy: 'inline' | 'container' }) => {
-  logger.debug('Setting comment pending for plugin insertion');
-  // The plugin will handle this through the cell subscription
-  // We need to publish to the cell from outside the plugin context
-  // This will be handled when the editor mounts
-  setPendingComment(commentData);
-};
-
-// Callback for when comment insertion is complete
-const handleCommentInserted = () => {
-  logger.debug('=== COMMENT INSERTION COMPLETED ===');
-  logger.debug('Pending comment before clearing:', pendingComment);
-  setPendingComment(null);
-
-  // Trigger change event to save the updated markdown  
-  if (editorRef.current) {
-    const updatedMarkdown = editorRef.current.getMarkdown();
-    logger.debug('Markdown after insertion:', updatedMarkdown.substring(0, 200) + '...');
-    logger.debug('Calling onMarkdownChange with updated markdown');
-    onMarkdownChange(updatedMarkdown);
-  } else {
-    logger.error('No editor ref available in handleCommentInserted');
-  }
-
-  // Notify extension about changes
-  if (window.vscodeApi) {
-    window.vscodeApi.postMessage({
-      command: 'dirtyStateChanged',
-      isDirty: true
-    });
-  }
-};
-
-// Effect to watch for pending comments and trigger plugin
-React.useEffect(() => {
-  if (pendingComment) {
-    logger.debug('Triggering plugin comment insertion via cell update');
-    // Directly publish to the plugin's cell - the plugin will handle it
-    // This simulates what would happen if we published from within the MDX Editor context
-    try {
-      // We can't directly access the realm from here, but the plugin subscription will handle it
-      // For now, we'll use a workaround to communicate with the plugin
-      logger.debug('Pending comment set, plugin should pick it up:', pendingComment);
-    } catch (error) {
-      logger.error('Error triggering plugin comment insertion:', error);
-      setPendingComment(null);
+  const handleEditSubmit = useCallback((newComment: string) => {
+    if (!editingComment) {
+      logger.error('No comment being edited');
+      return;
     }
-  }
-}, [pendingComment]);
 
-// Function to detect if selected text is within a code block
-const detectCodeBlockSelection = (markdown: string, selectedText: string): boolean => {
-  // Look for the selected text in the markdown and check if it's within ``` blocks
-  const textIndex = markdown.indexOf(selectedText);
-  if (textIndex === -1) return false;
+    const commentId = editingComment.id;
+    logger.debug('Edit submit called with:', newComment, 'for comment:', commentId);
 
-  // Count code block markers before the selection
-  const beforeSelection = markdown.substring(0, textIndex);
-  const codeBlockMarkers = (beforeSelection.match(/```/g) || []).length;
-
-  // If odd number of markers, we're inside a code block
-  return codeBlockMarkers % 2 === 1;
-};
-
-// Function to trigger plugin comment insertion via cell publish
-const triggerCommentInsertion = useCallback((commentData: any) => {
-  logger.debug('Direct cell publish for comment insertion');
-  // This will be handled by publishing directly to the cell from the plugin context
-  // We need a way to access the realm publisher from outside
-  setPendingComment(commentData);
-}, []);
-
-const handleCloseModal = () => {
-  logger.debug('handleCloseModal called');
-  setShowCommentModal(false);
-  setSelectedText('');
-  setCurrentSelection(null);
-};
-
-// Comment action handlers
-const handleNavigateToComment = useCallback((commentId: string) => {
-  logger.debug('Navigate to comment:', commentId);
-  if (typeof window !== 'undefined' && window.vscodeApi) {
-    window.vscodeApi.postMessage({
-      command: 'navigateToComment',
-      commentId: commentId
-    });
-  }
-}, []);
-
-// handleEditComment is already defined earlier in the file
-
-const handleEditSubmit = useCallback((newComment: string) => {
-  if (!editingComment) {
-    logger.error('No comment being edited');
-    return;
-  }
-  
-  const commentId = editingComment.id;
-  logger.debug('Edit submit called with:', newComment, 'for comment:', commentId);
-  
-  if (!newComment.trim()) {
-    logger.warn('Empty comment submitted for edit');
-    return;
-  }
-
-  if (!markdown) {
-    logger.error('No markdown available for editing comment');
-    return;
-  }
-
-  // Simple approach: directly modify the comment text in the markdown
-  const patterns = [
-    // Inline comment patterns - try multiple formats
-    new RegExp(`:comment\\[([^\\]]*)\\]\\{([^}]*?)text="([^"]*)"([^}]*)\\}`, 'g'),
-    new RegExp(`::comment\\[([^\\]]*)\\]\\{([^}]*?)text="([^"]*)"([^}]*)\\}`, 'g'),
-    // Container comment patterns
-    new RegExp(`:::comment\\{([^}]*?)text="([^"]*)"([^}]*)\\}`, 'g')
-  ];
-  
-  let updatedMarkdown = markdown;
-  let found = false;
-  
-  for (const pattern of patterns) {
-    logger.debug('Testing edit pattern:', pattern.source);
-    const matches = [...updatedMarkdown.matchAll(pattern)];
-    logger.debug('Pattern matches found for edit:', matches.length);
-    
-    if (matches.length > 0) {
-      matches.forEach((match, index) => {
-        logger.debug(`Edit Match ${index}:`, match[0]);
-        logger.debug('Match groups:', match.slice(1));
-        // Check if this match contains our comment ID
-        if (match[0].includes(`id="${commentId}"`) || match[0].includes(`#${commentId}`)) {
-          logger.debug('Found matching comment with our ID');
-        }
-      });
-      
-      updatedMarkdown = updatedMarkdown.replace(pattern, (match, ...groups) => {
-        // Check if this match is for our specific comment ID
-        if (match.includes(`id="${commentId}"`) || match.includes(`#${commentId}`)) {
-          logger.debug('Replacing comment text for ID:', commentId);
-          logger.debug('Original match:', match);
-          
-          // Replace just the text attribute
-          const newMatch = match.replace(/text="[^"]*"/, `text="${escapeDirectiveContent(newComment, match.includes(':::'))}"`);
-          logger.debug('New match:', newMatch);
-          return newMatch;
-        }
-        return match; // Return unchanged if not our comment
-      });
-      found = true;
-      break;
+    if (!newComment.trim()) {
+      logger.warn('Empty comment submitted for edit');
+      return;
     }
-  }
-  
-  if (found) {
-    logger.debug('Successfully updated comment text in markdown');
-    onMarkdownChange(updatedMarkdown);
+
+    if (!markdown) {
+      logger.error('No markdown available for editing comment');
+      return;
+    }
+
+    // Simple approach: directly modify the comment text in the markdown
+    const patterns = [
+      // Inline comment patterns - try multiple formats
+      new RegExp(`:comment\\[([^\\]]*)\\]\\{([^}]*?)text="([^"]*)"([^}]*)\\}`, 'g'),
+      new RegExp(`::comment\\[([^\\]]*)\\]\\{([^}]*?)text="([^"]*)"([^}]*)\\}`, 'g'),
+      // Container comment patterns
+      new RegExp(`:::comment\\{([^}]*?)text="([^"]*)"([^}]*)\\}`, 'g')
+    ];
+
+    let updatedMarkdown = markdown;
+    let found = false;
+
+    for (const pattern of patterns) {
+      logger.debug('Testing edit pattern:', pattern.source);
+      const matches = [...updatedMarkdown.matchAll(pattern)];
+      logger.debug('Pattern matches found for edit:', matches.length);
+
+      if (matches.length > 0) {
+        matches.forEach((match, index) => {
+          logger.debug(`Edit Match ${index}:`, match[0]);
+          logger.debug('Match groups:', match.slice(1));
+          // Check if this match contains our comment ID
+          if (match[0].includes(`id="${commentId}"`) || match[0].includes(`#${commentId}`)) {
+            logger.debug('Found matching comment with our ID');
+          }
+        });
+
+        updatedMarkdown = updatedMarkdown.replace(pattern, (match, ...groups) => {
+          // Check if this match is for our specific comment ID
+          if (match.includes(`id="${commentId}"`) || match.includes(`#${commentId}`)) {
+            logger.debug('Replacing comment text for ID:', commentId);
+            logger.debug('Original match:', match);
+
+            // Replace just the text attribute
+            const newMatch = match.replace(/text="[^"]*"/, `text="${escapeDirectiveContent(newComment, match.includes(':::'))}"`);
+            logger.debug('New match:', newMatch);
+            return newMatch;
+          }
+          return match; // Return unchanged if not our comment
+        });
+        found = true;
+        break;
+      }
+    }
+
+    if (found) {
+      logger.debug('Successfully updated comment text in markdown');
+      onMarkdownChange(updatedMarkdown);
+      setShowEditModal(false);
+      setEditingComment(null);
+      logger.debug('=== EDIT COMPLETED ===');
+    } else {
+      logger.error('Could not find comment to edit for ID:', commentId);
+      logger.debug('Available markdown content:', markdown.substring(0, 500));
+    }
+  }, [markdown, onMarkdownChange, editingComment]);
+
+  const handleEditClose = () => {
     setShowEditModal(false);
     setEditingComment(null);
-    logger.debug('=== EDIT COMPLETED ===');
-  } else {
-    logger.error('Could not find comment to edit for ID:', commentId);
-    logger.debug('Available markdown content:', markdown.substring(0, 500));
-  }
-}, [markdown, onMarkdownChange, editingComment]);
+  };
 
-const handleEditClose = () => {
-  setShowEditModal(false);
-  setEditingComment(null);
-};
+  // Function to render content as book pages
+  const renderBookPages = () => {
+    const content = markdown || '';
+    const paragraphs = content.split('\n\n');
+    const pages: string[] = [];
+    let currentPage: string[] = [];
+    let currentHeight = 0;
+    const maxHeight = 35; // Approximate lines per page for 7.5" content area
 
-// Function to render content as book pages
-const renderBookPages = () => {
-  const content = markdown || '';
-  const paragraphs = content.split('\n\n');
-  const pages: string[] = [];
-  let currentPage: string[] = [];
-  let currentHeight = 0;
-  const maxHeight = 35; // Approximate lines per page for 7.5" content area
-
-  paragraphs.forEach(paragraph => {
-    const estimatedLines = Math.max(1, Math.ceil(paragraph.length / 80)); // Rough estimate
-    if (currentHeight + estimatedLines > maxHeight && currentPage.length > 0) {
-      pages.push(currentPage.join('\n\n'));
-      currentPage = [paragraph];
-      currentHeight = estimatedLines;
-    } else {
-      currentPage.push(paragraph);
-      currentHeight += estimatedLines;
-    }
-  });
-
-  if (currentPage.length > 0) {
-    pages.push(currentPage.join('\n\n'));
-  }
-
-  return pages.map((pageContent, index) => (
-    <div key={index} className="book-page">
-      <div className="book-page-content">
-        <div dangerouslySetInnerHTML={{ __html: pageContent.replace(/\n/g, '<br/>') }} />
-      </div>
-      <div className="book-page-number">{index + 1}</div>
-    </div>
-  ));
-};
-
-// Define plugins array with useMemo BEFORE the return statement to follow React hooks rules
-const plugins = useMemo(() => [
-  // Core editing plugins
-  headingsPlugin(),
-  quotePlugin(),
-  listsPlugin(),
-  linkPlugin(),
-  tablePlugin(),
-  thematicBreakPlugin(),
-  markdownShortcutPlugin(),
-  searchPlugin(),
-  imagePlugin({
-    imageUploadHandler: async (image: File) => {
-      return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const data = e.target?.result;
-          if (data) {
-            window.vscodeApi.postMessage({
-              command: 'getImageUri',
-              data: data,
-            });
-
-            const handleUri = (event: any) => {
-              if (event.data.command === 'imageUri') {
-                window.removeEventListener('message', handleUri);
-                resolve(event.data.uri);
-              }
-            }
-
-            window.addEventListener('message', handleUri);
-          }
-        };
-        reader.readAsDataURL(image);
-      });
-    },
-    imageAutocompleteSuggestions: ['media/', './media/', '../media/']
-  }),
-
-  // Custom comment insertion plugin using native insertDirective$
-  commentInsertionPlugin({
-    pendingComment: pendingComment,
-    onInsertComment: (commentData) => {
-      logger.debug('Comment inserted via plugin, triggering UI update');
-      handleCommentInserted();
-    }
-  }),
-
-  // Removed angle bracket plugin for better performance
-
-  directivesPlugin({
-    directiveDescriptors: [
-      createCommentDirectiveDescriptor(focusedCommentId, setFocusedCommentId),
-      genericDirectiveDescriptor  // Refined version - only catches actual directives
-    ],
-    // Try disabling escapeUnknownTextDirectives to see if it causes the equals escaping
-    escapeUnknownTextDirectives: false
-  }),
-
-  // Toolbar with our custom comment button and responsive design
-  toolbarPlugin({
-    toolbarContents: () => (
-      <ToolbarWithCommentButton
-        selectedFont={selectedFont}
-        handleFontChange={handleFontChange}
-        availableFonts={availableFonts}
-        setIsBookView={setIsBookView}
-        isBookView={isBookView}
-        searchInputRef={searchInputRef}
-        isTyping={isTyping}
-      />
-    )
-  }),
-
-  // Enhanced code block plugin with Mermaid support
-  codeBlockPlugin({
-    defaultCodeBlockLanguage: 'js',
-    codeBlockEditorDescriptors: [
-      // Mermaid diagram editor - highest priority
-      {
-        priority: 10,
-        match: (language, _code) => language === 'mermaid',
-        Editor: MermaidEditor
-      },
-      // Specific mappings for common aliases
-      {
-        priority: 5,
-        match: (language, _code) => language === 'javascript',
-        Editor: (props) => <CodeMirrorEditor {...props} language="js" />
-      },
-      {
-        priority: 5,
-        match: (language, _code) => language === 'python',
-        Editor: (props) => <CodeMirrorEditor {...props} language="py" />
-      },
-      {
-        priority: 5,
-        match: (language, _code) => language === 'typescript',
-        Editor: (props) => <CodeMirrorEditor {...props} language="ts" />
-      },
-      {
-        priority: 5,
-        match: (language, _code) => language === 'markdown',
-        Editor: (props) => <CodeMirrorEditor {...props} language="md" />
-      },
-      {
-        priority: 5,
-        match: (language, _code) => language === 'yml',
-        Editor: (props) => <CodeMirrorEditor {...props} language="yaml" />
-      },
-      {
-        priority: 5,
-        match: (language, _code) => language === 'text',
-        Editor: (props) => <CodeMirrorEditor {...props} language="txt" />
-      },
-      {
-        priority: 5,
-        match: (language, _code) => language === 'shell',
-        Editor: (props) => <CodeMirrorEditor {...props} language="sh" />
-      },
-      // Fallback editor for any other unknown languages
-      {
-        priority: -10,
-        match: (_) => true,
-        Editor: CodeMirrorEditor
+    paragraphs.forEach(paragraph => {
+      const estimatedLines = Math.max(1, Math.ceil(paragraph.length / 80)); // Rough estimate
+      if (currentHeight + estimatedLines > maxHeight && currentPage.length > 0) {
+        pages.push(currentPage.join('\n\n'));
+        currentPage = [paragraph];
+        currentHeight = estimatedLines;
+      } else {
+        currentPage.push(paragraph);
+        currentHeight += estimatedLines;
       }
-    ]
-  }),
-  codeMirrorPlugin({
-    codeBlockLanguages: {
-      js: 'JavaScript',
-      css: 'CSS',
-      txt: 'Text',
-      md: 'Markdown',
-      ts: 'TypeScript',
-      html: 'HTML',
-      json: 'JSON',
-      yaml: 'YAML',
-      ini: 'INI',
-      toml: 'TOML',
-      xml: 'XML',
-      csv: 'CSV',
-      sql: 'SQL',
-      py: 'Python',
-      bash: 'Bash',
-      sh: 'Shell',
-      mermaid: 'Mermaid'
-    },
-    // Add better syntax theme configuration
-    autocompletion: true,
-    branchPrediction: false,
-    codeFolding: true
-  })
-], [selectedFont, handleFontChange, availableFonts, setIsBookView, isBookView, searchInputRef, isTyping, focusedCommentId, setFocusedCommentId, pendingComment, handleCommentInserted]);
+    });
 
-logger.debug('=== MDXEditorWrapper RENDER END - returning JSX ===');
-logger.debug('Editor state:', {
-  showCommentSidebar,
-  isBookView,
-  selectedFont,
-  parsedCommentsCount: parsedComments.length,
-  editorRefExists: !!editorRef.current
-});
+    if (currentPage.length > 0) {
+      pages.push(currentPage.join('\n\n'));
+    }
 
-return (
-  <div className={`mdx-editor-container ${isBookView ? 'book-view' : ''}`} ref={containerRef}>
-    {isBookView ? (
-      // Book view: render as paginated content
-      <div className="book-pages-container">
-        {renderBookPages()}
+    return pages.map((pageContent, index) => (
+      <div key={index} className="book-page">
+        <div className="book-page-content">
+          <div dangerouslySetInnerHTML={{ __html: pageContent.replace(/\n/g, '<br/>') }} />
+        </div>
+        <div className="book-page-number">{index + 1}</div>
       </div>
-    ) : (
-      <>
-        {/* Normal view: Top section with editor */}
-        <div className="mdx-editor-with-sidebar">
-          <div className="mdx-editor-content">
-            {(() => {
-              logger.debug('=== MDXEDITOR COMPONENT RENDER START ===');
-              logger.debug('About to render MDXEditor with:', {
-                markdown: markdown?.substring(0, 100) + '...',
-                markdownLength: markdown?.length,
-                selectedFont,
-                className: `mdx-editor dark-theme font-${selectedFont.toLowerCase().replace(/\s+/g, '-')}`,
-                contentEditableClassName: `mdx-content font-${selectedFont.toLowerCase().replace(/\s+/g, '-')}`
+    ));
+  };
+
+  // Define plugins array with useMemo BEFORE the return statement to follow React hooks rules
+  const plugins = useMemo(() => [
+    // Core editing plugins
+    headingsPlugin(),
+    quotePlugin(),
+    listsPlugin(),
+    linkPlugin(),
+    tablePlugin(),
+    thematicBreakPlugin(),
+    markdownShortcutPlugin(),
+    searchPlugin(),
+    imagePlugin({
+      imageUploadHandler: async (image: File) => {
+        return new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const data = e.target?.result;
+            if (data) {
+              window.vscodeApi.postMessage({
+                command: 'getImageUri',
+                data: data,
               });
 
-              // Plugins are now defined outside the JSX to follow React hooks rules
-              logger.debug('Plugins array length:', plugins.length);
-              logger.debug('Plugin names:', plugins.map(p => p.constructor?.name || 'Unknown'));
-              logger.debug('NOTE: Both codeBlockPlugin and codeMirrorPlugin enabled for fenced block support');
-
-              try {
-                const editorElement = (
-                  <MDXEditor
-                    ref={(ref) => {
-                      editorRef.current = ref;
-                      // Add debugging when editor mounts
-                      if (ref) {
-                        logger.debug('MDXEditor component mounted, checking content after 2 seconds...');
-                        setTimeout(() => {
-                          try {
-                            const content = ref.getMarkdown();
-                            logger.debug('Editor content length after mount:', content.length);
-                            logger.debug('Editor content preview:', content.substring(0, 500) + '...');
-
-                            // Check DOM structure
-                            const editorDOM = document.querySelector('.mdx-content') || document.querySelector('[contenteditable="true"]');
-                            if (editorDOM) {
-                              logger.debug('Editor DOM found, innerHTML length:', editorDOM.innerHTML.length);
-                              logger.debug('Editor DOM preview:', editorDOM.innerHTML.substring(0, 500) + '...');
-
-                              // Check if code blocks exist in DOM
-                              const codeBlocks = editorDOM.querySelectorAll('pre, code, .cm-editor');
-                              logger.debug('Code blocks found in DOM:', codeBlocks.length);
-                              codeBlocks.forEach((block, index) => {
-                                logger.debug(`Code block ${index}:`, block.tagName, block.className);
-                              });
-                            } else {
-                              logger.debug('Editor DOM not found');
-                            }
-                          } catch (err) {
-                            logger.error('Error inspecting editor after mount:', err);
-                          }
-                        }, 2000);
-                      }
-                    }}
-                    markdown={markdown || ''}
-                    onChange={handleMarkdownChange}
-                    suppressHtmlProcessing={true}
-                    onError={(error) => {
-                      logger.error('MDXEditor parsing error:', error);
-                      logger.debug('This error might be caused by angle brackets. Try using the source mode if available.');
-                    }}
-                    className={`mdx-editor dark-theme font-${selectedFont.toLowerCase().replace(/\s+/g, '-')}`}
-                    contentEditableClassName={`mdx-content font-${selectedFont.toLowerCase().replace(/\s+/g, '-')}`}
-                    plugins={plugins}
-                  />
-                );
-                logger.debug('About to return MDXEditor element');
-                return editorElement;
-              } catch (error) {
-                logger.error('=== MDXEDITOR RENDER ERROR ===', error);
-                return (
-                  <div style={{ padding: '20px', background: '#ffe6e6', border: '1px solid #ff0000', borderRadius: '4px' }}>
-                    <h3>Editor Error</h3>
-                    <p>Failed to load MDXEditor component:</p>
-                    <pre style={{ background: '#f5f5f5', padding: '10px', borderRadius: '4px', fontSize: '12px' }}>
-                      {error instanceof Error ? error.message : String(error)}
-                    </pre>
-                    <details>
-                      <summary>Stack trace</summary>
-                      <pre style={{ fontSize: '10px' }}>
-                        {error instanceof Error ? error.stack : 'No stack trace available'}
-                      </pre>
-                    </details>
-                  </div>
-                );
+              const handleUri = (event: any) => {
+                if (event.data.command === 'imageUri') {
+                  window.removeEventListener('message', handleUri);
+                  resolve(event.data.uri);
+                }
               }
-            })()}
-          </div>
 
-          {/* Comments Sidebar */}
-          {showCommentSidebar && (
-            <div className="comments-sidebar" style={{ width: `${sidebarWidth}px` }}>
-              <div className="sidebar-resize-handle"></div>
-              <div className="comments-header">
-                <h3>Comments</h3>
-                <button
-                  onClick={() => setShowCommentSidebar(false)}
-                  className="sidebar-close"
-                  title="Hide Comments"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <div className="comments-list">
-                {parsedComments.length === 0 ? (
-                  <div className="no-comments">
-                    <p>No comments yet.</p>
-                    <p className="help-text">Select text and click the 💬 Add comment button to add comments.</p>
-                  </div>
-                ) : (
-                  sortedCommentItems
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Show comments button when sidebar is hidden */}
-          {!showCommentSidebar && (
-            <button
-              className="show-comments-btn"
-              onClick={() => setShowCommentSidebar(true)}
-              title="Show Comments"
-            >
-              💬 {parsedComments.length}
-            </button>
-          )}
-        </div>
-      </>
-    )}
-
-    {/* Floating comment button */}
-    {
-      showFloatingButton && floatingButtonPosition && (
-        <div
-          className={`floating-comment-button ${showFloatingButton ? 'visible' : ''}`}
-          title="Add comment"
-          style={{
-            left: `${floatingButtonPosition.x + 34}px`,
-            top: `${floatingButtonPosition.y}px`
-          }}
-          onMouseDown={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            logger.debug('Floating button mousedown with selected text:', selectedText);
-            if (selectedText) {
-              setShowCommentModal(true);
-              setShowFloatingButton(false);
+              window.addEventListener('message', handleUri);
             }
-          }}
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            logger.debug('Floating button clicked with selected text:', selectedText);
-            if (selectedText) {
-              setShowCommentModal(true);
-              setShowFloatingButton(false);
-            }
-          }}
-        >
-          💬
-        </div>
+          };
+          reader.readAsDataURL(image);
+        });
+      },
+      imageAutocompleteSuggestions: ['media/', './media/', '../media/']
+    }),
+
+    // Custom comment insertion plugin using native insertDirective$
+    commentInsertionPlugin({
+      pendingComment: pendingComment,
+      onInsertComment: (commentData) => {
+        logger.debug('Comment inserted via plugin, triggering UI update');
+        handleCommentInserted();
+      }
+    }),
+
+    // Removed angle bracket plugin for better performance
+
+    directivesPlugin({
+      directiveDescriptors: [
+        createCommentDirectiveDescriptor(focusedCommentId, setFocusedCommentId),
+        genericDirectiveDescriptor  // Refined version - only catches actual directives
+      ],
+      // Try disabling escapeUnknownTextDirectives to see if it causes the equals escaping
+      escapeUnknownTextDirectives: false
+    }),
+
+    // Toolbar with our custom comment button and responsive design
+    toolbarPlugin({
+      toolbarContents: () => (
+        <ToolbarWithCommentButton
+          selectedFont={selectedFont}
+          handleFontChange={handleFontChange}
+          availableFonts={availableFonts}
+          setIsBookView={setIsBookView}
+          isBookView={isBookView}
+          searchInputRef={searchInputRef}
+          isTyping={isTyping}
+        />
       )
-    }
+    }),
 
-    {/* Comment Modal */}
-    <CommentModal
-      isOpen={showCommentModal}
-      onClose={handleCloseModal}
-      onSubmit={handleSubmitComment}
-      selectedText={selectedText}
-    />
+    // Enhanced code block plugin with Mermaid support
+    codeBlockPlugin({
+      defaultCodeBlockLanguage: 'js',
+      codeBlockEditorDescriptors: [
+        // Mermaid diagram editor - highest priority
+        {
+          priority: 10,
+          match: (language, _code) => language === 'mermaid',
+          Editor: MermaidEditor
+        },
+        // Specific mappings for common aliases
+        {
+          priority: 5,
+          match: (language, _code) => language === 'javascript',
+          Editor: (props) => <CodeMirrorEditor {...props} language="js" />
+        },
+        {
+          priority: 5,
+          match: (language, _code) => language === 'python',
+          Editor: (props) => <CodeMirrorEditor {...props} language="py" />
+        },
+        {
+          priority: 5,
+          match: (language, _code) => language === 'typescript',
+          Editor: (props) => <CodeMirrorEditor {...props} language="ts" />
+        },
+        {
+          priority: 5,
+          match: (language, _code) => language === 'markdown',
+          Editor: (props) => <CodeMirrorEditor {...props} language="md" />
+        },
+        {
+          priority: 5,
+          match: (language, _code) => language === 'yml',
+          Editor: (props) => <CodeMirrorEditor {...props} language="yaml" />
+        },
+        {
+          priority: 5,
+          match: (language, _code) => language === 'text',
+          Editor: (props) => <CodeMirrorEditor {...props} language="txt" />
+        },
+        {
+          priority: 5,
+          match: (language, _code) => language === 'shell',
+          Editor: (props) => <CodeMirrorEditor {...props} language="sh" />
+        },
+        // Fallback editor for any other unknown languages
+        {
+          priority: -10,
+          match: (_) => true,
+          Editor: CodeMirrorEditor
+        }
+      ]
+    }),
+    codeMirrorPlugin({
+      codeBlockLanguages: {
+        js: 'JavaScript',
+        css: 'CSS',
+        txt: 'Text',
+        md: 'Markdown',
+        ts: 'TypeScript',
+        html: 'HTML',
+        json: 'JSON',
+        yaml: 'YAML',
+        ini: 'INI',
+        toml: 'TOML',
+        xml: 'XML',
+        csv: 'CSV',
+        sql: 'SQL',
+        py: 'Python',
+        bash: 'Bash',
+        sh: 'Shell',
+        mermaid: 'Mermaid'
+      },
+      // Add better syntax theme configuration
+      autocompletion: true,
+      branchPrediction: false,
+      codeFolding: true
+    })
+  ], [selectedFont, handleFontChange, availableFonts, setIsBookView, isBookView, searchInputRef, isTyping, focusedCommentId, setFocusedCommentId, pendingComment, handleCommentInserted]);
 
-    {/* Edit Comment Modal */}
-    <CommentModal
-      isOpen={showEditModal}
-      onClose={handleEditClose}
-      onSubmit={handleEditSubmit}
-      selectedText={editingComment?.anchoredText || ''}
-      initialText={editingComment?.content || ''}
-      isEditing={true}
-    />
-  </div>
-);
+  logger.debug('=== MDXEditorWrapper RENDER END - returning JSX ===');
+  logger.debug('Editor state:', {
+    showCommentSidebar,
+    isBookView,
+    selectedFont,
+    parsedCommentsCount: parsedComments.length,
+    editorRefExists: !!editorRef.current
+  });
+
+  return (
+    <div className={`mdx-editor-container ${isBookView ? 'book-view' : ''}`} ref={containerRef}>
+      {isBookView ? (
+        // Book view: render as paginated content
+        <div className="book-pages-container">
+          {renderBookPages()}
+        </div>
+      ) : (
+        <>
+          {/* Normal view: Top section with editor */}
+          <div className="mdx-editor-with-sidebar">
+            <div className="mdx-editor-content">
+              {(() => {
+                logger.debug('=== MDXEDITOR COMPONENT RENDER START ===');
+                logger.debug('About to render MDXEditor with:', {
+                  markdown: markdown?.substring(0, 100) + '...',
+                  markdownLength: markdown?.length,
+                  selectedFont,
+                  className: `mdx-editor dark-theme font-${selectedFont.toLowerCase().replace(/\s+/g, '-')}`,
+                  contentEditableClassName: `mdx-content font-${selectedFont.toLowerCase().replace(/\s+/g, '-')}`
+                });
+
+                // Plugins are now defined outside the JSX to follow React hooks rules
+                logger.debug('Plugins array length:', plugins.length);
+                logger.debug('Plugin names:', plugins.map(p => p.constructor?.name || 'Unknown'));
+                logger.debug('NOTE: Both codeBlockPlugin and codeMirrorPlugin enabled for fenced block support');
+
+                try {
+                  const editorElement = (
+                    <MDXEditor
+                      ref={(ref) => {
+                        editorRef.current = ref;
+                        // Add debugging when editor mounts
+                        if (ref) {
+                          logger.debug('MDXEditor component mounted, checking content after 2 seconds...');
+                          setTimeout(() => {
+                            try {
+                              const content = ref.getMarkdown();
+                              logger.debug('Editor content length after mount:', content.length);
+                              logger.debug('Editor content preview:', content.substring(0, 500) + '...');
+
+                              // Check DOM structure
+                              const editorDOM = document.querySelector('.mdx-content') || document.querySelector('[contenteditable="true"]');
+                              if (editorDOM) {
+                                logger.debug('Editor DOM found, innerHTML length:', editorDOM.innerHTML.length);
+                                logger.debug('Editor DOM preview:', editorDOM.innerHTML.substring(0, 500) + '...');
+
+                                // Check if code blocks exist in DOM
+                                const codeBlocks = editorDOM.querySelectorAll('pre, code, .cm-editor');
+                                logger.debug('Code blocks found in DOM:', codeBlocks.length);
+                                codeBlocks.forEach((block, index) => {
+                                  logger.debug(`Code block ${index}:`, block.tagName, block.className);
+                                });
+                              } else {
+                                logger.debug('Editor DOM not found');
+                              }
+                            } catch (err) {
+                              logger.error('Error inspecting editor after mount:', err);
+                            }
+                          }, 2000);
+                        }
+                      }}
+                      markdown={markdown || ''}
+                      onChange={handleMarkdownChange}
+                      suppressHtmlProcessing={true}
+                      onError={(error) => {
+                        logger.error('MDXEditor parsing error:', error);
+                        logger.debug('This error might be caused by angle brackets. Try using the source mode if available.');
+                      }}
+                      className={`mdx-editor dark-theme font-${selectedFont.toLowerCase().replace(/\s+/g, '-')}`}
+                      contentEditableClassName={`mdx-content font-${selectedFont.toLowerCase().replace(/\s+/g, '-')}`}
+                      plugins={plugins}
+                    />
+                  );
+                  logger.debug('About to return MDXEditor element');
+                  return editorElement;
+                } catch (error) {
+                  logger.error('=== MDXEDITOR RENDER ERROR ===', error);
+                  return (
+                    <div style={{ padding: '20px', background: '#ffe6e6', border: '1px solid #ff0000', borderRadius: '4px' }}>
+                      <h3>Editor Error</h3>
+                      <p>Failed to load MDXEditor component:</p>
+                      <pre style={{ background: '#f5f5f5', padding: '10px', borderRadius: '4px', fontSize: '12px' }}>
+                        {error instanceof Error ? error.message : String(error)}
+                      </pre>
+                      <details>
+                        <summary>Stack trace</summary>
+                        <pre style={{ fontSize: '10px' }}>
+                          {error instanceof Error ? error.stack : 'No stack trace available'}
+                        </pre>
+                      </details>
+                    </div>
+                  );
+                }
+              })()}
+            </div>
+
+            {/* Comments Sidebar */}
+            {showCommentSidebar && (
+              <div className="comments-sidebar" style={{ width: `${sidebarWidth}px` }}>
+                <div className="sidebar-resize-handle"></div>
+                <div className="comments-header">
+                  <h3>Comments</h3>
+                  <button
+                    onClick={() => setShowCommentSidebar(false)}
+                    className="sidebar-close"
+                    title="Hide Comments"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="comments-list">
+                  {parsedComments.length === 0 ? (
+                    <div className="no-comments">
+                      <p>No comments yet.</p>
+                      <p className="help-text">Select text and click the 💬 Add comment button to add comments.</p>
+                    </div>
+                  ) : (
+                    sortedCommentItems
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Show comments button when sidebar is hidden */}
+            {!showCommentSidebar && (
+              <button
+                className="show-comments-btn"
+                onClick={() => setShowCommentSidebar(true)}
+                title="Show Comments"
+              >
+                💬 {parsedComments.length}
+              </button>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Floating comment button */}
+      {
+        showFloatingButton && floatingButtonPosition && (
+          <div
+            className={`floating-comment-button ${showFloatingButton ? 'visible' : ''}`}
+            title="Add comment"
+            style={{
+              left: `${floatingButtonPosition.x + 34}px`,
+              top: `${floatingButtonPosition.y}px`
+            }}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              logger.debug('Floating button mousedown with selected text:', selectedText);
+              if (selectedText) {
+                setShowCommentModal(true);
+                setShowFloatingButton(false);
+              }
+            }}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              logger.debug('Floating button clicked with selected text:', selectedText);
+              if (selectedText) {
+                setShowCommentModal(true);
+                setShowFloatingButton(false);
+              }
+            }}
+          >
+            💬
+          </div>
+        )
+      }
+
+      {/* Comment Modal */}
+      <CommentModal
+        isOpen={showCommentModal}
+        onClose={handleCloseModal}
+        onSubmit={handleSubmitComment}
+        selectedText={selectedText}
+      />
+
+      {/* Edit Comment Modal */}
+      <CommentModal
+        isOpen={showEditModal}
+        onClose={handleEditClose}
+        onSubmit={handleEditSubmit}
+        selectedText={editingComment?.anchoredText || ''}
+        initialText={editingComment?.content || ''}
+        isEditing={true}
+      />
+    </div>
+  );
 };

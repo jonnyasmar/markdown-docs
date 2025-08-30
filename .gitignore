@@ -19,6 +19,7 @@ out/
 !webpack.config.js # Explicitly unignore webpack.config.js
 !webview-ui/webpack.config.js # Explicitly unignore webview-ui webpack.config.js
 !rspack.config.js # Explicitly unignore rspack.config.js
+!webview-ui/rspack.config.js # Explicitly unignore webview-ui rspack.config.js
 *.map
 
 # Logs
@@ -33,9 +34,6 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
-
-# Package files
-package-lock.json
 
 # Test files
 test-workspace/

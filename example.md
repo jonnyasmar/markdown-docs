@@ -8,7 +8,7 @@ This document serves as an example to showcase the capabilities of the **Markdow
 
 ### ✍️ WYSIWYG Editing Experience
 
-With Markdown Docs, you get a seamless **What You See Is What You** Get **(WYSIWYG)** editing experience. No more switching between raw :comment[Markdown]{#comment-1756492191131 text="test"} and a preview pane! Edit directly and see your changes instantly.
+With Markdown Docs, you get a seamless **What You See Is What You** Get **(WYSIWYG)** editing experience. No more switching between raw Markdown and a preview pane! Edit directly and see your changes instantly.
 
 ### 💬 Interactive Commenting
 

@@ -116,6 +116,7 @@ class EditorPanel {
     uri?: vscode.Uri,
     standalone?: boolean
   ) {
+    logger.info('=== DEBUG: createOrShow called ===');
     const { extensionUri } = context;
     const column = vscode.window.activeTextEditor
       ? vscode.window.activeTextEditor.viewColumn
@@ -169,6 +170,18 @@ class EditorPanel {
       column || vscode.ViewColumn.One,
       EditorPanel.getWebviewOptions(uri)
     );
+
+    // Set icon immediately after panel creation
+    logger.info('=== ICON DEBUG: Panel created, setting icon ===');
+    try {
+      const iconPath = vscode.Uri.joinPath(extensionUri, 'media', 'icon.png');
+      logger.info('=== ICON DEBUG: Icon path:', iconPath.toString());
+      panel.iconPath = iconPath; // Try simple approach first
+      logger.info('=== ICON DEBUG: Icon set successfully');
+    } catch (error) {
+      logger.error('=== ICON DEBUG: Error setting icon:', error);
+      panel.iconPath = new vscode.ThemeIcon('file-text');
+    }
 
     EditorPanel.currentPanel = new EditorPanel(
       context,
@@ -509,8 +522,7 @@ class EditorPanel {
     const webview = this._panel.webview;
     this._panel.webview.html = this._getHtmlForWebview(webview);
     this._panel.title = path.basename(this._fsPath);
-    // Set markdown icon for the tab
-    this._panel.iconPath = new vscode.ThemeIcon('markdown');
+    // Icon is set at panel creation time
   }
   
   private _isEdit = false;
