@@ -1,4 +1,4 @@
-import React, { useState, useRef, useTransition, startTransition, useMemo, useCallback } from 'react';
+import React, { useState, useRef, useTransition, startTransition, useMemo, useCallback, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { logger } from '../utils/logger';
 import {
@@ -216,8 +216,8 @@ const ToolbarGroups = React.memo(({
               onChange={handleFontChange}
               triggerTitle="Select Font"
               placeholder="Font"
-              items={availableFonts.map((font: string) => ({ 
-                value: font, 
+              items={availableFonts.map((font: string) => ({
+                value: font,
                 label: font,
                 className: `font-option-${font.toLowerCase().replace(/\s+/g, '-')}`
               }))}
@@ -695,6 +695,7 @@ interface MDXEditorWrapperProps {
   onEditComment?: (commentId: string) => void;
   onDeleteComment?: (commentId: string) => void;
   defaultFont?: string;
+  onDirtyStateChange?: (isDirty: boolean) => void;
 }
 
 
@@ -705,7 +706,8 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   onNavigateToComment,
   onEditComment,
   onDeleteComment,
-  defaultFont = 'Default'
+  defaultFont = 'Default',
+  onDirtyStateChange
 }) => {
   logger.debug('🚀 MDXEditorWrapper rendered with markdown length:', markdown?.length || 0);
   if (markdown && markdown.includes('![')) {
@@ -808,6 +810,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   const editorRef = useRef<MDXEditorMethods>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const hasInitiallyFocusedRef = useRef(false);
 
   // Apply font styles to dropdown options
   React.useEffect(() => {
@@ -829,7 +832,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       mutations.forEach((mutation) => {
         if (mutation.type === 'childList') {
           const addedNodes = Array.from(mutation.addedNodes);
-          const hasDropdown = addedNodes.some(node => 
+          const hasDropdown = addedNodes.some(node =>
             node instanceof Element && node.querySelector('.mdxeditor-select-content')
           );
           if (hasDropdown) {
@@ -1140,7 +1143,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       // Check if update is actually needed by comparing processed versions
       const processedIncomingMarkdown = preprocessAngleBrackets(markdown);
       const currentProcessedContent = postprocessAngleBrackets(currentContent);
-      
+
       // Only update if the functional content has actually changed
       if (currentProcessedContent !== markdown && currentContent !== processedIncomingMarkdown) {
         logger.debug('External content change detected, processing images and updating editor...');
@@ -1181,6 +1184,73 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     }
   }, [markdown]);
 
+  // Focus editor on initial load
+  useEffect(() => {
+    if (editorRef.current && !hasInitiallyFocusedRef.current) {
+      const timer = setTimeout(() => {
+        try {
+          const editorDOM = document.querySelector('[contenteditable="true"]') as HTMLElement;
+          if (editorDOM) {
+            editorDOM.focus();
+
+            // Set cursor position based on content type
+            const selection = window.getSelection();
+            const range = document.createRange();
+            
+            // Check if this is standalone mode (has welcome message)
+            const isStandalone = markdown.includes('Welcome to Markdown Docs!');
+            
+            if (editorDOM.textContent?.trim() === '') {
+              // Empty editor - position at beginning
+              const firstParagraph = editorDOM.querySelector('p');
+              if (firstParagraph) {
+                range.setStart(firstParagraph, 0);
+                range.setEnd(firstParagraph, 0);
+              } else {
+                range.setStart(editorDOM, 0);
+                range.setEnd(editorDOM, 0);
+              }
+            } else if (isStandalone) {
+              // Standalone editor with welcome content - position at end
+              const lastElement = editorDOM.lastElementChild;
+              if (lastElement && lastElement.tagName === 'P') {
+                // Position at end of last paragraph
+                range.setStart(lastElement, lastElement.childNodes.length);
+                range.setEnd(lastElement, lastElement.childNodes.length);
+              } else {
+                // Fallback to end of editor
+                range.selectNodeContents(editorDOM);
+                range.collapse(false);
+              }
+            } else {
+              // Regular editor with content - position at beginning
+              const firstParagraph = editorDOM.querySelector('p');
+              if (firstParagraph) {
+                range.setStart(firstParagraph, 0);
+                range.setEnd(firstParagraph, 0);
+              } else {
+                range.setStart(editorDOM, 0);
+                range.setEnd(editorDOM, 0);
+              }
+            }
+
+            if (selection) {
+              selection.removeAllRanges();
+              selection.addRange(range);
+            }
+
+            hasInitiallyFocusedRef.current = true;
+            logger.debug('Editor focused on initial load');
+          }
+        } catch (err) {
+          logger.error('Error focusing editor on initial load:', err);
+        }
+      }, 200);
+
+      return () => clearTimeout(timer);
+    }
+  }, [editorRef.current, markdown]);
+
   // True realtime sync state management
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const isExternalUpdateRef = useRef(false);
@@ -1196,30 +1266,31 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     if (!hasAppliedInitialEscapingRef.current && editorRef.current) {
       const currentContent = editorRef.current.getMarkdown();
       const needsEscaping = currentContent.includes('<') && !currentContent.includes('\\<');
-      
+
       if (needsEscaping) {
         hasAppliedInitialEscapingRef.current = true;
         isExternalUpdateRef.current = true;
-        
+
         const escapedContent = preprocessAngleBrackets(currentContent);
         editorRef.current.setMarkdown(escapedContent);
-        
+
         // Reset flag and continue processing
         setTimeout(() => {
           isExternalUpdateRef.current = false;
         }, 50);
-        
+
         // Process the new content with the escaped version as base
         const processedMarkdown = postprocessAngleBrackets(newMarkdown);
-        
+
         // Continue with normal flow
         const hasChanges = processedMarkdown !== markdown;
         setHasUnsavedChanges(hasChanges);
-        
+        onDirtyStateChange?.(hasChanges);
+
         startTransition(() => {
           onMarkdownChange(processedMarkdown);
         });
-        
+
         return;
       }
     }
@@ -1235,6 +1306,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     // Immediate response: Update the editor state synchronously
     const hasChanges = processedMarkdown !== markdown;
     setHasUnsavedChanges(hasChanges);
+    onDirtyStateChange?.(hasChanges);
 
     // Use React 18 startTransition for non-urgent updates that can be deferred
     startTransition(() => {
@@ -1330,7 +1402,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
             command: 'save',
             content: contentToSave
           });
-          setHasUnsavedChanges(false);
+          // Note: Don't clear dirty state here - wait for save confirmation from extension
 
           // Notify extension that changes are saved for tab title indicator
           if (window.vscodeApi) {
@@ -2106,7 +2178,8 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
                         editorRef.current = ref;
                         // Add debugging when editor mounts
                         if (ref) {
-                          logger.debug('MDXEditor component mounted, checking content after 2 seconds...');
+                          logger.debug('MDXEditor component mounted, will focus after content loads...');
+
                           setTimeout(() => {
                             try {
                               const content = ref.getMarkdown();

@@ -110,6 +110,7 @@ class EditorPanel {
   private _isUpdatingFromWebview = false;
   private _isDirtyFromWebview = false;
   private _justSaved = false;
+  private _hasUnsavedChanges = false;
 
   public static async createOrShow(
     context: vscode.ExtensionContext,
@@ -225,7 +226,10 @@ class EditorPanel {
     this._init();
 
     // Listen for when the panel is disposed
-    this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
+    this._panel.onDidDispose(() => {
+      logger.debug('Panel disposal triggered, unsaved changes:', this._hasUnsavedChanges);
+      this.dispose();
+    }, null, this._disposables);
     
     let textEditTimer: NodeJS.Timeout | undefined;
     
@@ -337,15 +341,7 @@ class EditorPanel {
                 : 'light',
             });
             
-            // For standalone mode, start in dirty state since it's a new unsaved file
-            if (!this._document && !this._uri) {
-              setTimeout(() => {
-                this._panel.webview.postMessage({
-                  command: 'setDirty',
-                  dirty: true
-                });
-              }, 100);
-            }
+            // Standalone mode starts clean - user must make changes to enter dirty state
             break;
           case 'info':
             vscode.window.showInformationMessage(message.content);
@@ -465,6 +461,12 @@ class EditorPanel {
                 }
               }
               this._updateEditTitle();
+              
+              // Send save confirmation to webview
+              this._panel.webview.postMessage({
+                command: 'saveComplete'
+              });
+              logger.debug('Save confirmation sent to webview');
             } finally {
               // Clear flag after minimal delay for realtime sync
               setTimeout(() => {
@@ -509,6 +511,12 @@ class EditorPanel {
             logger.debug('Dirty state changed:', message.isDirty);
             this._isDirtyFromWebview = message.isDirty;
             this._updateEditTitle();
+            break;
+          }
+
+          case 'updateUnsavedChanges': {
+            logger.debug('Unsaved changes state updated:', message.hasUnsavedChanges);
+            this._hasUnsavedChanges = message.hasUnsavedChanges;
             break;
           }
 
@@ -578,7 +586,35 @@ class EditorPanel {
     );
   }
 
-  public dispose() {
+  public async dispose() {
+    // Check for unsaved changes before disposing
+    if (this._hasUnsavedChanges) {
+      const choice = await vscode.window.showWarningMessage(
+        'You have unsaved changes. Do you want to save them before closing?',
+        { modal: true },
+        'Save',
+        'Don\'t Save',
+        'Cancel'
+      );
+
+      if (choice === 'Save') {
+        // Request save from webview
+        this._panel.webview.postMessage({ command: 'requestSave' });
+        // Wait a bit for save to complete, then dispose
+        setTimeout(() => this._forceDispose(), 1000);
+        return;
+      } else if (choice === 'Cancel') {
+        // Don't dispose - but we can't actually prevent it since onDidDispose already fired
+        // This is a limitation of VS Code webview API
+        return;
+      }
+      // If "Don't Save" or dialog dismissed, continue with disposal
+    }
+
+    this._forceDispose();
+  }
+
+  private _forceDispose() {
     EditorPanel.currentPanel = undefined;
 
     // Clean up our resources
@@ -639,7 +675,7 @@ class EditorPanel {
       rawMd = (await vscode.workspace.fs.readFile(this._uri)).toString();
     } else {
       // Standalone mode - start with empty content
-      rawMd = '';
+      rawMd = '# Welcome to Markdown Docs!';
     }
     
     // Preprocess angle brackets for MDXEditor  

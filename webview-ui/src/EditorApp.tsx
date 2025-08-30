@@ -25,6 +25,7 @@ function EditorApp() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [defaultFont, setDefaultFont] = useState<FontFamily>('Arial');
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   
   // Get VS Code API once at component initialization
   const vscode = getVSCodeAPI();
@@ -61,16 +62,20 @@ function EditorApp() {
             setDefaultFont(message.font);
           }
           break;
-        case 'setDirty':
-          // Force dirty state for standalone mode
-          if (message.dirty && vscode) {
-            setTimeout(() => {
-              vscode.postMessage({
-                command: 'dirtyStateChanged',
-                isDirty: true
-              });
-            }, 50);
-          }
+        case 'requestSave':
+          // Extension is requesting save due to close with unsaved changes
+          // Trigger save via keyboard shortcut simulation
+          const saveEvent = new KeyboardEvent('keydown', {
+            key: 's',
+            ctrlKey: !navigator.platform.includes('Mac'),
+            metaKey: navigator.platform.includes('Mac'),
+            bubbles: true
+          });
+          document.dispatchEvent(saveEvent);
+          break;
+        case 'saveComplete':
+          // Extension confirms save was successful - clear dirty state
+          setHasUnsavedChanges(false);
           break;
         default:
           // Unknown message command
@@ -113,6 +118,7 @@ function EditorApp() {
     setMarkdown(newMarkdown);
     // DISABLED: Don't send edit messages on every keystroke for better performance
     // Only save messages are sent when user explicitly saves (Ctrl+S/Cmd+S)
+    // Note: Dirty state is now managed by MDXEditorWrapper via onDirtyStateChange callback
   };
 
   const handleAddComment = (range: { start: number, end: number }, comment: string) => {
@@ -184,6 +190,16 @@ function EditorApp() {
     return () => window.removeEventListener('message', handleMessage);
   }, []);
 
+  // Handle unsaved changes warning on close - send state to extension
+  useEffect(() => {
+    if (vscode) {
+      vscode.postMessage({
+        command: 'updateUnsavedChanges',
+        hasUnsavedChanges
+      });
+    }
+  }, [hasUnsavedChanges, vscode]);
+
   if (error) {
     return (
       <div style={{ padding: '20px', color: 'red' }}>
@@ -222,6 +238,7 @@ function EditorApp() {
         onEditComment={handleEditComment}
         onDeleteComment={handleDeleteComment}
         defaultFont={defaultFont}
+        onDirtyStateChange={setHasUnsavedChanges}
       />
     </ErrorBoundary>
   );
