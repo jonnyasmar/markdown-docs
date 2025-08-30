@@ -38,6 +38,9 @@ function EditorApp() {
       return;
     }
     
+    // Webview state no longer needed - TextDocument is the source of truth
+    // Initial content will come from 'update' message from extension
+    
     try {
     // Ref to hold timeout IDs so they can be cleared
     let timeout1: NodeJS.Timeout;
@@ -116,9 +119,14 @@ function EditorApp() {
 
   const handleMarkdownChange = (newMarkdown: string) => {
     setMarkdown(newMarkdown);
-    // DISABLED: Don't send edit messages on every keystroke for better performance
-    // Only save messages are sent when user explicitly saves (Ctrl+S/Cmd+S)
-    // Note: Dirty state is now managed by MDXEditorWrapper via onDirtyStateChange callback
+    
+    // Send edit messages to keep TextDocument in sync (TextDocument is source of truth)
+    if (vscode) {
+      vscode.postMessage({
+        command: 'edit',
+        content: newMarkdown
+      });
+    }
   };
 
   const handleAddComment = (range: { start: number, end: number }, comment: string) => {

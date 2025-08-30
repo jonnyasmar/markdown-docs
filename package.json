@@ -38,6 +38,22 @@
         "category": "Markdown Docs"
       }
     ],
+    "customEditors": [
+      {
+        "viewType": "markdown-docs.editor",
+        "displayName": "Markdown Docs",
+        "selector": [
+          {
+            "filenamePattern": "*.md"
+          },
+          {
+            "scheme": "untitled",
+            "pattern": "**/*.md"
+          }
+        ],
+        "priority": "default"
+      }
+    ],
     "menus": {
       "explorer/context": [
         {

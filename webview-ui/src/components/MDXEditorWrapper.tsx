@@ -14,7 +14,6 @@ import {
   toolbarPlugin,
   directivesPlugin,
   GenericDirectiveEditor,
-  UndoRedo,
   BoldItalicUnderlineToggles,
   BlockTypeSelect,
   ListsToggle,
@@ -38,9 +37,10 @@ import {
   realmPlugin,
   Cell,
   Signal,
-  imagePlugin
+  imagePlugin,
+  createRootEditorSubscription$
 } from '@mdxeditor/editor';
-import { usePublisher } from '@mdxeditor/gurx';
+import { UNDO_COMMAND, REDO_COMMAND } from 'lexical';
 import '@mdxeditor/editor/style.css';
 import { CommentWithAnchor } from '../types';
 import { CommentModal } from './CommentModal';
@@ -190,12 +190,7 @@ const ToolbarGroups = React.memo(({
 
   return (
     <>
-      {shouldShowGroup('undo-redo') && (
-        <>
-          <UndoRedo />
-          {!isOverflow && <Separator />}
-        </>
-      )}
+      {/* Removed UndoRedo - VS Code handles undo/redo via keyboard shortcuts */}
 
       {/* Block Type (text style) - before font selection */}
       {shouldShowGroup('display-font') && (
@@ -305,7 +300,7 @@ const ToolbarWithCommentButton = React.memo(({
     if (width < 690 - 34) newHidden.push('formatting');
     if (width < 590 - 34) newHidden.push('font-style');
     if (width < 430 - 34) newHidden.push('display-font');
-    if (width < 270 - 34) newHidden.push('undo-redo');
+    // Removed undo-redo group - VS Code handles undo/redo
 
     setHiddenGroups(newHidden);
   }, []);
@@ -812,6 +807,121 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const hasInitiallyFocusedRef = useRef(false);
 
+  // Create a custom plugin to handle undo/redo synchronization
+  const undoRedoSyncPlugin = useMemo(() => {
+    return realmPlugin({
+      init: (realm) => {
+        // Set up undo/redo command interceptors within the realm
+        const setupUndoRedoSync = () => {
+          const createRootEditorSubscription = realm.pub(createRootEditorSubscription$);
+          
+          // Hook into Lexical's undo/redo commands
+          const unsubscribeUndo = createRootEditorSubscription((rootEditor) => {
+            return rootEditor.registerCommand(
+              UNDO_COMMAND,
+              () => {
+                // Let the undo happen first, then sync to VS Code
+                setTimeout(() => {
+                  try {
+                    if (editorRef.current) {
+                      const newContent = editorRef.current.getMarkdown();
+                      logger.debug('Undo operation detected, syncing to VS Code:', newContent.length, 'chars');
+                      
+                      // Send the updated content to VS Code
+                      if (typeof window !== 'undefined' && window.vscodeApi) {
+                        window.vscodeApi.postMessage({
+                          command: 'edit',
+                          content: newContent
+                        });
+                      }
+                    }
+                  } catch (error) {
+                    logger.error('Error syncing undo to VS Code:', error);
+                  }
+                }, 10);
+                
+                // Return false to let the command continue normally
+                return false;
+              },
+              1 // Low priority to let the actual undo happen first
+            );
+          });
+
+          const unsubscribeRedo = createRootEditorSubscription((rootEditor) => {
+            return rootEditor.registerCommand(
+              REDO_COMMAND,
+              () => {
+                // Let the redo happen first, then sync to VS Code
+                setTimeout(() => {
+                  try {
+                    if (editorRef.current) {
+                      const newContent = editorRef.current.getMarkdown();
+                      logger.debug('Redo operation detected, syncing to VS Code:', newContent.length, 'chars');
+                      
+                      // Send the updated content to VS Code
+                      if (typeof window !== 'undefined' && window.vscodeApi) {
+                        window.vscodeApi.postMessage({
+                          command: 'edit',
+                          content: newContent
+                        });
+                      }
+                    }
+                  } catch (error) {
+                    logger.error('Error syncing redo to VS Code:', error);
+                  }
+                }, 10);
+                
+                // Return false to let the command continue normally
+                return false;
+              },
+              1 // Low priority to let the actual redo happen first
+            );
+          });
+
+          return () => {
+            if (unsubscribeUndo) unsubscribeUndo();
+            if (unsubscribeRedo) unsubscribeRedo();
+          };
+        };
+
+        // Set up the sync when the editor is ready
+        setTimeout(setupUndoRedoSync, 100);
+      }
+    });
+  }, []);
+
+  // Prevent VS Code's keyboard shortcuts for undo/redo when editor is focused
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Check if we're in the MDX editor
+      const target = event.target as HTMLElement;
+      const isInEditor = target.closest('.mdx-editor, .mdx-content, [contenteditable="true"]');
+      
+      if (isInEditor) {
+        const isMac = navigator.platform.includes('Mac');
+        const isUndo = event.key === 'z' && (isMac ? event.metaKey : event.ctrlKey) && !event.shiftKey;
+        const isRedo = event.key === 'z' && (isMac ? event.metaKey : event.ctrlKey) && event.shiftKey;
+        const isRedoAlt = event.key === 'y' && (isMac ? event.metaKey : event.ctrlKey); // Alternative redo shortcut
+        
+        if (isUndo || isRedo || isRedoAlt) {
+          logger.debug('Preventing VS Code undo/redo, letting MDX editor handle it exclusively');
+          
+          // Prevent VS Code from handling these shortcuts
+          event.preventDefault();
+          event.stopPropagation();
+          event.stopImmediatePropagation();
+          
+          // Let MDX editor handle it natively, our sync hooks will update VS Code
+          return false;
+        }
+      }
+    };
+
+    // Use capture phase to intercept before VS Code can handle it
+    document.addEventListener('keydown', handleKeyDown, true);
+    return () => document.removeEventListener('keydown', handleKeyDown, true);
+  }, []);
+
   // Apply font styles to dropdown options
   React.useEffect(() => {
     const styleDropdownOptions = () => {
@@ -1291,6 +1401,14 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
           onMarkdownChange(processedMarkdown);
         });
 
+        // Send edit message to custom editor provider for dirty state tracking
+        if (typeof window !== 'undefined' && window.vscodeApi && hasChanges) {
+          window.vscodeApi.postMessage({
+            command: 'edit',
+            content: processedMarkdown
+          });
+        }
+
         return;
       }
     }
@@ -1312,6 +1430,14 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     startTransition(() => {
       onMarkdownChange(processedMarkdown);
     });
+
+    // Send edit message to custom editor provider for dirty state tracking
+    if (typeof window !== 'undefined' && window.vscodeApi && hasChanges) {
+      window.vscodeApi.postMessage({
+        command: 'edit',
+        content: processedMarkdown
+      });
+    }
 
     // Clear any existing dirty state timeout
     clearTimeout(deferredMessageTimeoutRef.current);
@@ -1991,6 +2117,8 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     thematicBreakPlugin(),
     markdownShortcutPlugin(),
     searchPlugin(),
+    // Undo/redo synchronization with VS Code
+    undoRedoSyncPlugin,
     imagePlugin({
       imageUploadHandler: async (image: File) => {
         return new Promise((resolve) => {
@@ -2134,6 +2262,8 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       codeFolding: true
     })
   ], [selectedFont, handleFontChange, availableFonts, setIsBookView, isBookView, searchInputRef, isTyping, focusedCommentId, setFocusedCommentId, pendingComment, handleCommentInserted]);
+
+  // Let MDX editor handle undo/redo natively - no keyboard interception needed
 
   logger.debug('=== MDXEditorWrapper RENDER END - returning JSX ===');
   logger.debug('Editor state:', {
