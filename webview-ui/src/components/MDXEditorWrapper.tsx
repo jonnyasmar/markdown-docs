@@ -1137,8 +1137,12 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       // Get current editor content to compare
       const currentContent = editorRef.current.getMarkdown();
 
-      // Only update if content has actually changed to avoid unnecessary updates
-      if (currentContent !== markdown) {
+      // Check if update is actually needed by comparing processed versions
+      const processedIncomingMarkdown = preprocessAngleBrackets(markdown);
+      const currentProcessedContent = postprocessAngleBrackets(currentContent);
+      
+      // Only update if the functional content has actually changed
+      if (currentProcessedContent !== markdown && currentContent !== processedIncomingMarkdown) {
         logger.debug('External content change detected, processing images and updating editor...');
 
         // Set external update flag to prevent circular updates
@@ -1150,7 +1154,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
           const selection = window.getSelection();
           const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
 
-          // Extension already preprocessed everything, use content directly
+          // Use clean content for display, handle escaping internally
           const processedMarkdown = markdown;
 
           // Update the editor content directly (images already preprocessed by extension)
@@ -1180,11 +1184,44 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   // True realtime sync state management
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const isExternalUpdateRef = useRef(false);
+  const hasAppliedInitialEscapingRef = useRef(false);
 
   const handleMarkdownChange = useCallback((newMarkdown: string) => {
     // Skip if this change is from an external update
     if (isExternalUpdateRef.current) {
       return;
+    }
+
+    // On first edit, apply escaping to the editor content invisibly
+    if (!hasAppliedInitialEscapingRef.current && editorRef.current) {
+      const currentContent = editorRef.current.getMarkdown();
+      const needsEscaping = currentContent.includes('<') && !currentContent.includes('\\<');
+      
+      if (needsEscaping) {
+        hasAppliedInitialEscapingRef.current = true;
+        isExternalUpdateRef.current = true;
+        
+        const escapedContent = preprocessAngleBrackets(currentContent);
+        editorRef.current.setMarkdown(escapedContent);
+        
+        // Reset flag and continue processing
+        setTimeout(() => {
+          isExternalUpdateRef.current = false;
+        }, 50);
+        
+        // Process the new content with the escaped version as base
+        const processedMarkdown = postprocessAngleBrackets(newMarkdown);
+        
+        // Continue with normal flow
+        const hasChanges = processedMarkdown !== markdown;
+        setHasUnsavedChanges(hasChanges);
+        
+        startTransition(() => {
+          onMarkdownChange(processedMarkdown);
+        });
+        
+        return;
+      }
     }
 
     // Mark as typing for performance optimizations
