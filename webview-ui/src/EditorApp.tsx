@@ -61,6 +61,17 @@ function EditorApp() {
             setDefaultFont(message.font);
           }
           break;
+        case 'setDirty':
+          // Force dirty state for standalone mode
+          if (message.dirty && vscode) {
+            setTimeout(() => {
+              vscode.postMessage({
+                command: 'dirtyStateChanged',
+                isDirty: true
+              });
+            }, 50);
+          }
+          break;
         default:
           // Unknown message command
       }

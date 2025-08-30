@@ -135,11 +135,9 @@ class EditorPanel {
     let doc: undefined | vscode.TextDocument;
     
     if (standalone) {
-      // Standalone mode - create a new untitled document
-      doc = await vscode.workspace.openTextDocument({
-        language: 'markdown',
-        content: '# New Markdown Document\n\nStart writing here...\n'
-      });
+      // Standalone mode - don't create a VS Code document, just use content
+      // We'll handle the document creation only when the user saves
+      doc = undefined;
     } else if (uri) {
       // From right-click: open document first then enable auto sync
       doc = await vscode.workspace.openTextDocument(uri);
@@ -158,7 +156,7 @@ class EditorPanel {
       }
     }
 
-    if (!doc) {
+    if (!doc && !standalone) {
       showError(`Cannot find markdown file!`);
       return;
     }
@@ -188,7 +186,7 @@ class EditorPanel {
       panel,
       extensionUri,
       doc,
-      uri
+      doc?.uri || uri
     );
   }
 
@@ -213,15 +211,15 @@ class EditorPanel {
   }
 
   private get _fsPath() {
-    return this._uri.fsPath;
+    return this._uri?.fsPath || '';
   }
 
   private constructor(
     private readonly _context: vscode.ExtensionContext,
     private readonly _panel: vscode.WebviewPanel,
     private readonly _extensionUri: vscode.Uri,
-    public _document: vscode.TextDocument,
-    public _uri = _document.uri
+    public _document: vscode.TextDocument | undefined,
+    public _uri?: vscode.Uri
   ) {
     // Set the webview's initial html content
     this._init();
@@ -338,6 +336,16 @@ class EditorPanel {
                 ? 'dark' 
                 : 'light',
             });
+            
+            // For standalone mode, start in dirty state since it's a new unsaved file
+            if (!this._document && !this._uri) {
+              setTimeout(() => {
+                this._panel.webview.postMessage({
+                  command: 'setDirty',
+                  dirty: true
+                });
+              }, 100);
+            }
             break;
           case 'info':
             vscode.window.showInformationMessage(message.content);
@@ -372,11 +380,77 @@ class EditorPanel {
                 doc => doc.uri.fsPath === this._uri?.fsPath
               );
               
-              if (isDocumentOpen && this._document && !this._document.isClosed) {
+              if (this._document && isDocumentOpen && !this._document.isClosed) {
                 logger.debug('Document is open in VS Code, using document reference');
                 await syncToEditor(processedContent); // Pass postprocessed content
-                await this._document.save();
-                logger.debug('Document saved via VS Code document');
+                
+                // Check if this is an untitled document
+                if (this._document.isUntitled) {
+                  logger.debug('Untitled document detected, showing Save As dialog');
+                  // For untitled documents, use Save As dialog
+                  // Get the current workspace folder for default location
+                  const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+                  const defaultUri = workspaceFolder 
+                    ? vscode.Uri.joinPath(workspaceFolder.uri, 'Untitled.md')
+                    : vscode.Uri.file('Untitled.md');
+                    
+                  const saveUri = await vscode.window.showSaveDialog({
+                    defaultUri,
+                    filters: {
+                      'Markdown files': ['md'],
+                      'All files': ['*']
+                    }
+                  });
+                  
+                  if (saveUri) {
+                    // Save to the selected location
+                    await vscode.workspace.fs.writeFile(saveUri, Buffer.from(processedContent, 'utf8'));
+                    // Update the internal references to the new saved file
+                    this._uri = saveUri;
+                    // Open the saved file as a regular document
+                    this._document = await vscode.workspace.openTextDocument(saveUri);
+                    // Update the panel title to show the new filename
+                    this._panel.title = path.basename(saveUri.fsPath);
+                    logger.debug('Document saved as:', saveUri.fsPath);
+                  } else {
+                    logger.debug('Save dialog cancelled');
+                    return; // User cancelled, don't continue
+                  }
+                } else {
+                  await this._document.save();
+                  logger.debug('Document saved via VS Code document');
+                }
+              } else if (!this._document && !this._uri) {
+                // Standalone mode - always show Save As dialog
+                logger.debug('Standalone mode detected, showing Save As dialog');
+                // Get the current workspace folder for default location
+                const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+                const defaultUri = workspaceFolder 
+                  ? vscode.Uri.joinPath(workspaceFolder.uri, 'Untitled.md')
+                  : vscode.Uri.file('Untitled.md');
+                  
+                const saveUri = await vscode.window.showSaveDialog({
+                  defaultUri,
+                  filters: {
+                    'Markdown files': ['md'],
+                    'All files': ['*']
+                  }
+                });
+                
+                if (saveUri) {
+                  // Save to the selected location
+                  await vscode.workspace.fs.writeFile(saveUri, Buffer.from(processedContent, 'utf8'));
+                  // Update the internal references to the new saved file
+                  this._uri = saveUri;
+                  // Open the saved file as a regular document
+                  this._document = await vscode.workspace.openTextDocument(saveUri);
+                  // Update the panel title to show the new filename
+                  this._panel.title = path.basename(saveUri.fsPath);
+                  logger.debug('Standalone document saved as:', saveUri.fsPath);
+                } else {
+                  logger.debug('Save dialog cancelled');
+                  return; // User cancelled, don't continue
+                }
               } else {
                 logger.debug('Document not open in VS Code, using direct file write');
                 // Direct file write without opening the document in VS Code
@@ -521,7 +595,7 @@ class EditorPanel {
   private _init() {
     const webview = this._panel.webview;
     this._panel.webview.html = this._getHtmlForWebview(webview);
-    this._panel.title = path.basename(this._fsPath);
+    this._panel.title = this._fsPath ? path.basename(this._fsPath) : 'Untitled.md';
     // Icon is set at panel creation time
   }
   
@@ -537,9 +611,8 @@ class EditorPanel {
       const isEdit = this._isDirtyFromWebview;
       if (isEdit !== this._isEdit) {
         this._isEdit = isEdit;
-        this._panel.title = `${path.basename(
-          this._fsPath
-        )}${isEdit ? `  ●` : ''}`;
+        const fileName = this._fsPath ? path.basename(this._fsPath) : 'Untitled.md';
+        this._panel.title = `${fileName}${isEdit ? `  ●` : ''}`;
         logger.debug('Updated tab title with dirty state:', isEdit);
       }
     } catch (error) {
@@ -559,9 +632,15 @@ class EditorPanel {
     logger.debug('URI:', this._uri?.fsPath);
     logger.debug('IsUpdatingFromWebview flag:', this._isUpdatingFromWebview);
     
-    const rawMd = this._document
-      ? this._document.getText()
-      : (await vscode.workspace.fs.readFile(this._uri)).toString();
+    let rawMd: string;
+    if (this._document) {
+      rawMd = this._document.getText();
+    } else if (this._uri) {
+      rawMd = (await vscode.workspace.fs.readFile(this._uri)).toString();
+    } else {
+      // Standalone mode - start with empty content
+      rawMd = '';
+    }
     
     // Preprocess angle brackets for MDXEditor  
     const md = preprocessAngleBrackets(rawMd);
