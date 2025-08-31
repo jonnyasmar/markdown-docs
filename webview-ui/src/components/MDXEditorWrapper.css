@@ -1,4 +1,4 @@
-/* Import Radix UI color systems for proper MDXEditor theming */
+/* Import font families with proper weight variants */
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Garamond:wght@400;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Book+Antiqua:wght@400;700&display=swap');
@@ -12,6 +12,11 @@
 @import '@radix-ui/colors/slate-dark.css';
 @import '@radix-ui/colors/gray.css';
 @import '@radix-ui/colors/gray-dark.css';
+
+/* Ensure system fonts are loaded with proper weights - CSS font synthesis fallback */
+* {
+  font-synthesis: weight style;
+}
 
 .mdx-editor-container {
   display: flex;
@@ -113,8 +118,10 @@
 }
 
 .mdx-content strong {
-  font-weight: 600;
+  font-weight: bold;
   color: var(--vscode-editor-foreground);
+  /* Ensure system fonts load with proper bold weights */
+  font-synthesis: weight style;
 }
 
 /* Inline code styling */
@@ -306,6 +313,11 @@ button[role="combobox"][aria-label="Language"],
   padding: 4px 8px !important;
   width: 100px;
 }
+
+button[class*="_selectTrigger_"][aria-label="Font"] {
+  width: 136px;
+}
+
 
 .toolbar-group.display-font-group [role="combobox"]{
   width: 110px;
@@ -1005,7 +1017,20 @@ button[role="combobox"][aria-label="Language"]:hover,
 .mdx-content.font-default h1, .mdx-content.font-default h2, .mdx-content.font-default h3,
 .mdx-content.font-default h4, .mdx-content.font-default h5, .mdx-content.font-default h6,
 .mdx-content.font-default p, .mdx-content.font-default li, .mdx-content.font-default td {
-  font-family: var(--vscode-editor-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif);
+  font-family: var(--vscode-editor-font-family, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif);
+}
+
+/* Ensure bold variants work for default font */
+.mdx-content.font-default strong,
+.mdx-content.font-default b,
+.mdx-content.font-default h1,
+.mdx-content.font-default h2,
+.mdx-content.font-default h3,
+.mdx-content.font-default h4,
+.mdx-content.font-default h5,
+.mdx-content.font-default h6 {
+  font-family: var(--vscode-editor-font-family, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif);
+  font-weight: bold;
 }
 
 .mdx-content.font-courier-new h1, .mdx-content.font-courier-new h2, .mdx-content.font-courier-new h3,
@@ -1105,7 +1130,7 @@ button[role="combobox"][aria-label="Language"]:hover,
 
 /* Additional selectors for different dropdown implementations */
 .font-option-default {
-  font-family: var(--vscode-editor-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif) !important;
+  font-family: var(--vscode-editor-font-family, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif) !important;
 }
 
 .font-option-arial {
@@ -1521,6 +1546,12 @@ body {
 /* ===== IMAGE UPLOAD DIALOG STYLING ===== */
 /* EXTREMELY SPECIFIC targeting to avoid conflicts - target MDXEditor image dialog only */
 
+.mdx-editor-container [role="dialog"],
+.mdx-editor [role="dialog"] {
+  background: var(--vscode-editor-background) !important;
+  border: 1px solid var(--vscode-widget-border) !important;
+}
+
 /* Use more general approach - target any dialog with image-related content */
 /* .mdx-editor-container [role="dialog"],
 .mdx-editor [role="dialog"] {
@@ -1830,4 +1861,8 @@ body {
 /* Hide markdown parse errors when in source mode */
 .mdx-editor-container.source-mode [class*="_markdownParseError_"] {
   display: none !important;
+}
+
+[class*="_tableEditor_"] thead > tr > th {
+  text-align: center !important;
 }

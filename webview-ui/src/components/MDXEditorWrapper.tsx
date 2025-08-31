@@ -881,15 +881,15 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   // Available fonts with their CSS font-family values
   const fontFamilyMap = {
     Default:
-      'var(--vscode-editor-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif)',
+      'var(--vscode-editor-font-family, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif)',
     Arial: 'Arial, sans-serif',
     'Times New Roman': '"Times New Roman", Times, serif',
     Roboto: 'Roboto, Arial, sans-serif',
     Georgia: 'Georgia, serif',
-    Calibri: 'Calibri, sans-serif',
+    Calibri: 'Calibri, Arial, sans-serif',
     Garamond: 'Garamond, serif',
     'Book Antiqua': '"Book Antiqua", serif',
-    'Courier New': '"Courier New", monospace',
+    'Courier New': '"Courier New", "Monaco", "Menlo", monospace',
     'Open Sans': '"Open Sans", Arial, sans-serif',
     Lato: '"Lato", Arial, sans-serif',
     Montserrat: '"Montserrat", Arial, sans-serif',
