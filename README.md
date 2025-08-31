@@ -14,7 +14,7 @@ At the heart of Markdown Docs is a state-of-the-art **What You See Is What You G
 
 ### Effortless Formatting
 
-Our intuitive toolbar puts all the essential formatting tools at your fingertips:
+Our intuitive toolbar puts all the :comment[essential]{#comment-1756653600254 text="test"} formatting tools at your fingertips:
 
 * **Text Styling:** Undo, Redo, Bold, Italic, Underline, and various font styles.
 * **Lists:** Create ordered, unordered, and check lists with ease.

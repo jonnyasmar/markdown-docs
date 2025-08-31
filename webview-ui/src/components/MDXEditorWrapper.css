@@ -795,10 +795,11 @@ button[role="combobox"][aria-label="Language"]:hover,
   font-size: 14px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   z-index: 100;
+  opacity: .65;
 }
 
 .show-comments-btn:hover {
-  background: var(--vscode-button-hoverBackground);
+  opacity: 1;
 }
 
 /* Floating comment button */
@@ -855,7 +856,8 @@ button[role="combobox"][aria-label="Language"]:hover,
 /* Comment highlighting - theme-aware subtle inline indicators */
 .comment-highlight, mark {
   background-color: rgba(255, 255, 0, 0.25);
-  padding: 0;
+  padding: 1px 0px;
+  margin: -1px 0px;
   transition: all 0.3s ease;
   color: inherit;
 }
@@ -890,10 +892,30 @@ button[role="combobox"][aria-label="Language"]:hover,
   }
 }
 
-/* Persistent focus state for inline comments - more subtle than animation */
+/* Persistent focus state for inline comments - with initial pulse animation */
 .comment-highlight.focused, mark.focused {
-  background-color: rgba(var(--vscode-focusBorder-rgba, 0, 123, 255), 0.2);
+  background-color: rgba(var(--vscode-focusBorder-rgba, 0, 123, 255), 0.3);
   border-radius: 2px;
+  animation: highlight-pulse 0.6s ease-out;
+  transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+  padding: 1px 0px;
+  margin: -1px 0px;
+  position: relative;
+}
+
+@keyframes highlight-pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(var(--vscode-focusBorder-rgba, 0, 123, 255), 0.4);
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 0 0 4px rgba(var(--vscode-focusBorder-rgba, 0, 123, 255), 0.2);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(var(--vscode-focusBorder-rgba, 0, 123, 255), 0);
+  }
 }
 
 .comment-item.highlighted, mark.highlighted {

@@ -810,7 +810,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   logger.debug('MDXEditorWrapper markdown ends with expected?', markdown?.includes('explore all the features!'));
   // UI state
   const [showCommentSidebar, setShowCommentSidebar] = useState(false);
-  const [sidebarWidth, setSidebarWidth] = useState(300);
+  const [sidebarWidth, setSidebarWidth] = useState(240);
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [selectedText, setSelectedText] = useState('');
   const [currentSelection, setCurrentSelection] = useState<{ start: number; end: number } | null>(null);
@@ -1852,7 +1852,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       if (isResizing && containerRef.current) {
         const containerRect = containerRef.current.getBoundingClientRect();
         const newWidth = containerRect.right - e.clientX;
-        setSidebarWidth(Math.max(280, Math.min(600, newWidth)));
+        setSidebarWidth(Math.max(240, Math.min(600, newWidth)));
       }
     };
 
@@ -2017,23 +2017,44 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     logger.debug('Pending comment before clearing:', pendingComment);
     setPendingComment(null);
 
-    // Trigger change event to save the updated markdown  
-    if (editorRef.current) {
-      const updatedMarkdown = editorRef.current.getMarkdown();
-      logger.debug('Markdown after insertion:', updatedMarkdown.substring(0, 200) + '...');
-      logger.debug('Calling onMarkdownChange with updated markdown');
-      onMarkdownChange(updatedMarkdown);
-    } else {
-      logger.error('No editor ref available in handleCommentInserted');
-    }
+    // Force immediate comment parsing by temporarily clearing isTyping
+    setIsTyping(false);
 
-    // Notify extension about changes
-    if (window.vscodeApi) {
-      window.vscodeApi.postMessage({
-        command: 'dirtyStateChanged',
-        isDirty: true
-      });
-    }
+    // Wait for MDX Editor to update its internal state, then get the markdown
+    setTimeout(() => {
+      if (editorRef.current) {
+        const updatedMarkdown = editorRef.current.getMarkdown();
+        logger.debug('Markdown after insertion delay:', updatedMarkdown.substring(0, 200) + '...');
+        logger.debug('Calling onMarkdownChange with updated markdown');
+        onMarkdownChange(updatedMarkdown);
+
+        // Force comment parsing immediately to show new comment in sidebar
+        try {
+          logger.debug('Force parsing comments after insertion');
+          const comments = DirectiveService.parseCommentDirectives(updatedMarkdown);
+          const commentsWithAnchor: CommentWithAnchor[] = comments.map(comment => ({
+            ...comment,
+            anchoredText: comment.anchoredText || 'Selected text',
+            startPosition: 0,
+            endPosition: 0
+          }));
+          setParsedComments(commentsWithAnchor);
+          logger.debug('Forced comment parsing completed, found comments:', commentsWithAnchor.length);
+        } catch (error) {
+          logger.error('Error in forced comment parsing:', error);
+        }
+
+        // Notify extension about changes
+        if (window.vscodeApi) {
+          window.vscodeApi.postMessage({
+            command: 'dirtyStateChanged',
+            isDirty: true
+          });
+        }
+      } else {
+        logger.error('No editor ref available in handleCommentInserted');
+      }
+    }, 200); // Increased delay to ensure MDX Editor has processed the directive
   };
 
   // Effect to watch for pending comments and trigger plugin
