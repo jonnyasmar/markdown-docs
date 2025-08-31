@@ -1,6 +1,6 @@
 # Source files
-/src/**
-/test/**
+src/**
+test/**
 
 # Development files
 .vscode/**
@@ -10,10 +10,32 @@ webpack.config.js
 .DS_Store
 
 # Webview source
-/webview-ui/src/**
-/webview-ui/node_modules/**
-/webview-ui/package-lock.json
-/webview-ui/tsconfig.json
+webview-ui/src/**
+webview-ui/node_modules/**
+webview-ui/package-lock.json
+webview-ui/tsconfig.json
 
 # Keep everything in dist - it's already built
 # dist/** is needed for the extension to work
+
+.vscode/**
+.vscode-test/**
+out/test/**
+src/**
+.github/**
+.git/**
+.gitignore
+vsc-extension-quickstart.md
+**/tsconfig.json
+**/tslint.json
+**/*.map
+**/*.ts
+.fttemplates/**
+.all-contributorsrc
+node_modules/**
+test-fixtures/**
+CHANGELOG.md
+
+.bmad-core/**
+.claude/**
+.serena/**

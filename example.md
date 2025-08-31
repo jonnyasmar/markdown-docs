@@ -8,7 +8,7 @@ This document serves as an example to showcase the capabilities of the **Markdow
 
 ### ✍️ WYSIWYG Editing Experience
 
-With Markdown Docs, you get a seamless **What You See Is What You** Get **(WYSIWYG)** editing experience. No more switching between raw Markdown and a preview pane! Edit directly and see your changes instantly.
+With Markdown Docs, you get a :comment[seamless]{#comment-1756677243906 text="test"} **What You See Is What You** Get **(WYSIWYG)** editing experience. No more switching between raw Markdown and a preview pane! Edit directly and see your changes instantly.
 
 ### 💬 Interactive Commenting
 
@@ -116,3 +116,11 @@ Here's a screenshot showing the extension in action:
 ***
 
 This example document should provide a good basis for showcasing the Markdown Docs extension in action. Feel free to add comments, modify content, and explore all the features!
+
+### Problematic Characters
+
+<html>tag</html>
+
+This<Still<Works>>
+
+{{so_does_this}}
