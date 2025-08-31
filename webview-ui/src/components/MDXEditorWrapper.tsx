@@ -317,13 +317,13 @@ const ToolbarWithCommentButton = React.memo(({
     const newHidden: string[] = [];
 
     // Use the same thresholds from CSS variables
-    if (width < 1030 - 34 * 2) newHidden.push('diff-view');
-    if (width < 930 - 34 * 2) newHidden.push('blocks');
-    if (width < 810 - 34 * 2) newHidden.push('lists');
-    if (width < 690 - 34 * 2) newHidden.push('formatting');
-    if (width < 590 - 34 * 2) newHidden.push('font-style');
-    if (width < 430 - 34 * 2) newHidden.push('display-font');
-    if (width < 270 - 34 * 2) newHidden.push('undo-redo');
+    if (width < 1030 - 34 * 4) newHidden.push('diff-view');
+    if (width < 930 - 34 * 4) newHidden.push('blocks');
+    if (width < 810 - 34 * 4) newHidden.push('lists');
+    if (width < 690 - 34 * 4) newHidden.push('formatting');
+    if (width < 590 - 34 * 4) newHidden.push('font-style');
+    if (width < 430 - 34 * 4) newHidden.push('display-font');
+    if (width < 270 - 34 * 4) newHidden.push('undo-redo');
     // Removed undo-redo group - VS Code handles undo/redo
 
     setHiddenGroups(newHidden);
@@ -1170,12 +1170,12 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     } else {
       logger.debug('Updated markdown length after deletion:', updatedMarkdown.length);
       logger.debug('Calling onMarkdownChange and updating editor content');
-      
+
       // Update the editor content immediately to remove the highlight
       if (editorRef.current) {
         editorRef.current.setMarkdown(updatedMarkdown);
       }
-      
+
       // Also notify parent component of the change
       onMarkdownChange(updatedMarkdown);
     }
