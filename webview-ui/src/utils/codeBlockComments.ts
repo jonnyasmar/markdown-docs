@@ -1,6 +1,5 @@
 // Enhanced code block commenting system
 // Provides alternative commenting approaches for code blocks where directives don't work
-
 import { logger } from './logger';
 
 export interface CodeBlockComment {
@@ -45,7 +44,7 @@ export function parseCodeBlocks(markdown: string): CodeBlockInfo[] {
       content,
       startPosition,
       endPosition,
-      lineCount
+      lineCount,
     });
 
     index++;
@@ -60,7 +59,7 @@ export function parseCodeBlocks(markdown: string): CodeBlockInfo[] {
 export function determineCodeCommentStrategy(
   codeBlock: CodeBlockInfo,
   selectedText: string,
-  lineNumber?: number
+  lineNumber?: number,
 ): 'html-comment' | 'sidebar-only' | 'line-annotation' {
   // For very short selections, use line annotation
   if (selectedText.length < 50 && lineNumber !== undefined) {
@@ -90,10 +89,10 @@ export function insertHTMLComment(
   codeContent: string,
   selectedText: string,
   comment: string,
-  commentId: string
+  commentId: string,
 ): string {
   const commentMarker = `<!-- COMMENT: ${commentId} - ${comment.replace(/--/g, '—')} -->`;
-  
+
   // Find the selected text in the code
   const index = codeContent.indexOf(selectedText);
   if (index === -1) {
@@ -104,7 +103,7 @@ export function insertHTMLComment(
   // Insert comment before the selected text
   const before = codeContent.substring(0, index);
   const after = codeContent.substring(index);
-  
+
   return `${before}${commentMarker}\n${after}`;
 }
 
@@ -116,7 +115,7 @@ export function insertLineAnnotation(
   selectedText: string,
   comment: string,
   commentId: string,
-  language: string
+  language: string,
 ): string {
   const commentSyntax = getCommentSyntax(language);
   if (!commentSyntax) {
@@ -143,7 +142,7 @@ export function insertLineAnnotation(
   // Insert comment line above the target line
   const commentLine = `${commentSyntax.line} COMMENT(${commentId}): ${comment}`;
   lines.splice(targetLineIndex, 0, commentLine);
-  
+
   return lines.join('\n');
 }
 
@@ -194,7 +193,7 @@ function getCommentSyntax(language: string): { line: string; block?: { start: st
     yaml: { line: '#' },
     dockerfile: { line: '#' },
     makefile: { line: '#' },
-    cmake: { line: '#' }
+    cmake: { line: '#' },
   };
 
   return syntaxMap[language.toLowerCase()] || null;
@@ -208,7 +207,7 @@ export function createSidebarComment(
   comment: string,
   commentId: string,
   codeBlockIndex: number,
-  lineNumber?: number
+  lineNumber?: number,
 ): CodeBlockComment {
   return {
     id: commentId,
@@ -217,7 +216,7 @@ export function createSidebarComment(
     content: comment,
     language: 'code',
     timestamp: Date.now(),
-    renderStrategy: 'sidebar-only'
+    renderStrategy: 'sidebar-only',
   };
 }
 
@@ -226,23 +225,23 @@ export function createSidebarComment(
  */
 export function getSelectionPosition(
   codeContent: string,
-  selectedText: string
+  selectedText: string,
 ): { line: number; startColumn: number; endColumn: number } | null {
   const lines = codeContent.split('\n');
-  
+
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
     const line = lines[lineIndex];
     const startColumn = line.indexOf(selectedText);
-    
+
     if (startColumn !== -1) {
       return {
         line: lineIndex + 1, // 1-based line numbers
         startColumn: startColumn + 1, // 1-based column numbers
-        endColumn: startColumn + selectedText.length + 1
+        endColumn: startColumn + selectedText.length + 1,
       };
     }
   }
-  
+
   return null;
 }
 
@@ -252,23 +251,25 @@ export function getSelectionPosition(
 export function removeCodeBlockComment(
   codeContent: string,
   commentId: string,
-  renderStrategy: CodeBlockComment['renderStrategy']
+  renderStrategy: CodeBlockComment['renderStrategy'],
 ): string {
   switch (renderStrategy) {
-    case 'html-comment':
+    case 'html-comment': {
       // Remove HTML comment
       const htmlCommentRegex = new RegExp(`<!--\\s*COMMENT:\\s*${commentId}[^>]*-->\\s*\n?`, 'g');
       return codeContent.replace(htmlCommentRegex, '');
-      
-    case 'line-annotation':
+    }
+
+    case 'line-annotation': {
       // Remove line comment
       const lineCommentRegex = new RegExp(`^.*COMMENT\\(${commentId}\\):.*\n?`, 'gm');
       return codeContent.replace(lineCommentRegex, '');
-      
+    }
+
     case 'sidebar-only':
       // Nothing to remove from code content
       return codeContent;
-      
+
     default:
       return codeContent;
   }
@@ -281,21 +282,22 @@ export function updateCodeBlockComment(
   codeContent: string,
   commentId: string,
   newComment: string,
-  renderStrategy: CodeBlockComment['renderStrategy']
+  renderStrategy: CodeBlockComment['renderStrategy'],
 ): string {
   switch (renderStrategy) {
-    case 'html-comment':
+    case 'html-comment': {
       const htmlCommentRegex = new RegExp(`(<!--\\s*COMMENT:\\s*${commentId}\\s*-\\s*)([^>]*)(-->)`, 'g');
       return codeContent.replace(htmlCommentRegex, `$1${newComment.replace(/--/g, '—')}$3`);
-      
-    case 'line-annotation':
+    }
+    case 'line-annotation': {
       const lineCommentRegex = new RegExp(`(^.*COMMENT\\(${commentId}\\):\\s*)(.*)`, 'gm');
       return codeContent.replace(lineCommentRegex, `$1${newComment}`);
-      
+    }
+
     case 'sidebar-only':
       // Update handled in sidebar component
       return codeContent;
-      
+
     default:
       return codeContent;
   }

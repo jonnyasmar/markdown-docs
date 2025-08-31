@@ -2,14 +2,33 @@
 *.json
 package*.json
 
-# Already ignored by .eslintrc.json but adding here for clarity
+# Build outputs
 out/
 dist/
 **/*.d.ts
 
-# Node modules
+# Dependencies
 node_modules/
+**/node_modules/
 
-# Webview UI build artifacts
+# Build artifacts 
 webview-ui/dist/
 webview-ui/node_modules/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+
+# Temporary folders
+tmp/
+temp/

@@ -1471,39 +1471,6 @@ body {
   font-variant-ligatures: none;
 }
 
-/* TABLE CELLS: Single focused solution for table height control */
-.mdx-content table {
-  border-collapse: collapse;
-  width: 100%;
-  margin: 1em 0;
-}
-
-.mdx-content table th,
-.mdx-content table td {
-  border: 1px solid var(--vscode-input-border, rgba(128, 128, 128, 0.3));
-  padding: 8px 12px;
-  text-align: left;
-  vertical-align: top;
-  line-height: 1.4;
-  /* Force compact sizing for table cells */
-  height: fit-content;
-  min-height: fit-content;
-  max-height: fit-content;
-}
-
-/* Override any inline styles that might be applied */
-.mdx-content table th[style],
-.mdx-content table td[style] {
-  height: fit-content !important;
-  min-height: fit-content !important;
-  max-height: fit-content !important;
-}
-
-.mdx-content table th {
-  background-color: var(--vscode-editorWidget-background);
-  font-weight: bold;
-}
-
 /* Simple thematic break (HR) styling - reduced margin by 50% */
 .mdx-content hr {
   border: none;
@@ -1555,7 +1522,7 @@ body {
 /* EXTREMELY SPECIFIC targeting to avoid conflicts - target MDXEditor image dialog only */
 
 /* Use more general approach - target any dialog with image-related content */
-.mdx-editor-container [role="dialog"],
+/* .mdx-editor-container [role="dialog"],
 .mdx-editor [role="dialog"] {
   background: var(--vscode-editor-background) !important;
   border: 1px solid var(--vscode-widget-border) !important;
@@ -1568,7 +1535,7 @@ body {
   max-height: 70vh !important;
   overflow: visible !important;
   font-family: var(--vscode-font-family) !important;
-}
+} */
 
 /* Section labels and text */
 .mdx-editor [role="dialog"] p,

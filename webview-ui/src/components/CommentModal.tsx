@@ -1,4 +1,5 @@
-import React, { useState, useRef } from 'react';
+import React, { useRef, useState } from 'react';
+
 import './CommentModal.css';
 
 interface CommentModalProps {
@@ -16,7 +17,7 @@ export const CommentModal: React.FC<CommentModalProps> = ({
   onSubmit,
   selectedText,
   initialText,
-  isEditing = false
+  isEditing = false,
 }) => {
   const [commentText, setCommentText] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -44,19 +45,23 @@ export const CommentModal: React.FC<CommentModalProps> = ({
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen) {
+    return null;
+  }
 
   return (
     <div className="comment-modal-overlay">
       <div
         className="comment-modal-content"
-        onClick={(e) => e.stopPropagation()}
-        onMouseDown={(e) => e.stopPropagation()}
-        onMouseUp={(e) => e.stopPropagation()}
+        onClick={e => e.stopPropagation()}
+        onMouseDown={e => e.stopPropagation()}
+        onMouseUp={e => e.stopPropagation()}
       >
         <div className="comment-modal-header">
           <h3>{isEditing ? 'Edit Comment' : 'Add Comment'}</h3>
-          <button className="close-button" onClick={onClose}>×</button>
+          <button className="close-button" onClick={onClose}>
+            ×
+          </button>
         </div>
 
         {selectedText && (
@@ -70,11 +75,11 @@ export const CommentModal: React.FC<CommentModalProps> = ({
           <textarea
             ref={textareaRef}
             value={commentText}
-            onChange={(e) => setCommentText(e.target.value)}
+            onChange={e => setCommentText(e.target.value)}
             onKeyDown={handleKeyDown}
-            onMouseDown={(e) => e.stopPropagation()}
-            onMouseUp={(e) => e.stopPropagation()}
-            onFocus={(e) => e.stopPropagation()}
+            onMouseDown={e => e.stopPropagation()}
+            onMouseUp={e => e.stopPropagation()}
+            onFocus={e => e.stopPropagation()}
             placeholder="Enter your comment..."
             rows={4}
             autoFocus
@@ -85,11 +90,7 @@ export const CommentModal: React.FC<CommentModalProps> = ({
           <button onClick={onClose} className="cancel-button">
             Cancel
           </button>
-          <button
-            onClick={handleSubmit}
-            className="submit-button"
-            disabled={!commentText.trim()}
-          >
+          <button onClick={handleSubmit} className="submit-button" disabled={!commentText.trim()}>
             {isEditing ? 'Edit Comment' : 'Add Comment'}
           </button>
         </div>

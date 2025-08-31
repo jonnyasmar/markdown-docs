@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { CommentWithAnchor, WebviewMessage } from './types';
-import { CommentList } from './components/CommentList';
-import { logger } from './utils/logger';
+import React, { useEffect, useState } from 'react';
+
 import './App.css';
+import { CommentList } from './components/CommentList';
+import { CommentWithAnchor, WebviewMessage } from './types';
+import { logger } from './utils/logger';
 
 // VS Code API for webview - use pre-acquired API
 // (Window type is already declared in types.ts)
@@ -27,7 +28,7 @@ function App() {
 
       switch (message.type) {
         case 'updateComments':
-          setComments(message.comments || []);
+          setComments(message.comments ?? []);
           break;
         case 'hello':
           logger.debug('Received hello from extension:', message.message);
@@ -48,21 +49,21 @@ function App() {
   const handleNavigateToComment = (commentId: string) => {
     vscode.postMessage({
       type: 'navigateToComment',
-      commentId
+      commentId,
     });
   };
 
   const handleEditComment = (commentId: string) => {
     vscode.postMessage({
       type: 'editComment',
-      commentId
+      commentId,
     });
   };
 
   const handleDeleteComment = (commentId: string) => {
     vscode.postMessage({
       type: 'deleteComment',
-      commentId
+      commentId,
     });
   };
 

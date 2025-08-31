@@ -5,9 +5,10 @@
     "lib": ["DOM", "DOM.Iterable", "ESNext"],
     "allowJs": false,
     "skipLibCheck": true,
+    "types": [],
     "esModuleInterop": false,
     "allowSyntheticDefaultImports": true,
-    "strict": false, 
+    "strict": true, 
     "forceConsistentCasingInFileNames": true,
     "module": "ESNext",
     "moduleResolution": "Node",
@@ -18,5 +19,6 @@
     "noEmitOnError": false
   },
   "include": ["src"],
+  "exclude": ["node_modules", "dist", "**/*.d.ts", "node_modules/@types/d3-dispatch"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

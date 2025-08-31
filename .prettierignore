@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+out/
+
+# VS Code extension specific
+*.vsix
+
+# Generated files
+*.d.ts
+
+# Configuration files that should preserve their formatting
+.eslintrc.json
+
+# Test output
+coverage/
+
+# Logs
+*.log
+
+# Lock files
+package-lock.json
+yarn.lock
+
+# Webpack bundles
+webview-ui/dist/
+
+# Temporary files
+*.tmp
+*.temp

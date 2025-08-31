@@ -1,6 +1,7 @@
-import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
-import mermaid from 'mermaid';
 import { CodeMirrorEditor } from '@mdxeditor/editor';
+import mermaid from 'mermaid';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
 import { logger } from '../utils/logger';
 
 interface MermaidEditorProps {
@@ -13,12 +14,12 @@ interface MermaidEditorProps {
 
 type ViewMode = 'preview' | 'edit' | 'split';
 
-export const MermaidEditor: React.FC<MermaidEditorProps> = ({ 
-  code, 
-  setCode, 
+export const MermaidEditor: React.FC<MermaidEditorProps> = ({
+  code,
+  setCode,
   focusEmitter,
   parentEditor,
-  ...props 
+  ...props
 }) => {
   const [viewMode, setViewMode] = useState<ViewMode>('preview');
   const [svgContent, setSvgContent] = useState<string>('');
@@ -42,19 +43,23 @@ export const MermaidEditor: React.FC<MermaidEditorProps> = ({
 
   // SVG sanitization function to prevent XSS
   const sanitizeSVG = useCallback((svg: string): string => {
-    if (!svg || typeof svg !== 'string') return '';
-    
-    return svg
-      // Remove script tags and their content
-      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-      // Remove event handlers (onclick, onload, etc.)
-      .replace(/on\w+=["'][^"']*["']/gi, '')
-      // Remove javascript: protocols
-      .replace(/javascript:/gi, '')
-      // Remove data: protocols except for safe image formats
-      .replace(/data:(?!image\/(png|jpg|jpeg|gif|svg|webp))[^;]*;/gi, '')
-      // Remove suspicious attributes
-      .replace(/\s*(href|src)=["'][^"']*javascript:[^"']*["']/gi, '');
+    if (!svg || typeof svg !== 'string') {
+      return '';
+    }
+
+    return (
+      svg
+        // Remove script tags and their content
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+        // Remove event handlers (onclick, onload, etc.)
+        .replace(/on\w+=["'][^"']*["']/gi, '')
+        // Remove javascript: protocols
+        .replace(/javascript:/gi, '')
+        // Remove data: protocols except for safe image formats
+        .replace(/data:(?!image\/(png|jpg|jpeg|gif|svg|webp))[^;]*;/gi, '')
+        // Remove suspicious attributes
+        .replace(/\s*(href|src)=["'][^"']*javascript:[^"']*["']/gi, '')
+    );
   }, []);
 
   // Optimized mermaid rendering with security and performance improvements
@@ -68,10 +73,10 @@ export const MermaidEditor: React.FC<MermaidEditorProps> = ({
     try {
       setError('');
       setSvgContent(''); // Clear previous content
-      
+
       // Reuse the same diagram ID to prevent memory leaks
       const { svg } = await mermaid.render(diagramId.current, code);
-      
+
       // Sanitize SVG content before setting it
       const sanitizedSVG = sanitizeSVG(svg);
       setSvgContent(sanitizedSVG);
@@ -79,7 +84,7 @@ export const MermaidEditor: React.FC<MermaidEditorProps> = ({
       const errorMessage = err.message || 'Failed to render mermaid diagram';
       setError(errorMessage);
       setSvgContent('');
-      
+
       // Log error for debugging but don't expose sensitive information
       logger.error('Mermaid rendering failed:', errorMessage);
     }
@@ -90,7 +95,9 @@ export const MermaidEditor: React.FC<MermaidEditorProps> = ({
     let timeoutId: NodeJS.Timeout;
     return () => {
       clearTimeout(timeoutId);
-      timeoutId = setTimeout(renderMermaid, 300); // 300ms debounce
+      timeoutId = setTimeout(() => {
+        void renderMermaid();
+      }, 300); // 300ms debounce
     };
   }, [renderMermaid]);
 
@@ -106,10 +113,14 @@ export const MermaidEditor: React.FC<MermaidEditorProps> = ({
 
   // Handle split pane resizing
   useEffect(() => {
-    if (viewMode !== 'split') return;
+    if (viewMode !== 'split') {
+      return;
+    }
 
     const handleMouseMove = (e: MouseEvent) => {
-      if (!isResizing || !splitContainerRef.current) return;
+      if (!isResizing || !splitContainerRef.current) {
+        return;
+      }
 
       const rect = splitContainerRef.current.getBoundingClientRect();
       const newWidth = Math.max(20, Math.min(80, ((e.clientX - rect.left) / rect.width) * 100));
@@ -135,18 +146,21 @@ export const MermaidEditor: React.FC<MermaidEditorProps> = ({
     };
   }, [isResizing, viewMode]);
 
-  const switchToMode = useCallback(async (mode: ViewMode) => {
-    setViewMode(mode);
-    
-    if (mode === 'preview' || mode === 'split') {
-      // Force a re-render by updating the render key
-      setRenderKey(prev => prev + 1);
-      // Use a small timeout to ensure state has updated
-      setTimeout(() => {
-        renderMermaid();
-      }, 100);
-    }
-  }, [renderMermaid]);
+  const switchToMode = useCallback(
+    (mode: ViewMode) => {
+      setViewMode(mode);
+
+      if (mode === 'preview' || mode === 'split') {
+        // Force a re-render by updating the render key
+        setRenderKey(prev => prev + 1);
+        // Use a small timeout to ensure state has updated
+        setTimeout(() => {
+          void renderMermaid();
+        }, 100);
+      }
+    },
+    [renderMermaid],
+  );
 
   // Render diagram preview component
   const renderDiagramPreview = () => (
@@ -155,20 +169,23 @@ export const MermaidEditor: React.FC<MermaidEditorProps> = ({
         <div className="mermaid-error">
           <strong>Mermaid Error:</strong>
           <pre>{error}</pre>
-          <button onClick={() => switchToMode('edit')} className="mermaid-edit-btn">
+          <button
+            onClick={() => {
+              void switchToMode('edit');
+            }}
+            className="mermaid-edit-btn"
+          >
             Edit Code
           </button>
         </div>
       ) : svgContent ? (
-        <div 
+        <div
           className="mermaid-diagram"
           key={`diagram-${renderKey}`}
           dangerouslySetInnerHTML={{ __html: svgContent }}
         />
       ) : (
-        <div className="mermaid-placeholder">
-          {code.trim() ? 'Rendering diagram...' : 'Empty mermaid diagram'}
-        </div>
+        <div className="mermaid-placeholder">{code.trim() ? 'Rendering diagram...' : 'Empty mermaid diagram'}</div>
       )}
     </div>
   );
@@ -196,14 +213,18 @@ export const MermaidEditor: React.FC<MermaidEditorProps> = ({
           <div className="mermaid-actions">
             <button
               className="mermaid-toggle-btn"
-              onClick={() => switchToMode('edit')}
+              onClick={() => {
+                void switchToMode('edit');
+              }}
               title="Edit mermaid code"
             >
               ✏️ Edit
             </button>
             <button
               className="mermaid-toggle-btn"
-              onClick={() => switchToMode('split')}
+              onClick={() => {
+                void switchToMode('split');
+              }}
               title="Split view - code and diagram"
             >
               📱 Split
@@ -224,14 +245,18 @@ export const MermaidEditor: React.FC<MermaidEditorProps> = ({
           <div className="mermaid-actions">
             <button
               className="mermaid-toggle-btn"
-              onClick={() => switchToMode('preview')}
+              onClick={() => {
+                void switchToMode('preview');
+              }}
               title="View rendered diagram"
             >
               📊 Preview
             </button>
             <button
               className="mermaid-toggle-btn"
-              onClick={() => switchToMode('split')}
+              onClick={() => {
+                void switchToMode('split');
+              }}
               title="Split view - code and diagram"
             >
               📱 Split
@@ -256,14 +281,18 @@ export const MermaidEditor: React.FC<MermaidEditorProps> = ({
         <div className="mermaid-actions">
           <button
             className="mermaid-toggle-btn"
-            onClick={() => switchToMode('preview')}
+            onClick={() => {
+              void switchToMode('preview');
+            }}
             title="Preview only"
           >
             📊 Preview
           </button>
           <button
             className="mermaid-toggle-btn"
-            onClick={() => switchToMode('edit')}
+            onClick={() => {
+              void switchToMode('edit');
+            }}
             title="Edit only"
           >
             ✏️ Edit
@@ -271,10 +300,7 @@ export const MermaidEditor: React.FC<MermaidEditorProps> = ({
         </div>
       </div>
       <div className="mermaid-split-container" ref={splitContainerRef}>
-        <div 
-          className="mermaid-split-left"
-          style={{ width: `${splitPaneWidth}%` }}
-        >
+        <div className="mermaid-split-left" style={{ width: `${splitPaneWidth}%` }}>
           <div className="mermaid-split-header">Code</div>
           {renderCodeEditor()}
           {error && (
@@ -283,14 +309,8 @@ export const MermaidEditor: React.FC<MermaidEditorProps> = ({
             </div>
           )}
         </div>
-        <div 
-          className="mermaid-split-resizer"
-          onMouseDown={() => setIsResizing(true)}
-        />
-        <div 
-          className="mermaid-split-right"
-          style={{ width: `${100 - splitPaneWidth}%` }}
-        >
+        <div className="mermaid-split-resizer" onMouseDown={() => setIsResizing(true)} />
+        <div className="mermaid-split-right" style={{ width: `${100 - splitPaneWidth}%` }}>
           <div className="mermaid-split-header">Preview</div>
           {renderDiagramPreview()}
         </div>

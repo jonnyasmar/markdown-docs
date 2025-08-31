@@ -1,7 +1,6 @@
 /**
  * Service for parsing and managing MDX directives in markdown content
  */
-
 import { Comment } from '../common/types';
 
 export interface DirectiveComment {
@@ -16,30 +15,30 @@ export class DirectiveService {
    */
   static parseCommentDirectives(markdown: string): Comment[] {
     const comments: Comment[] = [];
-    
-    // Regex to match comment directives: 
+
+    // Regex to match comment directives:
     // :comment[content]{attributes} - textDirective
-    // ::comment[content]{attributes} - leafDirective  
+    // ::comment[content]{attributes} - leafDirective
     // :::comment{attributes} - containerDirective (no brackets)
     // Also handle malformed directives missing some parts
     const directiveRegex = /(:+)comment(?:\[([^\]]*)\])?\{([^}]*)\}/g;
-    
+
     let match;
     while ((match = directiveRegex.exec(markdown)) !== null) {
       try {
         const colons = match[1];
         const content = match[2];
         const attributes = match[3];
-        
+
         // Parse attributes
         const idMatch = attributes.match(/(?:id\\?=|#)["']?([^"'\s]+)["']?/);
         const textMatch = attributes.match(/text\\?="((?:[^"\\]|\\.)*)"/);
         const timestampMatch = attributes.match(/timestamp\\?=["']([^"']+)["']/);
-        
+
         if (idMatch && textMatch) {
           const colonsCount = colons.length;
           let anchoredText = content || 'Selected text';
-          
+
           // For container directives (:::), extract content between opening and closing tags
           if (colonsCount >= 3 && !content) {
             const containerStart = (match.index ?? 0) + match[0].length;
@@ -81,7 +80,7 @@ export class DirectiveService {
           const unescapedContent = replacements.reduce((acc, replacement) => {
             return acc.replace(replacement.regex, replacement.replacement);
           }, textMatch[1]);
-          
+
           comments.push({
             id: idMatch[1],
             content: unescapedContent,
@@ -94,23 +93,23 @@ export class DirectiveService {
         console.warn('Failed to parse directive:', match[0], error);
       }
     }
-    
+
     return comments;
   }
 
   /**
    * Find all comment directive positions in markdown
    */
-  static findDirectivePositions(markdown: string): Array<{id: string, start: number, end: number}> {
-    const positions: Array<{id: string, start: number, end: number}> = [];
+  static findDirectivePositions(markdown: string): Array<{ id: string; start: number; end: number }> {
+    const positions: Array<{ id: string; start: number; end: number }> = [];
     const directiveRegex = /:comment\[\]\{([^}]+)\}/g;
-    
+
     let match;
     while ((match = directiveRegex.exec(markdown)) !== null) {
       try {
         const attributes = match[1];
         const idMatch = attributes.match(/#([^#\s]+)/);
-        
+
         if (idMatch) {
           positions.push({
             id: idMatch[1],
@@ -122,7 +121,7 @@ export class DirectiveService {
         console.warn('Failed to parse directive position:', match[0], error);
       }
     }
-    
+
     return positions;
   }
 
@@ -132,7 +131,7 @@ export class DirectiveService {
   static removeDirective(markdown: string, commentId: string): string {
     const textDirectiveRegex = new RegExp(`:comment\\[[^\\]]*\\]\\{[^}]*#?\\\\?${commentId}[^}]*\\}`, 'g');
     const containerDirectiveRegex = new RegExp(`:::comment\\{[^}]*#?\\\\?${commentId}[^}]*\\}[\\s\\S]*?:::`, 'g');
-    
+
     let result = markdown;
     result = result.replace(textDirectiveRegex, '');
     result = result.replace(containerDirectiveRegex, '');
@@ -173,25 +172,25 @@ export class DirectiveService {
     const escapedNewText = replacements.reduce((acc, replacement) => {
       return acc.replace(replacement.regex, replacement.replacement);
     }, newText);
-    
+
     // Handle both text directives and container directives (with escaped equals)
     const textDirectiveRegex = new RegExp(`:comment\\[([^\\]]*)\\]\\{([^}]*#?\\\\?${commentId}[^}]*)\\}`, 'g');
     const containerDirectiveRegex = new RegExp(`:::comment\\{([^}]*#?\\\\?${commentId}[^}]*)\\}`, 'g');
-    
+
     let result = markdown;
-    
+
     // Update text directives
     result = result.replace(textDirectiveRegex, (match, content, attributes) => {
-      const updatedAttributes = attributes.replace(/text="(?:[^"\\]|\\.)*"/, `text="${escapedNewText}"`);
-      return `:comment[${content}]{${updatedAttributes}}`;
+      const updatedAttributes = (attributes as string).replace(/text="(?:[^"\\]|\\.)*"/, `text="${escapedNewText}"`);
+      return `:comment[${String(content)}]{${updatedAttributes}}`;
     });
-    
+
     // Update container directives
     result = result.replace(containerDirectiveRegex, (match, attributes) => {
-      const updatedAttributes = attributes.replace(/text="(?:[^"\\]|\\.)*"/, `text="${escapedNewText}"`);
-      return `:::comment{${updatedAttributes}}`;
+      const updatedAttributes = (attributes as string).replace(/text="(?:[^"\\]|\\.)*"/, `text="${escapedNewText}"`);
+      return `:::comment{${String(updatedAttributes)}}`;
     });
-    
+
     return result;
   }
 }

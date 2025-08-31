@@ -12,10 +12,13 @@
 		"strict": true,
 		"skipLibCheck": true
 	},
+	"include": ["src/**/*"],
 	"exclude": [
 		"webview-ui",
 		"dist",
 		"src/test",
-		"editor"
+		"editor",
+		"node_modules",
+		"**/*.d.ts"
 	]
 }

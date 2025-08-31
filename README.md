@@ -10,11 +10,11 @@ Whether you're collaborating with AI, taking personal notes, or working with a t
 
 ## A WYSIWYG Editor That Works for You
 
-At the heart of Markdown Docs is a state-of-the-art **What You See Is What You Get (WYSIWYG)** editor, powered by the acclaimed **MDX Editor**. This means you can say goodbye to constant context switching between raw Markdown and a preview pane. With Markdown Docs, you write and format your documents in a single, beautiful interface.
+At the heart of Markdown Docs is a state-of-the-art **What You See Is What You Get (WYSIWYG)** editor, powered by the acclaimed MDX Editor. This means you can say goodbye to constant context switching between raw Markdown and a preview pane. With Markdown Docs, you write and format your documents in a single, beautiful interface.
 
 ### Effortless Formatting
 
-Our intuitive toolbar puts all the :comment[essential]{#comment-1756653600254 text="test"} formatting tools at your fingertips:
+Our intuitive toolbar puts all the essential formatting tools at your fingertips:
 
 * **Text Styling:** Undo, Redo, Bold, Italic, Underline, and various font styles.
 * **Lists:** Create ordered, unordered, and check lists with ease.
