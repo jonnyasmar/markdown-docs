@@ -13,14 +13,14 @@ const parsed = FrontmatterService.parse(testDoc);
 logger.debug('Parsed:', JSON.stringify(parsed, null, 2));
 
 const frontmatter: CommentFrontmatter = {
-    aiDocReviewerComments: [
-        {
-            id: "test-1",
-            author: "Test User",
-            timestamp: new Date().toISOString(),
-            content: "This is a test comment"
-        }
-    ]
+  aiDocReviewerComments: [
+    {
+      id: 'test-1',
+      author: 'Test User',
+      timestamp: new Date().toISOString(),
+      content: 'This is a test comment',
+    },
+  ],
 };
 
 const stringified = FrontmatterService.stringify(testDoc, frontmatter);

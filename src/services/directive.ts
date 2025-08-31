@@ -42,11 +42,11 @@ export class DirectiveService {
           
           // For container directives (:::), extract content between opening and closing tags
           if (colonsCount >= 3 && !content) {
-            const containerStart = match.index! + match[0].length;
+            const containerStart = (match.index ?? 0) + match[0].length;
             const closingTag = new RegExp(`^:{${colonsCount},}$`, 'm');
             const closingMatch = closingTag.exec(markdown.slice(containerStart));
             if (closingMatch) {
-              const containerEnd = containerStart + closingMatch.index!;
+              const containerEnd = containerStart + (closingMatch.index ?? 0);
               anchoredText = markdown.slice(containerStart, containerEnd).trim();
             }
           }
@@ -54,28 +54,28 @@ export class DirectiveService {
           const replacements = [
             {
               regex: /__BSLASH__/g,
-              replacement: '\\'
+              replacement: '\\',
             },
             {
               regex: /__DQUOTE__/g,
-              replacement: '"'
+              replacement: '"',
             },
             {
               regex: /__SQUOTE__/g,
-              replacement: "'"
+              replacement: "'",
             },
             {
               regex: /__NEWLINE__/g,
-              replacement: '\n'
+              replacement: '\n',
             },
             {
               regex: /__VTAB__/g,
-              replacement: '\v'
+              replacement: '\v',
             },
             {
               regex: /__CR__/g,
-              replacement: '\r'
-            }
+              replacement: '\r',
+            },
           ];
 
           const unescapedContent = replacements.reduce((acc, replacement) => {
@@ -87,7 +87,7 @@ export class DirectiveService {
             content: unescapedContent,
             timestamp: timestampMatch ? timestampMatch[1] : new Date().toISOString(),
             author: 'User', // Default author
-            anchoredText: anchoredText
+            anchoredText,
           });
         }
       } catch (error) {
@@ -115,7 +115,7 @@ export class DirectiveService {
           positions.push({
             id: idMatch[1],
             start: match.index,
-            end: match.index + match[0].length
+            end: match.index + match[0].length,
           });
         }
       } catch (error) {
@@ -146,28 +146,28 @@ export class DirectiveService {
     const replacements = [
       {
         regex: /\\/g,
-        replacement: '__BSLASH__'
+        replacement: '__BSLASH__',
       },
       {
         regex: /"/g,
-        replacement: '__DQUOTE__'
+        replacement: '__DQUOTE__',
       },
       {
         regex: /'/g,
-        replacement: '__SQUOTE__'
+        replacement: '__SQUOTE__',
       },
       {
         regex: /\n/g,
-        replacement: '__NEWLINE__'
+        replacement: '__NEWLINE__',
       },
       {
         regex: /\v/g,
-        replacement: '__VTAB__'
+        replacement: '__VTAB__',
       },
       {
         regex: /\r/g,
-        replacement: '__CR__'
-      }
+        replacement: '__CR__',
+      },
     ];
 
     const escapedNewText = replacements.reduce((acc, replacement) => {

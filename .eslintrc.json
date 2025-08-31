@@ -2,22 +2,115 @@
     "root": true,
     "parser": "@typescript-eslint/parser",
     "parserOptions": {
-        "ecmaVersion": 6,
+        "ecmaVersion": 2020,
         "sourceType": "module"
     },
     "plugins": [
         "@typescript-eslint"
     ],
+    "extends": [
+        "eslint:recommended",
+        "plugin:@typescript-eslint/eslint-recommended",
+        "plugin:@typescript-eslint/recommended"
+    ],
     "rules": {
-        "@typescript-eslint/semi": "warn",
-        "curly": "warn",
-        "eqeqeq": "warn",
-        "no-throw-literal": "warn",
-        "semi": "off"
+        // TypeScript specific rules
+        "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
+        "@typescript-eslint/no-explicit-any": "error",
+        "@typescript-eslint/explicit-function-return-type": ["warn", { "allowExpressions": true, "allowTypedFunctionExpressions": true }],
+        "@typescript-eslint/no-non-null-assertion": "error",
+        "@typescript-eslint/prefer-optional-chain": "error",
+        "@typescript-eslint/prefer-as-const": "error",
+        "@typescript-eslint/consistent-type-definitions": ["error", "interface"],
+        "@typescript-eslint/array-type": ["error", { "default": "array-simple" }],
+        "@typescript-eslint/ban-ts-comment": ["error", {
+            "ts-expect-error": "allow-with-description",
+            "ts-ignore": "allow-with-description",
+            "ts-nocheck": "allow-with-description"
+        }],
+        
+        // Code quality rules
+        "prefer-const": "error",
+        "no-var": "error",
+        "object-shorthand": "error",
+        "prefer-arrow-callback": "error",
+        "prefer-template": "error",
+        "template-curly-spacing": "error",
+        "no-useless-concat": "error",
+        "no-useless-return": "error",
+        
+        // Error prevention
+        "no-duplicate-imports": "error",
+        "no-console": ["warn", { "allow": ["warn", "error"] }],
+        "no-debugger": "error",
+        "no-alert": "error",
+        "no-eval": "error",
+        "no-implied-eval": "error",
+        "no-new-func": "error",
+        "no-script-url": "error",
+        
+        // Style consistency
+        "curly": ["error", "all"],
+        "brace-style": ["error", "1tbs", { "allowSingleLine": false }],
+        "comma-dangle": ["error", "always-multiline"],
+        "quotes": ["error", "single", { "avoidEscape": true }],
+        "semi": "off",
+        "@typescript-eslint/semi": ["error", "always"],
+        "indent": ["error", 2, { "SwitchCase": 1 }],
+        "max-len": ["warn", { "code": 120, "ignoreUrls": true, "ignoreStrings": true }],
+        
+        // Existing rules (keeping for backward compatibility)
+        "eqeqeq": "error",
+        "no-throw-literal": "error"
     },
+    "overrides": [
+        {
+            "files": ["webview-ui/**/*"],
+            "parser": "@typescript-eslint/parser",
+            "parserOptions": {
+                "ecmaVersion": 2020,
+                "sourceType": "module",
+                "ecmaFeatures": {
+                    "jsx": true
+                }
+            },
+            "plugins": ["@typescript-eslint"],
+            "extends": [
+                "eslint:recommended",
+                "plugin:@typescript-eslint/eslint-recommended",
+                "plugin:@typescript-eslint/recommended"
+            ],
+            "rules": {
+                // React-specific relaxations
+                "@typescript-eslint/explicit-function-return-type": "off",
+                "@typescript-eslint/no-explicit-any": "warn",
+                "no-console": ["warn", { "allow": ["warn", "error", "info"] }]
+            }
+        },
+        {
+            "files": ["*.test.ts", "*.test.tsx", "src/test/**/*"],
+            "rules": {
+                // Test file relaxations
+                "@typescript-eslint/no-explicit-any": "off",
+                "@typescript-eslint/no-non-null-assertion": "off",
+                "no-console": "off"
+            }
+        },
+        {
+            "files": ["*.config.js", "*.config.ts", "webpack.config.js", "rspack.config.js"],
+            "rules": {
+                // Config file relaxations
+                "@typescript-eslint/no-var-requires": "off",
+                "@typescript-eslint/no-explicit-any": "off"
+            }
+        }
+    ],
     "ignorePatterns": [
         "out",
         "dist",
-        "**/*.d.ts"
+        "**/*.d.ts",
+        "node_modules",
+        "webview-ui/dist",
+        "webview-ui/node_modules"
     ]
 }

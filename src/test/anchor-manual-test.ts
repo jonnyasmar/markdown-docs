@@ -24,7 +24,7 @@ logger.debug('\n---\n');
 const anchors = AnchorService.findAllAnchors(wrappedDoc);
 logger.debug('Found anchors:');
 for (const [id, anchor] of anchors) {
-    logger.debug(`ID: ${id}, Content: "${anchor.content}"`);
+  logger.debug(`ID: ${id}, Content: "${anchor.content}"`);
 }
 logger.debug('\n---\n');
 

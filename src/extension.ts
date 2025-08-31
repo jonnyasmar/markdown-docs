@@ -1,9 +1,19 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { DirectiveService } from './services/directive';
-import { CommentService } from './services/comment';
 import { FrontmatterService } from './services/frontmatter';
 import { logger } from './utils/logger';
+
+interface WebviewMessage {
+  command: string;
+  content?: string;
+  payload?: {
+    content?: string;
+  };
+  range?: unknown;
+  comment?: string;
+  commentId?: string;
+  font?: string;
+}
 
 /**
  * Custom text editor provider for markdown documents with integrated webview
@@ -23,90 +33,88 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
   private getEditorConfig() {
     const editorConfig = vscode.workspace.getConfiguration('editor');
     return {
-      wordWrap: editorConfig.get<string>('wordWrap', 'off')
+      wordWrap: editorConfig.get<string>('wordWrap', 'off'),
     };
   }
 
   resolveCustomTextEditor(
     document: vscode.TextDocument,
     webviewPanel: vscode.WebviewPanel,
-    token: vscode.CancellationToken
+    _token: vscode.CancellationToken,
   ): void | Thenable<void> {
     this.outputChannel.appendLine(`resolveCustomTextEditor called for: ${document.uri.fsPath}`);
     
     try {
     
-    this.outputChannel.appendLine('Step 1: Setting title');
-    // Set custom title to show only filename without path
-    const path = require('path');
-    const filename = path.basename(document.uri.fsPath);
-    webviewPanel.title = filename;
+      this.outputChannel.appendLine('Step 1: Setting title');
+      // Set custom title to show only filename without path
+      const filename = path.basename(document.uri.fsPath);
+      webviewPanel.title = filename;
     
-    this.outputChannel.appendLine('Step 2: Configuring webview options');
-    // Configure webview
-    webviewPanel.webview.options = {
-      enableScripts: true,
-      localResourceRoots: [vscode.Uri.file("/"), ...this.getFolders()],
-      retainContextWhenHidden: true,
-      enableCommandUris: true,
-    };
+      this.outputChannel.appendLine('Step 2: Configuring webview options');
+      // Configure webview
+      webviewPanel.webview.options = {
+        enableScripts: true,
+        localResourceRoots: [vscode.Uri.file('/'), ...this.getFolders()],
+        retainContextWhenHidden: true,
+        enableCommandUris: true,
+      };
 
-    this.outputChannel.appendLine('Step 3: Setting webview HTML');
-    // Set webview content
-    webviewPanel.webview.html = this.getWebviewContent(webviewPanel.webview, document.uri);
+      this.outputChannel.appendLine('Step 3: Setting webview HTML');
+      // Set webview content
+      webviewPanel.webview.html = this.getWebviewContent(webviewPanel.webview, document.uri);
     
-    this.outputChannel.appendLine('Step 4: Setting up message handling');
-    // Handle messages from webview
-    this.setupWebviewMessageHandling(document, webviewPanel);
+      this.outputChannel.appendLine('Step 4: Setting up message handling');
+      // Handle messages from webview
+      this.setupWebviewMessageHandling(document, webviewPanel);
     
-    this.outputChannel.appendLine('Step 5: Sending initial content');
-    // Send initial content to webview
-    logger.info('About to send initial content to webview');
-    this.sendContentToWebview(document, webviewPanel);
-    logger.info('Initial content sent to webview');
+      this.outputChannel.appendLine('Step 5: Sending initial content');
+      // Send initial content to webview
+      logger.info('About to send initial content to webview');
+      this.sendContentToWebview(document, webviewPanel);
+      logger.info('Initial content sent to webview');
     
-    // Listen for document changes and update webview with echo prevention
-    const changeDocumentSubscription = vscode.workspace.onDidChangeTextDocument(e => {
-      if (e.document.uri.toString() === document.uri.toString()) {
+      // Listen for document changes and update webview with echo prevention
+      const changeDocumentSubscription = vscode.workspace.onDidChangeTextDocument(e => {
+        if (e.document.uri.toString() === document.uri.toString()) {
         // Don't sync VS Code changes back to webview when webview is actively focused
         // This prevents interference during rapid typing
-        if (webviewPanel.active) {
-          return;
-        }
-        this.sendContentToWebview(document, webviewPanel);
-      }
-    });
-
-    // Listen for file rename/save as events to update the title
-    const renameSubscription = vscode.workspace.onDidRenameFiles(e => {
-      e.files.forEach(file => {
-        if (file.oldUri.toString() === document.uri.toString()) {
-          const path = require('path');
-          const newFilename = path.basename(file.newUri.fsPath);
-          webviewPanel.title = newFilename;
+          if (webviewPanel.active) {
+            return;
+          }
+          this.sendContentToWebview(document, webviewPanel);
         }
       });
-    });
 
-    // Listen for editor configuration changes
-    const configChangeSubscription = vscode.workspace.onDidChangeConfiguration(e => {
-      if (e.affectsConfiguration('editor.wordWrap')) {
-        // Send updated configuration to webview
-        webviewPanel.webview.postMessage({
-          command: 'configUpdate',
-          editorConfig: this.getEditorConfig()
+      // Listen for file rename/save as events to update the title
+      const renameSubscription = vscode.workspace.onDidRenameFiles(e => {
+        e.files.forEach(file => {
+          if (file.oldUri.toString() === document.uri.toString()) {
+            const newFilename = path.basename(file.newUri.fsPath);
+            webviewPanel.title = newFilename;
+          }
         });
-      }
-    });
+      });
 
-    // Clean up listeners when webview is disposed
-    webviewPanel.onDidDispose(() => {
-      changeDocumentSubscription.dispose();
-      renameSubscription.dispose();
-      configChangeSubscription.dispose();
-    });
+      // Listen for editor configuration changes
+      const configChangeSubscription = vscode.workspace.onDidChangeConfiguration(e => {
+        if (e.affectsConfiguration('editor.wordWrap')) {
+        // Send updated configuration to webview
+          webviewPanel.webview.postMessage({
+            command: 'configUpdate',
+            editorConfig: this.getEditorConfig(),
+          });
+        }
+      });
+
+      // Clean up listeners when webview is disposed
+      webviewPanel.onDidDispose(() => {
+        changeDocumentSubscription.dispose();
+        renameSubscription.dispose();
+        configChangeSubscription.dispose();
+      });
     
-    this.outputChannel.appendLine('resolveCustomTextEditor completed successfully');
+      this.outputChannel.appendLine('resolveCustomTextEditor completed successfully');
     
     } catch (error) {
       this.outputChannel.appendLine(`ERROR in resolveCustomTextEditor: ${error}`);
@@ -136,7 +144,7 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
           this.sendContentToWebview(document, webviewPanel);
           break;
           
-        case 'edit':
+        case 'edit': {
           // Handle both SyncManager format and direct format
           const content = message.content || message.payload?.content;
           this.outputChannel.appendLine(`Edit message received, content length: ${content?.length || 0}`);
@@ -149,6 +157,7 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
             this.outputChannel.appendLine(`TextDocument updated, isDirty: ${document.isDirty}`);
           }
           break;
+        }
           
         case 'save':
           // With CustomTextEditorProvider, VS Code handles saving automatically
@@ -160,14 +169,15 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
           break;
           
         // Handle other messages like font changes, etc.
-        case 'getFont':
+        case 'getFont': {
           const config = vscode.workspace.getConfiguration('markdown-docs');
           const defaultFont = config.get<string>('defaultFont', 'Arial');
           webviewPanel.webview.postMessage({
             command: 'fontUpdate',
-            font: defaultFont
+            font: defaultFont,
           });
           break;
+        }
           
         case 'setFont':
           if (message.font) {
@@ -191,7 +201,7 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
     });
   }
 
-  private async handleCommentOperation(message: any, document: vscode.TextDocument, webviewPanel: vscode.WebviewPanel): Promise<void> {
+  private async handleCommentOperation(message: WebviewMessage, document: vscode.TextDocument, webviewPanel: vscode.WebviewPanel): Promise<void> {
     try {
       // Update document content first if provided
       const commentContent = message.content || message.payload?.content;
@@ -210,7 +220,7 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
       
       webviewPanel.webview.postMessage({
         command: 'updateComments',
-        comments: comments
+        comments,
       });
       
     } catch (error) {
@@ -240,7 +250,7 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
       edit.replace(
         document.uri,
         new vscode.Range(0, 0, lastLine, lastChar),
-        newContent
+        newContent,
       );
       
       await vscode.workspace.applyEdit(edit);
@@ -280,7 +290,7 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
       content: displayContent,
       type: 'init',
       theme: vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.Dark ? 'dark' : 'light',
-      editorConfig: this.getEditorConfig()
+      editorConfig: this.getEditorConfig(),
     };
     
     this.outputChannel.appendLine(`Sending 'update' message to webview with content length: ${displayContent.length}`);
@@ -291,9 +301,9 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
     const toUri = (f: string) =>
       webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, f));
     
-    const baseHref = path.dirname(
-      webview.asWebviewUri(uri).toString()
-    ) + '/';
+    const baseHref = `${path.dirname(
+      webview.asWebviewUri(uri).toString(),
+    )}/`;
     
     const scriptUri = toUri('dist/webview-ui/index.js');
     const styleUri = toUri('dist/webview-ui/index.css');
@@ -341,11 +351,10 @@ function isInCodeBlock(text: string, position: number): boolean {
   const beforeText = text.substring(0, position);
   
   const codeBlockStart = /```/g;
-  let match;
   let inCodeBlock = false;
   
   codeBlockStart.lastIndex = 0;
-  while ((match = codeBlockStart.exec(beforeText)) !== null) {
+  while (codeBlockStart.exec(beforeText) !== null) {
     inCodeBlock = !inCodeBlock;
   }
   
@@ -364,7 +373,7 @@ function preprocessAngleBrackets(markdown: string): string {
       if (isInInlineCode(markdown, i) || isInCodeBlock(markdown, i)) {
         result += char;
       } else {
-        result += '\\' + char;
+        result += `\\${char}`;
       }
     } else {
       result += char;
@@ -377,7 +386,7 @@ function preprocessAngleBrackets(markdown: string): string {
 
 function postprocessAngleBrackets(markdown: string): string {
   // First clean up escaped underscores inside curly braces
-  let result = markdown.replace(/\{\{([^}]*)\}\}/g, (match, content) => {
+  const result = markdown.replace(/\{\{([^}]*)\}\}/g, (match, content) => {
     // Remove backslash escaping from underscores within curly braces
     const unescapedContent = content.replace(/\\_/g, '_');
     return `{{${unescapedContent}}}`;
@@ -387,14 +396,6 @@ function postprocessAngleBrackets(markdown: string): string {
   return result.replace(/\\</g, '<');
 }
 
-function debug(...args: any[]) {
-  // Debug logging disabled for production
-  // logger.debug(...args);
-}
-
-function showError(msg: string) {
-  vscode.window.showErrorMessage(`[markdown-docs] ${msg}`);
-}
 
 export function activate(context: vscode.ExtensionContext) {
   // Create output channel for debugging
@@ -414,9 +415,9 @@ export function activate(context: vscode.ExtensionContext) {
       {
         webviewOptions: {
           retainContextWhenHidden: true,
-        }
-      }
-    )
+        },
+      },
+    ),
   );
   
   outputChannel.appendLine('Custom text editor provider registered successfully');
@@ -440,8 +441,8 @@ export function activate(context: vscode.ExtensionContext) {
         } else {
           vscode.window.showErrorMessage('No markdown file selected');
         }
-      }
-    )
+      },
+    ),
   );
 
   context.subscriptions.push(
@@ -453,11 +454,14 @@ export function activate(context: vscode.ExtensionContext) {
         
         // Open with our custom editor
         await vscode.commands.executeCommand('vscode.openWith', untitledUri, 'markdown-docs.editor');
-      }
-    )
+      },
+    ),
   );
 
   logger.info('Markdown Docs extension activated successfully');
 }
 
-export function deactivate() {}
+export function deactivate(): void {
+  // Extension cleanup code would go here if needed
+  logger.info('Markdown Docs extension deactivated');
+}
