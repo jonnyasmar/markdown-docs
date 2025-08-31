@@ -38,7 +38,11 @@ import {
   Cell,
   Signal,
   imagePlugin,
-  createRootEditorSubscription$
+  createRootEditorSubscription$,
+  DiffSourceToggleWrapper,
+  diffSourcePlugin,
+  viewMode$,
+  useCellValue
 } from '@mdxeditor/editor';
 import { UNDO_COMMAND, REDO_COMMAND } from 'lexical';
 import '@mdxeditor/editor/style.css';
@@ -50,6 +54,7 @@ import { escapeDirectiveContent } from '../utils/textNormalization';
 import './MDXEditorWrapper.css';
 import './MermaidEditor.css';
 import { preprocessAngleBrackets, postprocessAngleBrackets, preprocessCurlyBraces, postprocessCurlyBraces, displayCurlyBraces } from './SimplifiedAngleBracketPlugin';
+import { SyncManager, SyncState } from '../utils/syncManager';
 
 // Inline search component for toolbar
 const InlineSearchInput = ({ searchInputRef, isTyping }: { searchInputRef: React.RefObject<HTMLInputElement>, isTyping?: boolean }) => {
@@ -174,18 +179,20 @@ const ToolbarGroups = React.memo(({
   handleFontChange,
   availableFonts,
   isOverflow = false,
-  hiddenGroups = []
+  hiddenGroups = [],
+  currentViewMode
 }: {
   selectedFont: string;
   handleFontChange: (font: string) => void;
   availableFonts: string[];
   isOverflow?: boolean;
   hiddenGroups?: string[];
+  currentViewMode?: 'rich-text' | 'source' | 'diff';
 }) => {
   const groupClass = isOverflow ? 'overflow-group' : 'toolbar-group';
 
   const shouldShowGroup = (groupName: string) => {
-    return isOverflow ? hiddenGroups.includes(groupName) : !hiddenGroups.includes(groupName);
+    return currentViewMode !== 'source' && isOverflow ? hiddenGroups.includes(groupName) : !hiddenGroups.includes(groupName);
   };
 
   return (
@@ -265,6 +272,19 @@ const ToolbarGroups = React.memo(({
   );
 });
 
+const DiffViewWrapper = React.memo(({
+  children, shouldShow = false,
+  currentViewMode
+}: {
+  children: React.ReactNode;
+  shouldShow?: boolean;
+  currentViewMode?: 'rich-text' | 'source' | 'diff';
+}) => {
+  return shouldShow || currentViewMode !== 'rich-text' ? <DiffSourceToggleWrapper options={['rich-text', 'source']}>
+    {children}
+  </DiffSourceToggleWrapper> : children;
+});
+
 // Memoized custom toolbar component to prevent unnecessary re-renders
 const ToolbarWithCommentButton = React.memo(({
   selectedFont,
@@ -273,7 +293,9 @@ const ToolbarWithCommentButton = React.memo(({
   setIsBookView,
   isBookView,
   searchInputRef,
-  isTyping
+  isTyping,
+  currentViewMode,
+  onViewModeChange
 }: any) => {
   const [isOverflowOpen, setIsOverflowOpen] = useState(false);
   const [hiddenGroups, setHiddenGroups] = useState<string[]>([]);
@@ -295,11 +317,13 @@ const ToolbarWithCommentButton = React.memo(({
     const newHidden: string[] = [];
 
     // Use the same thresholds from CSS variables
-    if (width < 930 - 34) newHidden.push('blocks');
-    if (width < 810 - 34) newHidden.push('lists');
-    if (width < 690 - 34) newHidden.push('formatting');
-    if (width < 590 - 34) newHidden.push('font-style');
-    if (width < 430 - 34) newHidden.push('display-font');
+    if (width < 1030 - 34 * 2) newHidden.push('diff-view');
+    if (width < 930 - 34 * 2) newHidden.push('blocks');
+    if (width < 810 - 34 * 2) newHidden.push('lists');
+    if (width < 690 - 34 * 2) newHidden.push('formatting');
+    if (width < 590 - 34 * 2) newHidden.push('font-style');
+    if (width < 430 - 34 * 2) newHidden.push('display-font');
+    if (width < 270 - 34 * 2) newHidden.push('undo-redo');
     // Removed undo-redo group - VS Code handles undo/redo
 
     setHiddenGroups(newHidden);
@@ -339,48 +363,111 @@ const ToolbarWithCommentButton = React.memo(({
 
   return (
     <div ref={toolbarRef} className="responsive-toolbar">
-      {/* Main toolbar content - always visible */}
-      <div className="toolbar-main">
-        <ToolbarGroups
-          selectedFont={selectedFont}
-          handleFontChange={handleFontChange}
-          availableFonts={availableFonts}
-          isOverflow={false}
-          hiddenGroups={hiddenGroups}
-        />
+      {/* Main toolbar content - conditional based on view mode */}
+      <div className={`toolbar-main ${currentViewMode !== 'rich-text' ? 'source-toolbar' : ''}`}>
+        <DiffViewWrapper shouldShow={!hiddenGroups.includes('diff-view')} currentViewMode={currentViewMode}>
+          <ToolbarGroups
+            selectedFont={selectedFont}
+            handleFontChange={handleFontChange}
+            availableFonts={availableFonts}
+            isOverflow={false}
+            hiddenGroups={hiddenGroups}
+            currentViewMode={currentViewMode}
+          />
+        </DiffViewWrapper>
 
-        {/* Search - in the flow at the end of toolbar items */}
-        <div className="toolbar-search">
-          <MDXInlineSearchInput searchInputRef={searchInputRef} isTyping={isTyping} />
-        </div>
-      </div>
-
-      {/* Overflow menu trigger */}
-      <div className="toolbar-overflow">
-        <button
-          ref={overflowTriggerRef}
-          className={`overflow-trigger ${hiddenGroups.length > 0 ? 'visible' : ''}`}
-          title="More options"
-          onClick={handleOverflowToggle}
-        >
-          ⋮
-        </button>
-
-        <div className={`overflow-menu ${isOverflowOpen ? 'visible' : ''}`}>
-          <div className="overflow-menu-content">
-            <ToolbarGroups
-              selectedFont={selectedFont}
-              handleFontChange={handleFontChange}
-              availableFonts={availableFonts}
-              isOverflow={true}
-              hiddenGroups={hiddenGroups}
-            />
+        {/* Search - only in rich-text mode */}
+        {currentViewMode !== 'source' && (
+          <div className="toolbar-search">
+            <MDXInlineSearchInput searchInputRef={searchInputRef} isTyping={isTyping} />
           </div>
-        </div>
+        )}
       </div>
-    </div>
+
+      {/* Overflow menu trigger - only in rich-text mode */}
+      {
+        currentViewMode !== 'source' && (
+          <div className="toolbar-overflow">
+            <button
+              ref={overflowTriggerRef}
+              className={`overflow-trigger ${hiddenGroups.length > 0 ? 'visible' : ''}`}
+              title="More options"
+              onClick={handleOverflowToggle}
+            >
+              ⋮
+            </button>
+
+            <div className={`overflow-menu ${isOverflowOpen ? 'visible' : ''}`}>
+              <div className="overflow-menu-content">
+                <DiffViewWrapper shouldShow={hiddenGroups.includes('diff-view')} currentViewMode={currentViewMode}>
+                  <ToolbarGroups
+                    selectedFont={selectedFont}
+                    handleFontChange={handleFontChange}
+                    availableFonts={availableFonts}
+                    isOverflow={true}
+                    hiddenGroups={hiddenGroups}
+                    currentViewMode={currentViewMode}
+                  />
+                </DiffViewWrapper>
+              </div>
+            </div>
+          </div>
+        )
+      }
+    </div >
   );
 });
+
+// View mode tracking using DOM observation since viewMode$ might not be available
+const useViewModeTracking = (onViewModeChange: (mode: 'rich-text' | 'source' | 'diff') => void) => {
+  React.useEffect(() => {
+    let lastViewMode: 'rich-text' | 'source' | 'diff' = 'rich-text';
+
+    const checkViewMode = () => {
+      const sourceEditor = document.querySelector('.mdxeditor-source-editor');
+      const diffEditor = document.querySelector('.mdxeditor-diff-editor');
+      const richTextEditor = document.querySelector('.mdxeditor-rich-text-editor');
+
+      let currentMode: 'rich-text' | 'source' | 'diff' = 'rich-text';
+
+      if (sourceEditor && sourceEditor.style.display !== 'none') {
+        currentMode = 'source';
+      } else if (diffEditor && diffEditor.style.display !== 'none') {
+        currentMode = 'diff';
+      } else if (richTextEditor && richTextEditor.style.display !== 'none') {
+        currentMode = 'rich-text';
+      }
+
+      if (currentMode !== lastViewMode) {
+        logger.debug('View mode changed from', lastViewMode, 'to', currentMode);
+        lastViewMode = currentMode;
+        onViewModeChange(currentMode);
+      }
+    };
+
+    // Check immediately
+    checkViewMode();
+
+    // Set up observer for DOM changes
+    const observer = new MutationObserver(() => {
+      checkViewMode();
+    });
+
+    const editorContainer = document.querySelector('.mdx-editor');
+    if (editorContainer) {
+      observer.observe(editorContainer, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['style', 'class']
+      });
+    }
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [onViewModeChange]);
+};
 
 // Stateless search input with debounced search operation based on ref value
 const MDXInlineSearchInput = ({ searchInputRef, isTyping }: { searchInputRef: React.RefObject<HTMLInputElement>, isTyping?: boolean }) => {
@@ -722,7 +809,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   logger.debug('MDXEditorWrapper markdown contains code blocks?', markdown?.includes('```javascript'));
   logger.debug('MDXEditorWrapper markdown ends with expected?', markdown?.includes('explore all the features!'));
   // UI state
-  const [showCommentSidebar, setShowCommentSidebar] = useState(true);
+  const [showCommentSidebar, setShowCommentSidebar] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(300);
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [selectedText, setSelectedText] = useState('');
@@ -740,11 +827,91 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   const [showEditModal, setShowEditModal] = useState(false);
   const [focusedCommentId, setFocusedCommentId] = useState<string | null>(null);
 
+  // View mode tracking for hiding comments in source/diff view
+  const [currentViewMode, setCurrentViewMode] = useState<'rich-text' | 'source' | 'diff'>('rich-text');
+  const currentViewModeRef = useRef<'rich-text' | 'source' | 'diff'>('rich-text');
+
   // Performance optimization: Track typing state to prevent expensive operations during typing
   const [isTyping, setIsTyping] = useState(false);
   const [isPending, startTransitionInternal] = useTransition();
   const typingTimeoutRef = useRef<NodeJS.Timeout>();
   const deferredMessageTimeoutRef = useRef<NodeJS.Timeout>();
+
+  // Store the content before entering source mode for proper restoration
+  const preSourceContentRef = useRef<string | null>(null);
+
+  // Handle view mode changes to hide comments in source/diff view
+  const handleViewModeChange = useCallback((mode: 'rich-text' | 'source' | 'diff') => {
+    logger.debug('View mode changed to:', mode);
+
+    // When entering source mode: store current escaped content and show clean version
+    if (currentViewMode !== 'source' && mode === 'source' && editorRef.current) {
+      try {
+        const currentContent = editorRef.current.getMarkdown();
+        preSourceContentRef.current = currentContent; // Store escaped version
+
+        // Reset escaping flag for source mode
+        hasAppliedInitialEscapingRef.current = false;
+
+        // Show clean content in source view
+        const cleanContent = postprocessAngleBrackets(currentContent);
+        // Find the specific part with curly braces for debugging
+        const curlyBraceMatch = currentContent.match(/\{\{[^}]*\}\}/);
+        const curlyBraceMatchAfter = cleanContent.match(/\{\{[^}]*\}\}/);
+        logger.debug('Source mode - curly brace before:', curlyBraceMatch?.[0] || 'none');
+        logger.debug('Source mode - curly brace after:', curlyBraceMatchAfter?.[0] || 'none');
+        editorRef.current.setMarkdown(cleanContent);
+        logger.debug('Entered source mode: showing clean content');
+      } catch (error) {
+        logger.error('Error entering source mode:', error);
+      }
+    }
+
+    // When leaving source mode: always restore original escaped content, let sync handle changes
+    if (currentViewMode === 'source' && mode !== 'source' && editorRef.current) {
+      try {
+        const sourceContent = editorRef.current.getMarkdown();
+        logger.debug('Source content before switching back:', sourceContent.substring(0, 100));
+
+        if (preSourceContentRef.current) {
+          const originalCleanContent = postprocessAngleBrackets(preSourceContentRef.current);
+
+          if (sourceContent === originalCleanContent) {
+            // Source wasn't edited, restore original escaped content
+            logger.debug('Source unchanged, restoring original escaped content');
+            editorRef.current.setMarkdown(preSourceContentRef.current);
+          } else {
+            // Source was edited, preprocess the new clean content
+            logger.debug('Source was edited, preprocessing new content');
+            const processedContent = preprocessAngleBrackets(sourceContent);
+            editorRef.current.setMarkdown(processedContent);
+          }
+        }
+
+        // Reset escaping flag for rich-text mode
+        hasAppliedInitialEscapingRef.current = false;
+        preSourceContentRef.current = null;
+        logger.debug('Left source mode: content properly handled');
+      } catch (error) {
+        logger.error('Error leaving source mode:', error);
+      }
+    }
+
+    // Update both state and ref immediately to prevent timing issues
+    currentViewModeRef.current = mode;
+    setCurrentViewMode(mode);
+
+    // Hide floating button and comment selection when not in rich-text mode
+    if (mode !== 'rich-text') {
+      setShowFloatingButton(false);
+      setSelectedText('');
+      setCurrentSelection(null);
+    }
+  }, [currentViewMode]);
+
+
+  // Use the view mode tracking hook
+  useViewModeTracking(handleViewModeChange);
 
   // Update selected font when defaultFont prop changes
   React.useEffect(() => {
@@ -807,74 +974,38 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const hasInitiallyFocusedRef = useRef(false);
 
-  // Create a custom plugin to handle undo/redo synchronization
-  const undoRedoSyncPlugin = useMemo(() => {
+  // Create a custom plugin to completely disable MDX Editor's undo/redo
+  // This ensures VS Code is the single source of truth for undo/redo operations
+  const disableUndoRedoPlugin = useMemo(() => {
     return realmPlugin({
       init: (realm) => {
-        // Set up undo/redo command interceptors within the realm
-        const setupUndoRedoSync = () => {
+        // Disable Lexical's undo/redo commands completely
+        const disableUndoRedo = () => {
           const createRootEditorSubscription = realm.pub(createRootEditorSubscription$);
-          
-          // Hook into Lexical's undo/redo commands
+
+          // Block UNDO command entirely
           const unsubscribeUndo = createRootEditorSubscription((rootEditor) => {
             return rootEditor.registerCommand(
               UNDO_COMMAND,
               () => {
-                // Let the undo happen first, then sync to VS Code
-                setTimeout(() => {
-                  try {
-                    if (editorRef.current) {
-                      const newContent = editorRef.current.getMarkdown();
-                      logger.debug('Undo operation detected, syncing to VS Code:', newContent.length, 'chars');
-                      
-                      // Send the updated content to VS Code
-                      if (typeof window !== 'undefined' && window.vscodeApi) {
-                        window.vscodeApi.postMessage({
-                          command: 'edit',
-                          content: newContent
-                        });
-                      }
-                    }
-                  } catch (error) {
-                    logger.error('Error syncing undo to VS Code:', error);
-                  }
-                }, 10);
-                
-                // Return false to let the command continue normally
-                return false;
+                logger.debug('MDX Editor undo blocked - letting VS Code handle it');
+                // Return true to stop propagation and prevent the undo
+                return true;
               },
-              1 // Low priority to let the actual undo happen first
+              4 // High priority to intercept before Lexical's history plugin
             );
           });
 
+          // Block REDO command entirely  
           const unsubscribeRedo = createRootEditorSubscription((rootEditor) => {
             return rootEditor.registerCommand(
               REDO_COMMAND,
               () => {
-                // Let the redo happen first, then sync to VS Code
-                setTimeout(() => {
-                  try {
-                    if (editorRef.current) {
-                      const newContent = editorRef.current.getMarkdown();
-                      logger.debug('Redo operation detected, syncing to VS Code:', newContent.length, 'chars');
-                      
-                      // Send the updated content to VS Code
-                      if (typeof window !== 'undefined' && window.vscodeApi) {
-                        window.vscodeApi.postMessage({
-                          command: 'edit',
-                          content: newContent
-                        });
-                      }
-                    }
-                  } catch (error) {
-                    logger.error('Error syncing redo to VS Code:', error);
-                  }
-                }, 10);
-                
-                // Return false to let the command continue normally
-                return false;
+                logger.debug('MDX Editor redo blocked - letting VS Code handle it');
+                // Return true to stop propagation and prevent the redo
+                return true;
               },
-              1 // Low priority to let the actual redo happen first
+              4 // High priority to intercept before Lexical's history plugin
             );
           });
 
@@ -884,43 +1015,14 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
           };
         };
 
-        // Set up the sync when the editor is ready
-        setTimeout(setupUndoRedoSync, 100);
+        // Set up the blocking when the editor is ready
+        setTimeout(disableUndoRedo, 100);
       }
     });
   }, []);
 
-  // Prevent VS Code's keyboard shortcuts for undo/redo when editor is focused
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      // Check if we're in the MDX editor
-      const target = event.target as HTMLElement;
-      const isInEditor = target.closest('.mdx-editor, .mdx-content, [contenteditable="true"]');
-      
-      if (isInEditor) {
-        const isMac = navigator.platform.includes('Mac');
-        const isUndo = event.key === 'z' && (isMac ? event.metaKey : event.ctrlKey) && !event.shiftKey;
-        const isRedo = event.key === 'z' && (isMac ? event.metaKey : event.ctrlKey) && event.shiftKey;
-        const isRedoAlt = event.key === 'y' && (isMac ? event.metaKey : event.ctrlKey); // Alternative redo shortcut
-        
-        if (isUndo || isRedo || isRedoAlt) {
-          logger.debug('Preventing VS Code undo/redo, letting MDX editor handle it exclusively');
-          
-          // Prevent VS Code from handling these shortcuts
-          event.preventDefault();
-          event.stopPropagation();
-          event.stopImmediatePropagation();
-          
-          // Let MDX editor handle it natively, our sync hooks will update VS Code
-          return false;
-        }
-      }
-    };
-
-    // Use capture phase to intercept before VS Code can handle it
-    document.addEventListener('keydown', handleKeyDown, true);
-    return () => document.removeEventListener('keydown', handleKeyDown, true);
-  }, []);
+  // Allow VS Code to handle undo/redo keyboard shortcuts naturally
+  // We're not intercepting them anymore since VS Code is the single source of truth
 
   // Apply font styles to dropdown options
   React.useEffect(() => {
@@ -1067,7 +1169,14 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       }
     } else {
       logger.debug('Updated markdown length after deletion:', updatedMarkdown.length);
-      logger.debug('Calling onMarkdownChange with updated content');
+      logger.debug('Calling onMarkdownChange and updating editor content');
+      
+      // Update the editor content immediately to remove the highlight
+      if (editorRef.current) {
+        editorRef.current.setMarkdown(updatedMarkdown);
+      }
+      
+      // Also notify parent component of the change
       onMarkdownChange(updatedMarkdown);
     }
     logger.debug('=== DELETE COMMENT DEBUG END ===');
@@ -1122,10 +1231,10 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     if (commentElement) {
       logger.debug('Scrolling to comment element and highlighting it');
 
-      // Scroll element into view
+      // Use nearest scroll behavior to minimize view jumping
       commentElement.scrollIntoView({
         behavior: 'smooth',
-        block: 'center',
+        block: 'nearest', // This will minimize scrolling if element is already visible
         inline: 'nearest'
       });
 
@@ -1237,7 +1346,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   const dirtyStateTimeoutRef = useRef<NodeJS.Timeout>();
 
 
-  // Update editor content when markdown prop changes from external sources
+  // Handle external updates ONLY when they come from VS Code (not from user typing)
   React.useEffect(() => {
     // Skip updates immediately after saving to prevent scroll jumping
     if (justSavedRef.current) {
@@ -1246,53 +1355,25 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       return;
     }
 
-    if (editorRef.current && markdown !== undefined) {
+    // Only process if this is a genuine external update (not from user typing)
+    if (editorRef.current && markdown !== undefined && syncManagerRef.current) {
       // Get current editor content to compare
       const currentContent = editorRef.current.getMarkdown();
 
-      // Check if update is actually needed by comparing processed versions
-      const processedIncomingMarkdown = preprocessAngleBrackets(markdown);
-      const currentProcessedContent = postprocessAngleBrackets(currentContent);
+      // Check if update is actually needed
+      if (currentContent === markdown) {
+        return;
+      }
 
-      // Only update if the functional content has actually changed
-      if (currentProcessedContent !== markdown && currentContent !== processedIncomingMarkdown) {
-        logger.debug('External content change detected, processing images and updating editor...');
-
-        // Set external update flag to prevent circular updates
-        isExternalUpdateRef.current = true;
-
-        // Extension-side preprocessing handles images, use content directly
-        try {
-          // Store current cursor position
-          const selection = window.getSelection();
-          const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
-
-          // Use clean content for display, handle escaping internally
-          const processedMarkdown = markdown;
-
-          // Update the editor content directly (images already preprocessed by extension)
-          editorRef.current?.setMarkdown(processedMarkdown);
-
-          // Try to restore cursor position (best effort)
-          if (range && selection) {
-            try {
-              selection.removeAllRanges();
-              selection.addRange(range);
-            } catch (e) {
-              // Ignore cursor restore errors
-            }
-          }
-        } catch (error) {
-          logger.error('Error updating editor content:', error);
-        } finally {
-          // Reset the flag after a brief delay
-          setTimeout(() => {
-            isExternalUpdateRef.current = false;
-          }, 50);
-        }
+      // Only treat as external if SyncManager isn't currently sending
+      if (syncState !== SyncState.SENDING_TO_VSCODE) {
+        logger.debug('External update detected, using SyncManager');
+        syncManagerRef.current.handleExternalUpdate(markdown);
+      } else {
+        logger.debug('Ignoring React state change during sync operation');
       }
     }
-  }, [markdown]);
+  }, [markdown, syncState]);
 
   // Focus editor on initial load
   useEffect(() => {
@@ -1306,10 +1387,10 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
             // Set cursor position based on content type
             const selection = window.getSelection();
             const range = document.createRange();
-            
+
             // Check if this is standalone mode (has welcome message)
             const isStandalone = markdown.includes('Welcome to Markdown Docs!');
-            
+
             if (editorDOM.textContent?.trim() === '') {
               // Empty editor - position at beginning
               const firstParagraph = editorDOM.querySelector('p');
@@ -1361,56 +1442,67 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     }
   }, [editorRef.current, markdown]);
 
-  // True realtime sync state management
+  // Comprehensive sync state management with SyncManager
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const isExternalUpdateRef = useRef(false);
+  const [syncState, setSyncState] = useState<SyncState>(SyncState.IDLE);
+  const syncManagerRef = useRef<SyncManager | null>(null);
   const hasAppliedInitialEscapingRef = useRef(false);
 
+  // Initialize SyncManager
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.vscodeApi && !syncManagerRef.current) {
+      const syncManager = new SyncManager(window.vscodeApi);
+
+      // Set up state change monitoring
+      syncManager.onStateChangeCallback((state) => {
+        setSyncState(state);
+      });
+
+      // Set up external content updates
+      syncManager.onContentUpdateCallback((content) => {
+        logger.debug('SyncManager triggered external content update');
+        if (editorRef.current) {
+          editorRef.current.setMarkdown(content);
+        }
+      });
+
+      syncManagerRef.current = syncManager;
+
+      // Cleanup on unmount
+      return () => {
+        syncManager.dispose();
+        syncManagerRef.current = null;
+      };
+    }
+  }, []);
+
   const handleMarkdownChange = useCallback((newMarkdown: string) => {
-    // Skip if this change is from an external update
-    if (isExternalUpdateRef.current) {
+    // Skip if SyncManager is handling external updates
+    if (syncState === SyncState.RECEIVING_FROM_VSCODE ||
+      syncState === SyncState.APPLYING_EXTERNAL ||
+      syncState === SyncState.BLOCKED) {
+      logger.debug('SyncManager: Ignoring change during external operation');
       return;
     }
 
-    // On first edit, apply escaping to the editor content invisibly
-    if (!hasAppliedInitialEscapingRef.current && editorRef.current) {
+    // On first edit, apply escaping to the editor content invisibly (but only in rich-text mode)
+    if (!hasAppliedInitialEscapingRef.current && editorRef.current && currentViewModeRef.current === 'rich-text') {
       const currentContent = editorRef.current.getMarkdown();
       const needsEscaping = currentContent.includes('<') && !currentContent.includes('\\<');
 
       if (needsEscaping) {
+        logger.debug('PREPROCESSING: Applying initial escaping in rich-text mode');
         hasAppliedInitialEscapingRef.current = true;
-        isExternalUpdateRef.current = true;
-
         const escapedContent = preprocessAngleBrackets(currentContent);
         editorRef.current.setMarkdown(escapedContent);
+        return; // Let the next change handle the actual sync
 
-        // Reset flag and continue processing
-        setTimeout(() => {
-          isExternalUpdateRef.current = false;
-        }, 50);
-
-        // Process the new content with the escaped version as base
-        const processedMarkdown = postprocessAngleBrackets(newMarkdown);
-
-        // Continue with normal flow
-        const hasChanges = processedMarkdown !== markdown;
-        setHasUnsavedChanges(hasChanges);
-        onDirtyStateChange?.(hasChanges);
-
-        startTransition(() => {
-          onMarkdownChange(processedMarkdown);
-        });
-
-        // Send edit message to custom editor provider for dirty state tracking
-        if (typeof window !== 'undefined' && window.vscodeApi && hasChanges) {
-          window.vscodeApi.postMessage({
-            command: 'edit',
-            content: processedMarkdown
-          });
-        }
-
-        return;
       }
+    }
+
+    // Debug: log if we're trying to process in source mode
+    if (!hasAppliedInitialEscapingRef.current && currentViewModeRef.current === 'source') {
+      logger.debug('SKIPPING: Would apply initial escaping but in source mode');
     }
 
     // Mark as typing for performance optimizations
@@ -1418,40 +1510,47 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(() => setIsTyping(false), 300);
 
-    // Apply postprocessing to convert mathematical angle brackets back to regular ones and restore curly braces
-    const processedMarkdown = postprocessAngleBrackets(newMarkdown);
+    // Apply postprocessing only in rich-text mode (source mode should stay clean)
+    const processedMarkdown = currentViewModeRef.current === 'rich-text'
+      ? postprocessAngleBrackets(newMarkdown)
+      : newMarkdown;
 
-    // Immediate response: Update the editor state synchronously
+    // Check if this is actually a change
     const hasChanges = processedMarkdown !== markdown;
+    if (!hasChanges) {
+      return;
+    }
+
+    // Update UI state for immediate feedback
     setHasUnsavedChanges(hasChanges);
     onDirtyStateChange?.(hasChanges);
 
-    // Use React 18 startTransition for non-urgent updates that can be deferred
-    startTransition(() => {
-      onMarkdownChange(processedMarkdown);
-    });
+    // DO NOT update React state from user typing - let VS Code round-trip handle it
+    // This eliminates the circular dependency completely:
+    // User types → SyncManager → VS Code → 'update' message → React state → editor (if needed) 
 
-    // Send edit message to custom editor provider for dirty state tracking
-    if (typeof window !== 'undefined' && window.vscodeApi && hasChanges) {
-      window.vscodeApi.postMessage({
-        command: 'edit',
-        content: processedMarkdown
-      });
-    }
-
-    // Clear any existing dirty state timeout
-    clearTimeout(deferredMessageTimeoutRef.current);
-
-    // Schedule dirty state notification with debouncing
-    deferredMessageTimeoutRef.current = setTimeout(() => {
-      if (hasChanges && window.vscodeApi) {
+    // Use SyncManager for reliable, batched syncing to VS Code
+    if (syncManagerRef.current) {
+      syncManagerRef.current.sendContentToVSCode(processedMarkdown);
+    } else {
+      // Fallback to direct messaging if SyncManager not ready
+      logger.warn('SyncManager not ready, using fallback messaging');
+      if (typeof window !== 'undefined' && window.vscodeApi) {
         window.vscodeApi.postMessage({
-          command: 'dirtyStateChanged',
-          isDirty: true
+          command: 'edit',
+          content: processedMarkdown
         });
       }
-    }, 100); // Short delay to batch rapid changes
-  }, [markdown, onMarkdownChange]);
+    }
+
+    // Send dirty state notification
+    if (window.vscodeApi) {
+      window.vscodeApi.postMessage({
+        command: 'dirtyStateChanged',
+        isDirty: true
+      });
+    }
+  }, [markdown, syncState]);
 
 
   // Handle internal search messages
@@ -1563,6 +1662,12 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         return;
       }
 
+      // Don't show floating button in source or diff view
+      if (currentViewMode !== 'rich-text') {
+        setShowFloatingButton(false);
+        return;
+      }
+
       const selection = window.getSelection();
       if (selection && selection.toString().trim() && containerRef.current) {
         const range = selection.getRangeAt(0);
@@ -1647,7 +1752,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     return () => {
       document.removeEventListener('selectionchange', handleSelectionChange);
     };
-  }, [showCommentModal, showEditModal]);
+  }, [showCommentModal, showEditModal, currentViewMode]);
 
   // Handle clicks on highlighted text to highlight corresponding comment
   React.useEffect(() => {
@@ -2117,8 +2222,9 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     thematicBreakPlugin(),
     markdownShortcutPlugin(),
     searchPlugin(),
-    // Undo/redo synchronization with VS Code
-    undoRedoSyncPlugin,
+    diffSourcePlugin(),
+    // Disable MDX Editor's undo/redo to let VS Code handle it
+    disableUndoRedoPlugin,
     imagePlugin({
       imageUploadHandler: async (image: File) => {
         return new Promise((resolve) => {
@@ -2176,6 +2282,8 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
           availableFonts={availableFonts}
           setIsBookView={setIsBookView}
           isBookView={isBookView}
+          currentViewMode={currentViewMode}
+          onViewModeChange={handleViewModeChange}
           searchInputRef={searchInputRef}
           isTyping={isTyping}
         />
@@ -2275,7 +2383,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   });
 
   return (
-    <div className={`mdx-editor-container ${isBookView ? 'book-view' : ''}`} ref={containerRef}>
+    <div className={`mdx-editor-container ${isBookView ? 'book-view' : ''} ${currentViewMode === 'source' ? 'source-mode' : ''}`} ref={containerRef}>
       {isBookView ? (
         // Book view: render as paginated content
         <div className="book-pages-container">
@@ -2416,7 +2524,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
       {/* Floating comment button */}
       {
-        showFloatingButton && floatingButtonPosition && (
+        showFloatingButton && floatingButtonPosition && currentViewMode === 'rich-text' && (
           <div
             className={`floating-comment-button ${showFloatingButton ? 'visible' : ''}`}
             title="Add comment"

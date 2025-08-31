@@ -375,6 +375,7 @@ button[role="combobox"][aria-label="Language"]:hover,
   display: flex;
   overflow: hidden;
   position: relative;
+  min-height: 0; /* Allow flex shrinking */
 }
 
 .mdx-editor-content {
@@ -395,6 +396,67 @@ button[role="combobox"][aria-label="Language"]:hover,
   min-height: 0; /* Allow flex item to shrink */
   padding: 0;
   margin: 0;
+  min-height: 0;
+  max-height: none;
+}
+
+[class*="_rootContentEditableWrapper_"] {
+  flex: 1 !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  height: auto !important;
+  max-height: none !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* Also target the diff-source wrapper that contains the editor */
+.mdxeditor-diff-source-wrapper {
+  flex: 1 !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.mdxeditor-rich-text-editor {
+  flex: 1 !important;
+  min-height: 0 !important;
+  flex-direction: column !important;
+}
+
+.mdxeditor-rich-text-editor[style="display: block;"] {
+  display: flex !important;
+}
+
+[class*="_diffSourceToggleWrapper_"] {
+  margin: 0 auto !important;
+}
+
+/* Fix source editor (CodeMirror) scrolling */
+.mdxeditor-source-editor {
+  flex: 1 !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+.mdxeditor-source-editor .cm-editor {
+  flex: 1 !important;
+  min-height: 0 !important;
+  height: auto !important;
+  max-height: none !important;
+  overflow: hidden !important;
+}
+
+.mdxeditor-source-editor .cm-scroller {
+  flex: 1 !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  height: auto !important;
+  max-height: none !important;
 }
 
 /* MDXEditor layout - ensure proper flex sizing */
@@ -444,6 +506,16 @@ button[role="combobox"][aria-label="Language"]:hover,
   align-items: center;
   min-width: 0;
   gap: 0;
+}
+
+.toolbar-main.source-toolbar {
+  width: 100%;
+  justify-content: end;
+  align-items: end;
+}
+
+.toolbar-main.source-toolbar [class*="_diffSourceToggleWrapper_"] {
+  margin: 0 !important;
 }
 
 .toolbar-group {
@@ -599,7 +671,7 @@ button[role="combobox"][aria-label="Language"]:hover,
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 20px;
+  padding: 11px 20px;
   border-bottom: 1px solid var(--vscode-sideBar-border);
 }
 
@@ -711,8 +783,8 @@ button[role="combobox"][aria-label="Language"]:hover,
 /* Show comments button when sidebar is hidden */
 .show-comments-btn {
   position: fixed;
+  bottom: -5px;
   right: 20px;
-  top: 50%;
   transform: translateY(-50%);
   background: var(--vscode-button-background);
   color: var(--vscode-button-foreground);
@@ -755,13 +827,12 @@ button[role="combobox"][aria-label="Language"]:hover,
 
 .floating-comment-button.visible {
   opacity: 1;
-  transform: translateY(0);
   pointer-events: all;
+  transform: translateX(-100%);
 }
 
 .floating-comment-button:hover {
   background: var(--vscode-button-hoverBackground);
-  transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
 }
 
@@ -958,55 +1029,55 @@ button[role="combobox"][aria-label="Language"]:hover,
 }
 
 /* Fallback styles using more specific selectors */
-.mdxeditor-select-content [role="option"]:nth-child(1) span {
+[aria-label="Font"] .mdxeditor-select-content [role="option"]:nth-child(1) span {
   font-family: var(--vscode-editor-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif) !important; /* Default */
 }
 
-.mdxeditor-select-content [role="option"]:nth-child(2) span {
+[aria-label="Font"] .mdxeditor-select-content [role="option"]:nth-child(2) span {
   font-family: Arial, sans-serif !important; /* Arial */
 }
 
-.mdxeditor-select-content [role="option"]:nth-child(3) span {
+[aria-label="Font"] .mdxeditor-select-content [role="option"]:nth-child(3) span {
   font-family: "Times New Roman", Times, serif !important; /* Times New Roman */
 }
 
-.mdxeditor-select-content [role="option"]:nth-child(4) span {
+[aria-label="Font"] .mdxeditor-select-content [role="option"]:nth-child(4) span {
   font-family: Roboto, Arial, sans-serif !important; /* Roboto */
 }
 
-.mdxeditor-select-content [role="option"]:nth-child(5) span {
+[aria-label="Font"] .mdxeditor-select-content [role="option"]:nth-child(5) span {
   font-family: Georgia, serif !important; /* Georgia */
 }
 
-.mdxeditor-select-content [role="option"]:nth-child(6) span {
+[aria-label="Font"] .mdxeditor-select-content [role="option"]:nth-child(6) span {
   font-family: Calibri, sans-serif !important; /* Calibri */
 }
 
-.mdxeditor-select-content [role="option"]:nth-child(7) span {
+[aria-label="Font"] .mdxeditor-select-content [role="option"]:nth-child(7) span {
   font-family: Garamond, serif !important; /* Garamond */
 }
 
-.mdxeditor-select-content [role="option"]:nth-child(8) span {
+[aria-label="Font"] .mdxeditor-select-content [role="option"]:nth-child(8) span {
   font-family: "Book Antiqua", serif !important; /* Book Antiqua */
 }
 
-.mdxeditor-select-content [role="option"]:nth-child(9) span {
+[aria-label="Font"] .mdxeditor-select-content [role="option"]:nth-child(9) span {
   font-family: "Courier New", monospace !important; /* Courier New */
 }
 
-.mdxeditor-select-content [role="option"]:nth-child(10) span {
+[aria-label="Font"] .mdxeditor-select-content [role="option"]:nth-child(10) span {
   font-family: "Open Sans", Arial, sans-serif !important; /* Open Sans */
 }
 
-.mdxeditor-select-content [role="option"]:nth-child(11) span {
+[aria-label="Font"] .mdxeditor-select-content [role="option"]:nth-child(11) span {
   font-family: "Lato", Arial, sans-serif !important; /* Lato */
 }
 
-.mdxeditor-select-content [role="option"]:nth-child(12) span {
+[aria-label="Font"] .mdxeditor-select-content [role="option"]:nth-child(12) span {
   font-family: "Montserrat", Arial, sans-serif !important; /* Montserrat */
 }
 
-.mdxeditor-select-content [role="option"]:nth-child(13) span {
+[aria-label="Font"] .mdxeditor-select-content [role="option"]:nth-child(13) span {
   font-family: "Source Sans Pro", Arial, sans-serif !important; /* Source Sans Pro */
 }
 
@@ -1550,3 +1621,199 @@ body {
   background: var(--vscode-button-secondaryHoverBackground) !important;
 }
 
+/* CodeMirror editor styling in source/diff view */
+.mdx-editor .mdxeditor-source-editor .cm-editor,
+.mdx-editor .mdxeditor-diff-editor .cm-editor {
+  background: var(--vscode-editor-background) !important;
+  color: var(--vscode-editor-foreground) !important;
+  font-family: var(--vscode-editor-font-family, 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace) !important;
+  font-size: var(--vscode-editor-font-size, 13px) !important;
+  line-height: var(--vscode-editor-font-weight, 1.4) !important;
+  border: none !important;
+}
+
+/* CodeMirror content area */
+.mdx-editor .mdxeditor-source-editor .cm-content,
+.mdx-editor .mdxeditor-diff-editor .cm-content {
+  background: var(--vscode-editor-background) !important;
+  color: var(--vscode-editor-foreground) !important;
+  font-family: inherit !important;
+  padding: 12px !important;
+  min-height: 100% !important;
+  padding-bottom: 50vh !important;
+}
+
+._toolbarTitleMode_1e2ox_1027 {
+  display: none !important;
+}
+
+/* CodeMirror scroller */
+.mdx-editor .mdxeditor-source-editor .cm-scroller,
+.mdx-editor .mdxeditor-diff-editor .cm-scroller {
+  background: var(--vscode-editor-background) !important;
+  font-family: inherit !important;
+}
+
+/* CodeMirror line styling */
+.mdx-editor .mdxeditor-source-editor .cm-line,
+.mdx-editor .mdxeditor-diff-editor .cm-line {
+  color: var(--vscode-editor-foreground) !important;
+  font-family: inherit !important;
+}
+
+/* CodeMirror cursor */
+.mdx-editor .mdxeditor-source-editor .cm-cursor,
+.mdx-editor .mdxeditor-diff-editor .cm-cursor {
+  border-left-color: var(--vscode-editorCursor-foreground) !important;
+}
+
+/* CodeMirror selection - comprehensive approach with multiple selectors */
+.mdx-editor .mdxeditor-source-editor .cm-selectionBackground,
+.mdx-editor .mdxeditor-diff-editor .cm-selectionBackground,
+.mdx-editor .mdxeditor-source-editor .cm-editor .cm-selectionBackground,
+.mdx-editor .mdxeditor-diff-editor .cm-editor .cm-selectionBackground {
+  background: var(--vscode-editor-selectionBackground, rgba(0, 123, 255, 0.3)) !important;
+}
+
+/* Enhanced selection visibility for focused state */
+.mdx-editor .mdxeditor-source-editor .cm-focused .cm-selectionBackground,
+.mdx-editor .mdxeditor-diff-editor .cm-focused .cm-selectionBackground,
+.mdx-editor .mdxeditor-source-editor.cm-focused .cm-selectionBackground,
+.mdx-editor .mdxeditor-diff-editor.cm-focused .cm-selectionBackground {
+  background: var(--vscode-editor-selectionBackground, rgba(0, 123, 255, 0.4)) !important;
+}
+
+/* Alternative CodeMirror selection classes */
+.mdx-editor .mdxeditor-source-editor .cm-selection,
+.mdx-editor .mdxeditor-diff-editor .cm-selection,
+.mdx-editor .mdxeditor-source-editor .cm-editor .cm-selection,
+.mdx-editor .mdxeditor-diff-editor .cm-editor .cm-selection {
+  background: var(--vscode-editor-selectionBackground, rgba(0, 123, 255, 0.3)) !important;
+}
+
+/* Target any selection-related classes */
+.mdx-editor .mdxeditor-source-editor [class*="selection"],
+.mdx-editor .mdxeditor-diff-editor [class*="selection"] {
+  background: var(--vscode-editor-selectionBackground, rgba(0, 123, 255, 0.3)) !important;
+}
+
+/* Force selection visibility with high specificity */
+.mdx-editor .mdxeditor-source-editor *::selection,
+.mdx-editor .mdxeditor-diff-editor *::selection {
+  background: var(--vscode-editor-selectionBackground, rgba(0, 123, 255, 0.3)) !important;
+  color: var(--vscode-editor-selectionForeground, inherit) !important;
+}
+
+/* CodeMirror Custom Highlight API selection */
+.mdx-editor .mdxeditor-source-editor ::highlight(selection),
+.mdx-editor .mdxeditor-diff-editor ::highlight(selection) {
+  background-color: var(--vscode-editor-selectionBackground, rgba(0, 123, 255, 0.3)) !important;
+}
+
+/* Fallback with even more aggressive approach */
+.mdx-editor .mdxeditor-source-editor,
+.mdx-editor .mdxeditor-diff-editor {
+  --cm-selection-background: var(--vscode-editor-selectionBackground, rgba(0, 123, 255, 0.3)) !important;
+}
+
+/* Force override any existing selection styling */
+.mdx-editor .mdxeditor-source-editor .cm-editor,
+.mdx-editor .mdxeditor-diff-editor .cm-editor {
+  --cm-selection-background: var(--vscode-editor-selectionBackground, rgba(0, 123, 255, 0.3)) !important;
+}
+
+/* Ultra-specific targeting */
+.mdx-editor .mdxeditor-source-editor .cm-content .cm-line.cm-line,
+.mdx-editor .mdxeditor-diff-editor .cm-content .cm-line.cm-line {
+  background: transparent !important;
+}
+
+.mdx-editor .mdxeditor-source-editor .cm-content .cm-line.cm-line::selection,
+.mdx-editor .mdxeditor-diff-editor .cm-content .cm-line.cm-line::selection {
+  background: rgba(0, 123, 255, 0.4) !important;
+}
+
+/* CodeMirror active line */
+.mdx-editor .mdxeditor-source-editor .cm-activeLine,
+.mdx-editor .mdxeditor-diff-editor .cm-activeLine {
+  background: var(--vscode-editor-lineHighlightBackground) !important;
+}
+
+/* CodeMirror gutters */
+.mdx-editor .mdxeditor-source-editor .cm-gutters,
+.mdx-editor .mdxeditor-diff-editor .cm-gutters {
+  background: var(--vscode-editorGutter-background) !important;
+  border-right: 1px solid var(--vscode-editorGutter-border) !important;
+  color: var(--vscode-editorLineNumber-foreground) !important;
+}
+
+/* CodeMirror line numbers */
+.mdx-editor .mdxeditor-source-editor .cm-lineNumbers,
+.mdx-editor .mdxeditor-diff-editor .cm-lineNumbers {
+  color: var(--vscode-editorLineNumber-foreground) !important;
+}
+
+/* CodeMirror active line gutter */
+.mdx-editor .mdxeditor-source-editor .cm-activeLineGutter,
+.mdx-editor .mdxeditor-diff-editor .cm-activeLineGutter {
+  background: var(--vscode-editor-lineHighlightBackground) !important;
+  color: var(--vscode-editorLineNumber-activeForeground) !important;
+}
+
+/* CodeMirror focused state */
+.mdx-editor .mdxeditor-source-editor .cm-editor.cm-focused,
+.mdx-editor .mdxeditor-diff-editor .cm-editor.cm-focused {
+  outline: 1px solid var(--vscode-focusBorder) !important;
+  outline-offset: -1px !important;
+}
+
+/* Syntax highlighting for source/diff view */
+.mdx-editor .mdxeditor-source-editor .cm-keyword,
+.mdx-editor .mdxeditor-diff-editor .cm-keyword {
+  color: var(--vscode-symbolIcon-keywordForeground, #569cd6) !important;
+}
+
+.mdx-editor .mdxeditor-source-editor .cm-string,
+.mdx-editor .mdxeditor-diff-editor .cm-string {
+  color: var(--vscode-symbolIcon-stringForeground, #ce9178) !important;
+}
+
+.mdx-editor .mdxeditor-source-editor .cm-comment,
+.mdx-editor .mdxeditor-diff-editor .cm-comment {
+  color: var(--vscode-symbolIcon-textForeground, #6a9955) !important;
+  font-style: italic !important;
+}
+
+.mdx-editor .mdxeditor-source-editor .cm-number,
+.mdx-editor .mdxeditor-diff-editor .cm-number {
+  color: var(--vscode-symbolIcon-numberForeground, #b5cea8) !important;
+}
+
+.mdx-editor .mdxeditor-source-editor .cm-variableName,
+.mdx-editor .mdxeditor-diff-editor .cm-variableName {
+  color: var(--vscode-symbolIcon-variableForeground, #9cdcfe) !important;
+}
+
+.mdx-editor .mdxeditor-source-editor .cm-propertyName,
+.mdx-editor .mdxeditor-diff-editor .cm-propertyName {
+  color: var(--vscode-symbolIcon-propertyForeground, #9cdcfe) !important;
+}
+
+.mdx-editor .mdxeditor-source-editor .cm-punctuation,
+.mdx-editor .mdxeditor-diff-editor .cm-punctuation {
+  color: var(--vscode-editor-foreground) !important;
+}
+
+/* Diff view specific styling */
+.mdx-editor .mdxeditor-diff-editor .cm-addedLine {
+  background: var(--vscode-diffEditor-insertedTextBackground, rgba(0, 255, 0, 0.2)) !important;
+}
+
+.mdx-editor .mdxeditor-diff-editor .cm-deletedLine {
+  background: var(--vscode-diffEditor-removedTextBackground, rgba(255, 0, 0, 0.2)) !important;
+}
+
+/* Hide markdown parse errors when in source mode */
+.mdx-editor-container.source-mode [class*="_markdownParseError_"] {
+  display: none !important;
+}
