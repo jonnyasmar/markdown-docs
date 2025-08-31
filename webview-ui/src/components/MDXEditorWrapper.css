@@ -304,6 +304,7 @@ button[role="combobox"][aria-label="Language"],
   border-radius: 4px !important;
   font-size: 12px !important;
   padding: 4px 8px !important;
+  width: 100px;
 }
 
 .toolbar-group.display-font-group [role="combobox"]{
@@ -453,8 +454,7 @@ button[role="combobox"][aria-label="Language"]:hover,
 .mdxeditor-source-editor .cm-scroller {
   flex: 1 !important;
   min-height: 0 !important;
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
+  overflow: auto !important;
   height: auto !important;
   max-height: none !important;
 }
@@ -1654,7 +1654,7 @@ body {
   border: none !important;
 }
 
-/* CodeMirror content area */
+/* CodeMirror content area - VS Code configuration controls word wrap behavior */
 .mdx-editor .mdxeditor-source-editor .cm-content,
 .mdx-editor .mdxeditor-diff-editor .cm-content {
   background: var(--vscode-editor-background) !important;
@@ -1669,14 +1669,14 @@ body {
   display: none !important;
 }
 
-/* CodeMirror scroller */
+/* CodeMirror scroller - VS Code configuration controls word wrap behavior */
 .mdx-editor .mdxeditor-source-editor .cm-scroller,
 .mdx-editor .mdxeditor-diff-editor .cm-scroller {
   background: var(--vscode-editor-background) !important;
   font-family: inherit !important;
 }
 
-/* CodeMirror line styling */
+/* CodeMirror line styling - VS Code configuration controls word wrap behavior */
 .mdx-editor .mdxeditor-source-editor .cm-line,
 .mdx-editor .mdxeditor-diff-editor .cm-line {
   color: var(--vscode-editor-foreground) !important;
@@ -1755,10 +1755,33 @@ body {
   background: rgba(0, 123, 255, 0.4) !important;
 }
 
-/* CodeMirror active line */
+/* CodeMirror active line - enhanced with better contrast like rich text editor */
 .mdx-editor .mdxeditor-source-editor .cm-activeLine,
 .mdx-editor .mdxeditor-diff-editor .cm-activeLine {
-  background: var(--vscode-editor-lineHighlightBackground) !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+
+/* Dark theme specific line highlight for source view - subtle differentiation */
+.dark-theme .mdx-editor .mdxeditor-source-editor .cm-activeLine,
+.dark-theme .mdx-editor .mdxeditor-diff-editor .cm-activeLine {
+  background: rgba(255, 255, 255, 0.06) !important;
+}
+
+/* Enhanced bracket matching for source view - theme-aware instead of stark defaults */
+.mdx-editor .mdxeditor-source-editor .cm-matchingBracket,
+.mdx-editor .mdxeditor-diff-editor .cm-matchingBracket {
+  background: var(--vscode-editor-findMatchHighlightBackground) !important;
+  color: inherit !important;
+  border: 1px solid var(--vscode-editor-findMatchBorder) !important;
+  border-radius: 2px !important;
+}
+
+.mdx-editor .mdxeditor-source-editor .cm-nonmatchingBracket,
+.mdx-editor .mdxeditor-diff-editor .cm-nonmatchingBracket {
+  background: var(--vscode-inputValidation-errorBackground) !important;
+  color: var(--vscode-inputValidation-errorForeground) !important;
+  border: 1px solid var(--vscode-inputValidation-errorBorder) !important;
+  border-radius: 2px !important;
 }
 
 /* CodeMirror gutters */
@@ -1775,9 +1798,11 @@ body {
   color: var(--vscode-editorLineNumber-foreground) !important;
 }
 
-/* CodeMirror active line gutter */
+/* CodeMirror active line gutter - enhanced with proper inline style override */
 .mdx-editor .mdxeditor-source-editor .cm-activeLineGutter,
-.mdx-editor .mdxeditor-diff-editor .cm-activeLineGutter {
+.mdx-editor .mdxeditor-diff-editor .cm-activeLineGutter,
+.mdx-editor .mdxeditor-source-editor .cm-gutterElement.cm-activeLineGutter,
+.mdx-editor .mdxeditor-diff-editor .cm-gutterElement.cm-activeLineGutter {
   background: var(--vscode-editor-lineHighlightBackground) !important;
   color: var(--vscode-editorLineNumber-activeForeground) !important;
 }

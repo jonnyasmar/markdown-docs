@@ -45,6 +45,7 @@ import {
   useCellValue
 } from '@mdxeditor/editor';
 import { UNDO_COMMAND, REDO_COMMAND } from 'lexical';
+import { EditorView } from '@codemirror/view';
 import '@mdxeditor/editor/style.css';
 import { CommentWithAnchor } from '../types';
 import { CommentModal } from './CommentModal';
@@ -769,6 +770,10 @@ const genericDirectiveDescriptor = {
   }
 };
 
+interface EditorConfig {
+  wordWrap: string; // 'off' | 'on' | 'wordWrapColumn' | 'bounded'
+}
+
 interface MDXEditorWrapperProps {
   markdown: string;
   onMarkdownChange: (markdown: string) => void;
@@ -778,6 +783,7 @@ interface MDXEditorWrapperProps {
   onDeleteComment?: (commentId: string) => void;
   defaultFont?: string;
   onDirtyStateChange?: (isDirty: boolean) => void;
+  editorConfig?: EditorConfig;
 }
 
 
@@ -789,7 +795,8 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   onEditComment,
   onDeleteComment,
   defaultFont = 'Default',
-  onDirtyStateChange
+  onDirtyStateChange,
+  editorConfig = { wordWrap: 'off' }
 }) => {
   logger.debug('🚀 MDXEditorWrapper rendered with markdown length:', markdown?.length || 0);
   if (markdown && markdown.includes('![')) {
@@ -1447,6 +1454,33 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   const [syncState, setSyncState] = useState<SyncState>(SyncState.IDLE);
   const syncManagerRef = useRef<SyncManager | null>(null);
   const hasAppliedInitialEscapingRef = useRef(false);
+  
+  // Sync editorConfig prop with local state
+  useEffect(() => {
+    if (editorConfig) {
+      logger.debug('Editor config updated:', editorConfig);
+    }
+  }, [editorConfig]);
+
+  // Generate CodeMirror extensions based on VS Code editor configuration
+  const createCodeMirrorExtensions = useMemo(() => {
+    const shouldWrap = editorConfig.wordWrap === 'on' || editorConfig.wordWrap === 'wordWrapColumn' || editorConfig.wordWrap === 'bounded';
+    
+    return [
+      EditorView.theme({
+        '&': {
+          'white-space': shouldWrap ? 'pre-wrap !important' : 'pre !important',
+          'overflow-x': shouldWrap ? 'hidden !important' : 'auto !important'
+        },
+        '.cm-line': {
+          'white-space': shouldWrap ? 'pre-wrap !important' : 'pre !important'
+        },
+        '.cm-content': {
+          'white-space': shouldWrap ? 'pre-wrap !important' : 'pre !important'
+        }
+      })
+    ];
+  }, [editorConfig.wordWrap]);
 
   // Initialize SyncManager
   useEffect(() => {
@@ -2243,7 +2277,11 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     thematicBreakPlugin(),
     markdownShortcutPlugin(),
     searchPlugin(),
-    diffSourcePlugin(),
+    diffSourcePlugin({
+      // Use VS Code editor configuration for word wrap behavior
+      diffMarkdown: '',
+      codeMirrorExtensions: createCodeMirrorExtensions
+    }),
     // Disable MDX Editor's undo/redo to let VS Code handle it
     disableUndoRedoPlugin,
     imagePlugin({
@@ -2388,9 +2426,11 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       // Add better syntax theme configuration
       autocompletion: true,
       branchPrediction: false,
-      codeFolding: true
+      codeFolding: true,
+      // Use VS Code editor configuration for word wrap behavior in code blocks
+      codeBlockEditorExtensions: createCodeMirrorExtensions
     })
-  ], [selectedFont, handleFontChange, availableFonts, setIsBookView, isBookView, searchInputRef, isTyping, focusedCommentId, setFocusedCommentId, pendingComment, handleCommentInserted]);
+  ], [selectedFont, handleFontChange, availableFonts, setIsBookView, isBookView, searchInputRef, isTyping, focusedCommentId, setFocusedCommentId, pendingComment, handleCommentInserted, createCodeMirrorExtensions]);
 
   // Let MDX editor handle undo/redo natively - no keyboard interception needed
 

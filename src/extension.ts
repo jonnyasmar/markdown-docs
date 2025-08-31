@@ -17,6 +17,16 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
 
   constructor(private readonly context: vscode.ExtensionContext, private readonly outputChannel: vscode.OutputChannel) {}
 
+  /**
+   * Get current VS Code editor configuration relevant to the markdown editor
+   */
+  private getEditorConfig() {
+    const editorConfig = vscode.workspace.getConfiguration('editor');
+    return {
+      wordWrap: editorConfig.get<string>('wordWrap', 'off')
+    };
+  }
+
   resolveCustomTextEditor(
     document: vscode.TextDocument,
     webviewPanel: vscode.WebviewPanel,
@@ -78,10 +88,22 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
       });
     });
 
+    // Listen for editor configuration changes
+    const configChangeSubscription = vscode.workspace.onDidChangeConfiguration(e => {
+      if (e.affectsConfiguration('editor.wordWrap')) {
+        // Send updated configuration to webview
+        webviewPanel.webview.postMessage({
+          command: 'configUpdate',
+          editorConfig: this.getEditorConfig()
+        });
+      }
+    });
+
     // Clean up listeners when webview is disposed
     webviewPanel.onDidDispose(() => {
       changeDocumentSubscription.dispose();
       renameSubscription.dispose();
+      configChangeSubscription.dispose();
     });
     
     this.outputChannel.appendLine('resolveCustomTextEditor completed successfully');
@@ -257,7 +279,8 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
       command: 'update',
       content: displayContent,
       type: 'init',
-      theme: vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.Dark ? 'dark' : 'light'
+      theme: vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.Dark ? 'dark' : 'light',
+      editorConfig: this.getEditorConfig()
     };
     
     this.outputChannel.appendLine(`Sending 'update' message to webview with content length: ${displayContent.length}`);

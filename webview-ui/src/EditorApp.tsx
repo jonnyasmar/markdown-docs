@@ -26,6 +26,7 @@ function EditorApp() {
   const [isLoading, setIsLoading] = useState(true);
   const [defaultFont, setDefaultFont] = useState<FontFamily>('Arial');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [editorConfig, setEditorConfig] = useState<{wordWrap: string}>({wordWrap: 'off'});
   
   // Get VS Code API once at component initialization
   const vscode = getVSCodeAPI();
@@ -54,6 +55,9 @@ function EditorApp() {
       switch (message.command) {
         case 'update':
           setMarkdown(message.content || '');
+          if (message.editorConfig) {
+            setEditorConfig(message.editorConfig);
+          }
           setIsLoading(false);
           clearTimeout(loadingTimeout);
           break;
@@ -79,6 +83,12 @@ function EditorApp() {
         case 'saveComplete':
           // Extension confirms save was successful - clear dirty state
           setHasUnsavedChanges(false);
+          break;
+        case 'configUpdate':
+          // Update editor configuration (word wrap, etc.)
+          if (message.editorConfig) {
+            setEditorConfig(message.editorConfig);
+          }
           break;
         default:
           // Unknown message command
@@ -247,6 +257,7 @@ function EditorApp() {
         onDeleteComment={handleDeleteComment}
         defaultFont={defaultFont}
         onDirtyStateChange={setHasUnsavedChanges}
+        editorConfig={editorConfig}
       />
     </ErrorBoundary>
   );
