@@ -21,6 +21,11 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
   ): void | Thenable<void> {
     logger.debug('Resolving custom text editor for:', document.uri.fsPath);
     
+    // Set custom title to show only filename without path
+    const path = require('path');
+    const filename = path.basename(document.uri.fsPath);
+    webviewPanel.title = filename;
+    
     // Configure webview
     webviewPanel.webview.options = {
       enableScripts: true,
@@ -45,9 +50,21 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
       }
     });
 
-    // Clean up listener when webview is disposed
+    // Listen for file rename/save as events to update the title
+    const renameSubscription = vscode.workspace.onDidRenameFiles(e => {
+      e.files.forEach(file => {
+        if (file.oldUri.toString() === document.uri.toString()) {
+          const path = require('path');
+          const newFilename = path.basename(file.newUri.fsPath);
+          webviewPanel.title = newFilename;
+        }
+      });
+    });
+
+    // Clean up listeners when webview is disposed
     webviewPanel.onDidDispose(() => {
       changeDocumentSubscription.dispose();
+      renameSubscription.dispose();
     });
   }
 
