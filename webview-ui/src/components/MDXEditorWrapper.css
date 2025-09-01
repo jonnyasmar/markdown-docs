@@ -900,7 +900,7 @@ button[role='combobox'][aria-label='Language']:hover,
 /* Show comments button when sidebar is hidden */
 .show-comments-btn {
   position: fixed;
-  bottom: -5px;
+  bottom: 20px;
   right: 20px;
   transform: translateY(-50%);
   background: var(--vscode-button-background);

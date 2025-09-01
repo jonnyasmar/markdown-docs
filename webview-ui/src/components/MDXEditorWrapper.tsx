@@ -51,6 +51,7 @@ import './MDXEditorWrapper.css';
 import { MermaidEditor } from './MermaidEditor';
 import './MermaidEditor.css';
 import { postprocessAngleBrackets, preprocessAngleBrackets } from './SimplifiedAngleBracketPlugin';
+import StatusBar from './StatusBar';
 
 // No longer using portal - overflow menu is within toolbar context
 
@@ -2857,6 +2858,15 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         selectedText={editingComment?.anchoredText || ''}
         initialText={editingComment?.content || ''}
         isEditing={true}
+      />
+
+      {/* Status Bar */}
+      <StatusBar
+        content={markdown || ''}
+        editorRef={editorRef}
+        isTyping={isTyping}
+        selectedText={selectedText}
+        viewMode={currentViewMode}
       />
     </div>
   );

@@ -1,0 +1,70 @@
+.status-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 12px;
+  background-color: var(--vscode-statusBar-background);
+  color: var(--vscode-statusBar-foreground);
+  border-top: 1px solid var(--vscode-statusBar-border, var(--vscode-widget-border));
+  font-size: 12px;
+  font-family: var(--vscode-font-family);
+  line-height: 18px;
+  min-height: 22px;
+  flex-shrink: 0;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.status-section {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.status-item {
+  color: var(--vscode-statusBar-foreground);
+  opacity: 0.8;
+  font-size: 12px;
+  font-weight: 400;
+  transition: opacity 0.2s ease;
+}
+
+.status-item:hover {
+  opacity: 1;
+}
+
+.status-item.selection {
+  color: var(--vscode-statusBarItem-prominentForeground, var(--vscode-statusBar-foreground));
+  background-color: var(--vscode-statusBarItem-prominentBackground, transparent);
+  padding: 0 6px;
+  border-radius: 0px;
+  opacity: 1;
+}
+
+.status-item.mode {
+  color: var(--vscode-statusBarItem-prominentForeground, var(--vscode-statusBar-foreground));
+  font-weight: 500;
+  opacity: 1;
+}
+
+/* Dark theme adjustments */
+.dark-theme .status-bar {
+  border-top-color: var(--vscode-statusBar-border, rgba(255, 255, 255, 0.1));
+}
+
+/* Ensure status bar doesn't interfere with editor */
+.mdx-editor-with-sidebar {
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  .status-section:first-child .status-item:not(:first-child) {
+    display: none;
+  }
+
+  .status-section {
+    gap: 8px;
+  }
+}
