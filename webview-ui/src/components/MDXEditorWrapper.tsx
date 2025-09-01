@@ -22,6 +22,7 @@ import {
   createRootEditorSubscription$,
   diffSourcePlugin,
   directivesPlugin,
+  frontmatterPlugin,
   headingsPlugin,
   imagePlugin,
   insertDirective$,
@@ -2485,6 +2486,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       thematicBreakPlugin(),
       markdownShortcutPlugin(),
       searchPlugin(),
+      frontmatterPlugin(),
       diffSourcePlugin({
         // Use VS Code editor configuration for word wrap behavior
         diffMarkdown: '',

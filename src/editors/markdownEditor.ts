@@ -38,7 +38,10 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
     // Hook up event handlers so that we can synchronize the webview with the text document
     const changeDocumentSubscription = vscode.workspace.onDidChangeTextDocument(e => {
       if (e.document.uri.toString() === document.uri.toString()) {
-        updateWebview();
+        // Only update if document is not dirty (no unsaved changes)
+        if (!document.isDirty) {
+          updateWebview();
+        }
       }
     });
 
