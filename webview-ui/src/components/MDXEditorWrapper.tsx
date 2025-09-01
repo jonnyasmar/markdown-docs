@@ -1,5 +1,6 @@
 import { EditorView } from '@codemirror/view';
 import {
+  AdmonitionDirectiveDescriptor,
   BlockTypeSelect,
   BoldItalicUnderlineToggles,
   CodeMirrorEditor,
@@ -7,6 +8,7 @@ import {
   CreateLink,
   DiffSourceToggleWrapper,
   GenericDirectiveEditor,
+  InsertAdmonition,
   InsertCodeBlock,
   InsertTable,
   InsertThematicBreak,
@@ -35,8 +37,8 @@ import {
   useEditorSearch,
 } from '@mdxeditor/editor';
 import '@mdxeditor/editor/style.css';
-import { AArrowUp, AArrowDown, AlignLeft, AlignCenter, AlignRight, AlignJustify, BookOpen, Undo } from 'lucide-react';
 import { REDO_COMMAND, UNDO_COMMAND } from 'lexical';
+import { AArrowDown, AArrowUp, AlignCenter, AlignJustify, AlignLeft, AlignRight, BookOpen, Undo } from 'lucide-react';
 import React, { startTransition, useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 
 import { DirectiveService } from '../../../src/services/directive';
@@ -155,6 +157,8 @@ const ToolbarGroups = React.memo(
           </>
         )}
 
+        {shouldShowGroup('admonition') && <InsertAdmonition />}
+
         {/* Text Justification Controls */}
         {shouldShowGroup('text-align') && handleTextAlignChange && (
           <>
@@ -272,7 +276,20 @@ const DiffViewWrapper = React.memo(
 
 // Memoized custom toolbar component to prevent unnecessary re-renders
 const ToolbarWithCommentButton = React.memo(
-  ({ selectedFont, handleFontChange, availableFonts, searchInputRef, isTyping, currentViewMode, fontSize, handleFontSizeChange, textAlign, handleTextAlignChange, bookView, handleBookViewToggle }: any) => {
+  ({
+    selectedFont,
+    handleFontChange,
+    availableFonts,
+    searchInputRef,
+    isTyping,
+    currentViewMode,
+    fontSize,
+    handleFontSizeChange,
+    textAlign,
+    handleTextAlignChange,
+    bookView,
+    handleBookViewToggle,
+  }: any) => {
     const [isOverflowOpen, setIsOverflowOpen] = useState(false);
     const [hiddenGroups, setHiddenGroups] = useState<string[]>([]);
     const overflowTriggerRef = useRef<HTMLButtonElement>(null);
@@ -289,7 +306,7 @@ const ToolbarWithCommentButton = React.memo(
 
       const width = toolbarRef.current.offsetWidth;
       const newHidden: string[] = [];
-     
+
       // Use the same thresholds from CSS variables - updated for new groups
       if (width < 1180 - 34 * 4) {
         newHidden.push('diff-view');
@@ -438,9 +455,9 @@ const useViewModeTracking = (onViewModeChange: (mode: 'rich-text' | 'source' | '
     let lastViewMode: 'rich-text' | 'source' | 'diff' = 'rich-text';
 
     const checkViewMode = () => {
-      const sourceEditor = document.querySelector('.mdxeditor-source-editor');
-      const diffEditor = document.querySelector('.mdxeditor-diff-editor');
-      const richTextEditor = document.querySelector('.mdxeditor-rich-text-editor');
+      const sourceEditor: HTMLElement | null = document.querySelector('.mdxeditor-source-editor');
+      const diffEditor: HTMLElement | null = document.querySelector('.mdxeditor-diff-editor');
+      const richTextEditor: HTMLElement | null = document.querySelector('.mdxeditor-rich-text-editor');
 
       let currentMode: 'rich-text' | 'source' | 'diff' = 'rich-text';
 
@@ -997,10 +1014,10 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       });
     }
   };
-  
+
   // Keep track of current fontSize for increment/decrement operations
   const currentFontSizeRef = useRef(fontSize);
-  
+
   // Update ref when prop changes
   useEffect(() => {
     currentFontSizeRef.current = fontSize;
@@ -1050,7 +1067,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
       // Apply font size (affects base font size, headings will scale proportionally)
       editorContent.style.fontSize = `${fontSize}px`;
-      
+
       // Ensure paragraphs inherit the font size properly
       const paragraphs = editorContent.querySelectorAll('p');
       paragraphs.forEach(p => {
@@ -2473,6 +2490,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
       directivesPlugin({
         directiveDescriptors: [
+          AdmonitionDirectiveDescriptor,
           createCommentDirectiveDescriptor(focusedCommentId, setFocusedCommentId),
           genericDirectiveDescriptor, // Refined version - only catches actual directives
         ],
@@ -2497,7 +2515,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
             textAlign={textAlign}
             handleTextAlignChange={handleTextAlignChange}
             handleBookViewToggle={handleBookViewToggle}
-            />
+          />
         ),
       }),
 

@@ -38,5 +38,8 @@
     "util": "^0.12.5",
     "webpack": "^5.101.3",
     "webpack-cli": "^6.0.1"
+  },
+  "overrides": {
+    "@types/d3-dispatch": "3.0.5"
   }
 }
