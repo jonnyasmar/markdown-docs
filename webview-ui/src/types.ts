@@ -33,6 +33,10 @@ export interface WebviewMessage {
   message?: string;
   isDirty?: boolean;
   data?: any;
+  hasUnsavedChanges?: boolean;
+  fontSize?: number;
+  textAlign?: string;
+  bookView?: boolean;
 }
 
 export interface VSCodeAPI {

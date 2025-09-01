@@ -20,12 +20,24 @@ const getVSCodeAPI = (): VSCodeAPI | null => {
   return null;
 };
 
-function EditorApp() {
+interface EditorAppProps {
+  initialSettings: {
+    defaultFont: FontFamily;
+    fontSize: number;
+    textAlign: string;
+    bookView: boolean;
+  };
+}
+
+function EditorApp({initialSettings}: EditorAppProps) {
   const [markdown, setMarkdown] = useState('');
   const [comments, setComments] = useState<CommentWithAnchor[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [defaultFont, setDefaultFont] = useState<FontFamily>('Arial');
+  const [defaultFont, setDefaultFont] = useState<FontFamily>(initialSettings.defaultFont);
+  const [fontSize, setFontSize] = useState(initialSettings.fontSize);
+  const [textAlign, setTextAlign] = useState(initialSettings.textAlign);
+  const [bookView, setBookView] = useState(initialSettings.bookView);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [editorConfig, setEditorConfig] = useState<{ wordWrap: string }>({ wordWrap: 'off' });
 
@@ -86,6 +98,16 @@ function EditorApp() {
             // Update editor configuration (word wrap, etc.)
             if (message.editorConfig) {
               setEditorConfig(message.editorConfig);
+            }
+            break;
+          case 'settingsUpdate':
+            console.log('EditorApp: Received settingsUpdate message:', message);
+            if (message.settings) {
+              const { defaultFont, fontSize: newFontSize, textAlign: newTextAlign, bookView: newBookView } = message.settings;
+              if (defaultFont) setDefaultFont(defaultFont);
+              if (typeof newFontSize === 'number') setFontSize(newFontSize);
+              if (newTextAlign) setTextAlign(newTextAlign);
+              if (typeof newBookView === 'boolean') setBookView(newBookView);
             }
             break;
           default:
@@ -248,6 +270,9 @@ function EditorApp() {
         onEditComment={handleEditComment}
         onDeleteComment={handleDeleteComment}
         defaultFont={defaultFont}
+        fontSize={fontSize}
+        textAlign={textAlign}
+        bookView={bookView}
         onDirtyStateChange={setHasUnsavedChanges}
         editorConfig={editorConfig}
       />

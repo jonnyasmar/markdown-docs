@@ -35,6 +35,7 @@ import {
   useEditorSearch,
 } from '@mdxeditor/editor';
 import '@mdxeditor/editor/style.css';
+import { AArrowUp, AArrowDown, AlignLeft, AlignCenter, AlignRight, AlignJustify, BookOpen, Undo } from 'lucide-react';
 import { REDO_COMMAND, UNDO_COMMAND } from 'lexical';
 import React, { startTransition, useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 
@@ -60,6 +61,12 @@ const ToolbarGroups = React.memo(
     isOverflow = false,
     hiddenGroups = [],
     currentViewMode,
+    fontSize,
+    handleFontSizeChange,
+    textAlign,
+    handleTextAlignChange,
+    bookView,
+    handleBookViewToggle,
   }: {
     selectedFont: string;
     handleFontChange: (font: string) => void;
@@ -67,6 +74,12 @@ const ToolbarGroups = React.memo(
     isOverflow?: boolean;
     hiddenGroups?: string[];
     currentViewMode?: 'rich-text' | 'source' | 'diff';
+    fontSize?: number;
+    handleFontSizeChange?: (delta: number) => void;
+    textAlign?: string;
+    handleTextAlignChange?: (align: string) => void;
+    bookView?: boolean;
+    handleBookViewToggle?: () => void;
   }) => {
     const groupClass = isOverflow ? 'overflow-group' : 'toolbar-group';
 
@@ -107,6 +120,89 @@ const ToolbarGroups = React.memo(
                   className: `font-option-${font.toLowerCase().replace(/\s+/g, '-')}`,
                 }))}
               />
+              {!isOverflow && <Separator />}
+            </div>
+          </>
+        )}
+
+        {/* Font Size Controls */}
+        {shouldShowGroup('font-size') && handleFontSizeChange && (
+          <>
+            <div className={`${groupClass} ${isOverflow ? 'overflow-group overflow-font-size' : 'font-size-group'}`}>
+              <button
+                className="custom-button _toolbarToggleItem_1e2ox_208"
+                title="Decrease Font Size"
+                onClick={() => handleFontSizeChange(-1)}
+              >
+                <AArrowDown size={16} />
+              </button>
+              <button
+                className="custom-button _toolbarToggleItem_1e2ox_208"
+                title="Increase Font Size"
+                onClick={() => handleFontSizeChange(1)}
+              >
+                <AArrowUp size={16} />
+              </button>
+              <button
+                className="custom-button _toolbarToggleItem_1e2ox_208"
+                title="Reset Font Size"
+                onClick={() => handleFontSizeChange && handleFontSizeChange(14 - (fontSize || 14))}
+              >
+                <Undo size={16} />
+              </button>
+              {!isOverflow && <Separator />}
+            </div>
+          </>
+        )}
+
+        {/* Text Justification Controls */}
+        {shouldShowGroup('text-align') && handleTextAlignChange && (
+          <>
+            <div className={`${groupClass} ${isOverflow ? 'overflow-group overflow-text-align' : 'text-align-group'}`}>
+              <button
+                className={`custom-button _toolbarToggleItem_1e2ox_208 ${textAlign === 'left' ? 'active' : ''}`}
+                title="Align Left"
+                onClick={() => handleTextAlignChange('left')}
+              >
+                <AlignLeft size={16} />
+              </button>
+              <button
+                className={`custom-button _toolbarToggleItem_1e2ox_208 ${textAlign === 'center' ? 'active' : ''}`}
+                title="Align Center"
+                onClick={() => handleTextAlignChange('center')}
+              >
+                <AlignCenter size={16} />
+              </button>
+              <button
+                className={`custom-button _toolbarToggleItem_1e2ox_208 ${textAlign === 'right' ? 'active' : ''}`}
+                title="Align Right"
+                onClick={() => handleTextAlignChange('right')}
+              >
+                <AlignRight size={16} />
+              </button>
+              <button
+                className={`custom-button _toolbarToggleItem_1e2ox_208 ${textAlign === 'justify' ? 'active' : ''}`}
+                title="Justify"
+                onClick={() => handleTextAlignChange('justify')}
+              >
+                <AlignJustify size={16} />
+              </button>
+              {!isOverflow && <Separator />}
+            </div>
+          </>
+        )}
+
+        {/* Book View Toggle */}
+        {shouldShowGroup('book-view') && handleBookViewToggle && (
+          <>
+            <div className={`${groupClass} ${isOverflow ? 'overflow-group overflow-book-view' : 'book-view-group'}`}>
+              <button
+                className={`custom-button _toolbarToggleItem_1e2ox_208 ${bookView ? 'active' : ''}`}
+                title="Book View"
+                onClick={handleBookViewToggle}
+              >
+                <BookOpen size={16} />
+              </button>
               {!isOverflow && <Separator />}
             </div>
           </>
@@ -176,7 +272,7 @@ const DiffViewWrapper = React.memo(
 
 // Memoized custom toolbar component to prevent unnecessary re-renders
 const ToolbarWithCommentButton = React.memo(
-  ({ selectedFont, handleFontChange, availableFonts, searchInputRef, isTyping, currentViewMode }: any) => {
+  ({ selectedFont, handleFontChange, availableFonts, searchInputRef, isTyping, currentViewMode, fontSize, handleFontSizeChange, textAlign, handleTextAlignChange, bookView, handleBookViewToggle }: any) => {
     const [isOverflowOpen, setIsOverflowOpen] = useState(false);
     const [hiddenGroups, setHiddenGroups] = useState<string[]>([]);
     const overflowTriggerRef = useRef<HTMLButtonElement>(null);
@@ -193,21 +289,30 @@ const ToolbarWithCommentButton = React.memo(
 
       const width = toolbarRef.current.offsetWidth;
       const newHidden: string[] = [];
-
-      // Use the same thresholds from CSS variables
-      if (width < 1030 - 34 * 4) {
+     
+      // Use the same thresholds from CSS variables - updated for new groups
+      if (width < 1180 - 34 * 4) {
         newHidden.push('diff-view');
       }
-      if (width < 930 - 34 * 4) {
+      if (width < 1120 - 34 * 4) {
         newHidden.push('blocks');
       }
-      if (width < 810 - 34 * 4) {
+      if (width < 1000 - 34 * 4) {
         newHidden.push('lists');
       }
-      if (width < 690 - 34 * 4) {
+      if (width < 930 - 34 * 4) {
         newHidden.push('formatting');
       }
-      if (width < 590 - 34 * 4) {
+      if (width < 860 - 34 * 4) {
+        newHidden.push('book-view');
+      }
+      if (width < 760 - 34 * 4) {
+        newHidden.push('text-align');
+      }
+      if (width < 660 - 34 * 4) {
+        newHidden.push('font-size');
+      }
+      if (width < 560 - 34 * 4) {
         newHidden.push('font-style');
       }
       if (width < 430 - 34 * 4) {
@@ -271,6 +376,12 @@ const ToolbarWithCommentButton = React.memo(
               isOverflow={false}
               hiddenGroups={hiddenGroups}
               currentViewMode={currentViewMode}
+              fontSize={fontSize}
+              handleFontSizeChange={handleFontSizeChange}
+              textAlign={textAlign}
+              handleTextAlignChange={handleTextAlignChange}
+              bookView={bookView}
+              handleBookViewToggle={handleBookViewToggle}
             />
           </DiffViewWrapper>
 
@@ -304,6 +415,12 @@ const ToolbarWithCommentButton = React.memo(
                     isOverflow={true}
                     hiddenGroups={hiddenGroups}
                     currentViewMode={currentViewMode}
+                    fontSize={fontSize}
+                    handleFontSizeChange={handleFontSizeChange}
+                    textAlign={textAlign}
+                    handleTextAlignChange={handleTextAlignChange}
+                    bookView={bookView}
+                    handleBookViewToggle={handleBookViewToggle}
                   />
                 </DiffViewWrapper>
               </div>
@@ -350,7 +467,7 @@ const useViewModeTracking = (onViewModeChange: (mode: 'rich-text' | 'source' | '
       checkViewMode();
     });
 
-    const editorContainer = document.querySelector('.mdx-editor');
+    const editorContainer = document.querySelector('.mdxeditor');
     if (editorContainer) {
       observer.observe(editorContainer, {
         childList: true,
@@ -695,6 +812,9 @@ interface MDXEditorWrapperProps {
   onEditComment?: (commentId: string) => void;
   onDeleteComment?: (commentId: string) => void;
   defaultFont?: string;
+  fontSize?: number;
+  textAlign?: string;
+  bookView?: boolean;
   onDirtyStateChange?: (isDirty: boolean) => void;
   editorConfig?: EditorConfig;
 }
@@ -705,6 +825,9 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   comments = [],
   onNavigateToComment,
   defaultFont = 'Default',
+  fontSize = 14,
+  textAlign = 'left',
+  bookView = false,
   onDirtyStateChange,
   editorConfig = { wordWrap: 'off' },
 }) => {
@@ -736,9 +859,6 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   const [, setCurrentSelection] = useState<{ start: number; end: number } | null>(null);
   const [showFloatingButton, setShowFloatingButton] = useState(false);
   const [floatingButtonPosition, setFloatingButtonPosition] = useState<{ x: number; y: number } | null>(null);
-
-  // New state for Book view and Font selection
-  const [isBookView, setIsBookView] = useState(false);
 
   // Comment insertion state
   const [pendingComment, setPendingComment] = useState<{
@@ -877,6 +997,98 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       });
     }
   };
+  
+  // Keep track of current fontSize for increment/decrement operations
+  const currentFontSizeRef = useRef(fontSize);
+  
+  // Update ref when prop changes
+  useEffect(() => {
+    currentFontSizeRef.current = fontSize;
+  }, [fontSize]);
+
+  // Handle font size changes
+  const handleFontSizeChange = useCallback((delta: number) => {
+    const newSize = Math.max(8, Math.min(48, currentFontSizeRef.current + delta));
+    // Save to VS Code settings
+    if (typeof window !== 'undefined' && window.vscodeApi) {
+      window.vscodeApi.postMessage({
+        command: 'setFontSize',
+        fontSize: newSize,
+      });
+    }
+  }, []);
+
+  // Handle text alignment changes
+  const handleTextAlignChange = useCallback((align: string) => {
+    // Save to VS Code settings
+    if (typeof window !== 'undefined' && window.vscodeApi) {
+      window.vscodeApi.postMessage({
+        command: 'setTextAlign',
+        textAlign: align,
+      });
+    }
+  }, []);
+
+  // Handle Book View toggle
+  const handleBookViewToggle = useCallback(() => {
+    const newBookView = !bookView;
+    // Save to VS Code settings
+    if (typeof window !== 'undefined' && window.vscodeApi) {
+      window.vscodeApi.postMessage({
+        command: 'setBookView',
+        bookView: newBookView,
+      });
+    }
+  }, [bookView]);
+  // Apply dynamic styles to the editor content
+  useEffect(() => {
+    const applyDynamicStyles = () => {
+      const editorContent = document.querySelector('.mdx-content[contenteditable="true"]') as HTMLElement;
+      if (!editorContent) {
+        return;
+      }
+
+      // Apply font size (affects base font size, headings will scale proportionally)
+      editorContent.style.fontSize = `${fontSize}px`;
+      
+      // Ensure paragraphs inherit the font size properly
+      const paragraphs = editorContent.querySelectorAll('p');
+      paragraphs.forEach(p => {
+        (p as HTMLElement).style.fontSize = 'inherit';
+      });
+
+      // Apply text alignment
+      editorContent.style.textAlign = textAlign;
+
+      // Apply Book View styles
+      if (bookView) {
+        editorContent.style.maxWidth = '5.5in';
+        editorContent.style.paddingLeft = '.5in';
+        editorContent.style.paddingRight = '.5in';
+        editorContent.style.margin = '0 auto';
+      } else {
+        editorContent.style.maxWidth = '';
+        editorContent.style.paddingLeft = '';
+        editorContent.style.paddingRight = '';
+        editorContent.style.margin = '';
+      }
+    };
+
+    // Apply styles immediately
+    applyDynamicStyles();
+
+    // Set up observer to reapply styles when editor content changes
+    const observer = new MutationObserver(() => {
+      applyDynamicStyles();
+    });
+
+    // Watch for changes to the document body (when editor content is added/removed)
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [fontSize, textAlign, bookView]);
 
   // Available fonts with their CSS font-family values
   const fontFamilyMap = {
@@ -2275,13 +2487,17 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
             selectedFont={selectedFont}
             handleFontChange={handleFontChange}
             availableFonts={availableFonts}
-            setIsBookView={setIsBookView}
-            isBookView={isBookView}
+            bookView={bookView}
             currentViewMode={currentViewMode}
             onViewModeChange={handleViewModeChange}
             searchInputRef={searchInputRef}
             isTyping={isTyping}
-          />
+            fontSize={fontSize}
+            handleFontSizeChange={handleFontSizeChange}
+            textAlign={textAlign}
+            handleTextAlignChange={handleTextAlignChange}
+            handleBookViewToggle={handleBookViewToggle}
+            />
         ),
       }),
 
@@ -2371,8 +2587,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       selectedFont,
       handleFontChange,
       availableFonts,
-      setIsBookView,
-      isBookView,
+      bookView,
       searchInputRef,
       isTyping,
       focusedCommentId,
@@ -2388,7 +2603,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   logger.debug('=== MDXEditorWrapper RENDER END - returning JSX ===');
   logger.debug('Editor state:', {
     showCommentSidebar,
-    isBookView,
+    bookView,
     selectedFont,
     parsedCommentsCount: parsedComments.length,
     editorRefExists: !!editorRef.current,
@@ -2396,150 +2611,143 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
   return (
     <div
-      className={`mdx-editor-container ${isBookView ? 'book-view' : ''} ${currentViewMode === 'source' ? 'source-mode' : ''}`}
+      className={`mdx-editor-container ${bookView ? 'book-view' : ''} ${currentViewMode === 'source' ? 'source-mode' : ''}`}
       ref={containerRef}
     >
-      {isBookView ? (
-        // Book view: render as paginated content
-        <div className="book-pages-container">{renderBookPages()}</div>
-      ) : (
-        <>
-          {/* Normal view: Top section with editor */}
-          <div className="mdx-editor-with-sidebar">
-            <div className="mdx-editor-content">
-              {(() => {
-                logger.debug('=== MDXEDITOR COMPONENT RENDER START ===');
-                logger.debug('About to render MDXEditor with:', {
-                  markdown: `${markdown?.substring(0, 100)}...`,
-                  markdownLength: markdown?.length,
-                  selectedFont,
-                  className: `mdx-editor dark-theme font-${selectedFont.toLowerCase().replace(/\s+/g, '-')}`,
-                  contentEditableClassName: `mdx-content font-${selectedFont.toLowerCase().replace(/\s+/g, '-')}`,
-                });
+      {/* Normal view: Top section with editor */}
+      <div className="mdx-editor-with-sidebar">
+        <div className="mdx-editor-content">
+          {(() => {
+            logger.debug('=== MDXEDITOR COMPONENT RENDER START ===');
+            logger.debug('About to render MDXEditor with:', {
+              markdown: `${markdown?.substring(0, 100)}...`,
+              markdownLength: markdown?.length,
+              selectedFont,
+              className: `mdx-editor dark-theme font-${selectedFont.toLowerCase().replace(/\s+/g, '-')}`,
+              contentEditableClassName: `mdx-content font-${selectedFont.toLowerCase().replace(/\s+/g, '-')}`,
+            });
 
-                // Plugins are now defined outside the JSX to follow React hooks rules
-                logger.debug('Plugins array length:', plugins.length);
-                logger.debug(
-                  'Plugin names:',
-                  plugins.map(p => p.constructor?.name || 'Unknown'),
-                );
-                logger.debug('NOTE: Both codeBlockPlugin and codeMirrorPlugin enabled for fenced block support');
+            // Plugins are now defined outside the JSX to follow React hooks rules
+            logger.debug('Plugins array length:', plugins.length);
+            logger.debug(
+              'Plugin names:',
+              plugins.map(p => p.constructor?.name || 'Unknown'),
+            );
+            logger.debug('NOTE: Both codeBlockPlugin and codeMirrorPlugin enabled for fenced block support');
 
-                try {
-                  const editorElement = (
-                    <MDXEditor
-                      ref={ref => {
-                        editorRef.current = ref;
-                        // Add debugging when editor mounts
-                        if (ref) {
-                          logger.debug('MDXEditor component mounted, will focus after content loads...');
+            try {
+              const editorElement = (
+                <MDXEditor
+                  ref={ref => {
+                    editorRef.current = ref;
+                    // Add debugging when editor mounts
+                    if (ref) {
+                      logger.debug('MDXEditor component mounted, will focus after content loads...');
 
-                          setTimeout(() => {
-                            try {
-                              const content = ref.getMarkdown();
-                              logger.debug('Editor content length after mount:', content.length);
-                              logger.debug('Editor content preview:', `${content.substring(0, 500)}...`);
+                      setTimeout(() => {
+                        try {
+                          const content = ref.getMarkdown();
+                          logger.debug('Editor content length after mount:', content.length);
+                          logger.debug('Editor content preview:', `${content.substring(0, 500)}...`);
 
-                              // Check DOM structure
-                              const editorDOM =
-                                document.querySelector('.mdx-content') ??
-                                document.querySelector('[contenteditable="true"]');
-                              if (editorDOM) {
-                                logger.debug('Editor DOM found, innerHTML length:', editorDOM.innerHTML.length);
-                                logger.debug('Editor DOM preview:', `${editorDOM.innerHTML.substring(0, 500)}...`);
+                          // Check DOM structure
+                          const editorDOM =
+                            document.querySelector('.mdx-content') ??
+                            document.querySelector('[contenteditable="true"]');
+                          if (editorDOM) {
+                            logger.debug('Editor DOM found, innerHTML length:', editorDOM.innerHTML.length);
+                            logger.debug('Editor DOM preview:', `${editorDOM.innerHTML.substring(0, 500)}...`);
 
-                                // Check if code blocks exist in DOM
-                                const codeBlocks = editorDOM.querySelectorAll('pre, code, .cm-editor');
-                                logger.debug('Code blocks found in DOM:', codeBlocks.length);
-                                codeBlocks.forEach((block, index) => {
-                                  logger.debug(`Code block ${index}:`, block.tagName, block.className);
-                                });
-                              } else {
-                                logger.debug('Editor DOM not found');
-                              }
-                            } catch (err) {
-                              logger.error('Error inspecting editor after mount:', err);
-                            }
-                          }, 2000);
+                            // Check if code blocks exist in DOM
+                            const codeBlocks = editorDOM.querySelectorAll('pre, code, .cm-editor');
+                            logger.debug('Code blocks found in DOM:', codeBlocks.length);
+                            codeBlocks.forEach((block, index) => {
+                              logger.debug(`Code block ${index}:`, block.tagName, block.className);
+                            });
+                          } else {
+                            logger.debug('Editor DOM not found');
+                          }
+                        } catch (err) {
+                          logger.error('Error inspecting editor after mount:', err);
                         }
-                      }}
-                      markdown={markdown || ''}
-                      onChange={handleMarkdownChange}
-                      suppressHtmlProcessing={true}
-                      onError={error => {
-                        logger.error('MDXEditor parsing error:', error);
-                        logger.debug(
-                          'This error might be caused by angle brackets. Try using the source mode if available.',
-                        );
-                      }}
-                      className={`mdx-editor dark-theme font-${selectedFont.toLowerCase().replace(/\s+/g, '-')}`}
-                      contentEditableClassName={`mdx-content font-${selectedFont.toLowerCase().replace(/\s+/g, '-')}`}
-                      plugins={plugins}
-                    />
-                  );
-                  logger.debug('About to return MDXEditor element');
-                  return editorElement;
-                } catch (error) {
-                  logger.error('=== MDXEDITOR RENDER ERROR ===', error);
-                  return (
-                    <div
-                      style={{
-                        padding: '20px',
-                        background: '#ffe6e6',
-                        border: '1px solid #ff0000',
-                        borderRadius: '4px',
-                      }}
-                    >
-                      <h3>Editor Error</h3>
-                      <p>Failed to load MDXEditor component:</p>
-                      <pre style={{ background: '#f5f5f5', padding: '10px', borderRadius: '4px', fontSize: '12px' }}>
-                        {error instanceof Error ? error.message : String(error)}
-                      </pre>
-                      <details>
-                        <summary>Stack trace</summary>
-                        <pre style={{ fontSize: '10px' }}>
-                          {error instanceof Error ? error.stack : 'No stack trace available'}
-                        </pre>
-                      </details>
-                    </div>
-                  );
-                }
-              })()}
+                      }, 2000);
+                    }
+                  }}
+                  markdown={markdown || ''}
+                  onChange={handleMarkdownChange}
+                  suppressHtmlProcessing={true}
+                  onError={error => {
+                    logger.error('MDXEditor parsing error:', error);
+                    logger.debug(
+                      'This error might be caused by angle brackets. Try using the source mode if available.',
+                    );
+                  }}
+                  className={`mdx-editor dark-theme font-${selectedFont.toLowerCase().replace(/\s+/g, '-')}`}
+                  contentEditableClassName={`mdx-content font-${selectedFont.toLowerCase().replace(/\s+/g, '-')}`}
+                  plugins={plugins}
+                />
+              );
+              logger.debug('About to return MDXEditor element');
+              return editorElement;
+            } catch (error) {
+              logger.error('=== MDXEDITOR RENDER ERROR ===', error);
+              return (
+                <div
+                  style={{
+                    padding: '20px',
+                    background: '#ffe6e6',
+                    border: '1px solid #ff0000',
+                    borderRadius: '4px',
+                  }}
+                >
+                  <h3>Editor Error</h3>
+                  <p>Failed to load MDXEditor component:</p>
+                  <pre style={{ background: '#f5f5f5', padding: '10px', borderRadius: '4px', fontSize: '12px' }}>
+                    {error instanceof Error ? error.message : String(error)}
+                  </pre>
+                  <details>
+                    <summary>Stack trace</summary>
+                    <pre style={{ fontSize: '10px' }}>
+                      {error instanceof Error ? error.stack : 'No stack trace available'}
+                    </pre>
+                  </details>
+                </div>
+              );
+            }
+          })()}
+        </div>
+
+        {/* Comments Sidebar */}
+        {showCommentSidebar && (
+          <div className="comments-sidebar" style={{ width: `${sidebarWidth}px` }}>
+            <div className="sidebar-resize-handle"></div>
+            <div className="comments-header">
+              <h3>Comments</h3>
+              <button onClick={() => setShowCommentSidebar(false)} className="sidebar-close" title="Hide Comments">
+                ✕
+              </button>
             </div>
 
-            {/* Comments Sidebar */}
-            {showCommentSidebar && (
-              <div className="comments-sidebar" style={{ width: `${sidebarWidth}px` }}>
-                <div className="sidebar-resize-handle"></div>
-                <div className="comments-header">
-                  <h3>Comments</h3>
-                  <button onClick={() => setShowCommentSidebar(false)} className="sidebar-close" title="Hide Comments">
-                    ✕
-                  </button>
+            <div className="comments-list">
+              {parsedComments.length === 0 ? (
+                <div className="no-comments">
+                  <p>No comments yet.</p>
+                  <p className="help-text">Select text and click the 💬 Add comment button to add comments.</p>
                 </div>
-
-                <div className="comments-list">
-                  {parsedComments.length === 0 ? (
-                    <div className="no-comments">
-                      <p>No comments yet.</p>
-                      <p className="help-text">Select text and click the 💬 Add comment button to add comments.</p>
-                    </div>
-                  ) : (
-                    sortedCommentItems
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Show comments button when sidebar is hidden */}
-            {!showCommentSidebar && (
-              <button className="show-comments-btn" onClick={() => setShowCommentSidebar(true)} title="Show Comments">
-                💬 {parsedComments.length}
-              </button>
-            )}
+              ) : (
+                sortedCommentItems
+              )}
+            </div>
           </div>
-        </>
-      )}
+        )}
+
+        {/* Show comments button when sidebar is hidden */}
+        {!showCommentSidebar && (
+          <button className="show-comments-btn" onClick={() => setShowCommentSidebar(true)} title="Show Comments">
+            💬 {parsedComments.length}
+          </button>
+        )}
+      </div>
 
       {/* Floating comment button */}
       {showFloatingButton && floatingButtonPosition && currentViewMode === 'rich-text' && (

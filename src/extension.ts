@@ -18,6 +18,15 @@ interface WebviewMessage {
   commentId?: string;
   font?: string;
   type?: string;
+  fontSize?: number;
+  textAlign?: string;
+  bookView?: boolean;
+  settings?: {
+    defaultFont: string;
+    fontSize: number;
+    textAlign: string;
+    bookView: boolean;
+  };
 }
 
 /**
@@ -169,13 +178,27 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
           }
           break;
 
-        // Handle other messages like font changes, etc.
         case 'getFont': {
           const config = vscode.workspace.getConfiguration('markdown-docs');
           const defaultFont = config.get<string>('defaultFont', 'Arial');
           void webviewPanel.webview.postMessage({
             command: 'fontUpdate',
             font: defaultFont,
+          });
+          break;
+        }
+
+        case 'getSettings': {
+          const config = vscode.workspace.getConfiguration('markdown-docs');
+          const settings = {
+            defaultFont: config.get<string>('defaultFont', 'Default'),
+            fontSize: config.get<number>('fontSize', 14),
+            textAlign: config.get<string>('textAlign', 'left'),
+            bookView: config.get<boolean>('bookView', false),
+          };
+          void webviewPanel.webview.postMessage({
+            command: 'settingsUpdate',
+            settings,
           });
           break;
         }
@@ -198,6 +221,71 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
 
           // Handle comment operations with CommentService and update webview
           await this.handleCommentOperation(message, document);
+          break;
+        case 'setFontSize':
+          console.log('Extension: setFontSize handler reached, fontSize:', message.fontSize);
+          if (typeof message.fontSize === 'number') {
+            const config = vscode.workspace.getConfiguration('markdown-docs');
+            await config.update('fontSize', message.fontSize, vscode.ConfigurationTarget.Global);
+
+            // Send updated settings back to webview
+            const settings = {
+              defaultFont: config.get<string>('defaultFont', 'Default'),
+              fontSize: message.fontSize,
+              textAlign: config.get<string>('textAlign', 'left'),
+              bookView: config.get<boolean>('bookView', false),
+            };
+
+            console.log('Extension: Sending settingsUpdate for fontSize:', settings);
+            void webviewPanel.webview.postMessage({
+              command: 'settingsUpdate',
+              settings,
+            });
+          }
+          break;
+
+        case 'setTextAlign':
+          console.log('Extension: setTextAlign handler reached, textAlign:', message.textAlign);
+          if (message.textAlign) {
+            const config = vscode.workspace.getConfiguration('markdown-docs');
+            await config.update('textAlign', message.textAlign, vscode.ConfigurationTarget.Global);
+
+            // Send updated settings back to webview
+            const settings = {
+              defaultFont: config.get<string>('defaultFont', 'Default'),
+              fontSize: config.get<number>('fontSize', 14),
+              textAlign: message.textAlign,
+              bookView: config.get<boolean>('bookView', false),
+            };
+
+            console.log('Extension: Sending settingsUpdate for textAlign:', settings);
+            void webviewPanel.webview.postMessage({
+              command: 'settingsUpdate',
+              settings,
+            });
+          }
+          break;
+
+        case 'setBookView':
+          console.log('Extension: setBookView handler reached, bookView:', message.bookView);
+          if (typeof message.bookView === 'boolean') {
+            const config = vscode.workspace.getConfiguration('markdown-docs');
+            await config.update('bookView', message.bookView, vscode.ConfigurationTarget.Global);
+
+            // Send updated settings back to webview
+            const settings = {
+              defaultFont: config.get<string>('defaultFont', 'Default'),
+              fontSize: config.get<number>('fontSize', 14),
+              textAlign: config.get<string>('textAlign', 'left'),
+              bookView: message.bookView,
+            };
+
+            console.log('Extension: Sending settingsUpdate for bookView:', settings);
+            void webviewPanel.webview.postMessage({
+              command: 'settingsUpdate',
+              settings,
+            });
+          }
           break;
       }
     });

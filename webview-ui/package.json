@@ -14,6 +14,7 @@
   "description": "",
   "dependencies": {
     "@mdxeditor/editor": "^3.19.0",
+    "lucide-react": "^0.542.0",
     "marked": "^12.0.2",
     "mermaid": "^11.10.1",
     "react": "^19.1.1",

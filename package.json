@@ -2,7 +2,7 @@
   "name": "markdown-docs",
   "displayName": "Markdown Docs & Comments",
   "description": "WYSIWYG Markdown Editor with Inline Commenting (great for working with AI!)",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "icon": "media/icon.png",
   "publisher": "jonnyasmar",
   "repository": {
@@ -100,6 +100,29 @@
             "Montserrat",
             "Source Sans Pro"
           ]
+        },
+        "markdown-docs.fontSize": {
+          "type": "number",
+          "default": 14,
+          "minimum": 8,
+          "maximum": 48,
+          "description": "Default font size for the markdown editor (in pixels)"
+        },
+        "markdown-docs.textAlign": {
+          "type": "string",
+          "default": "left",
+          "description": "Default text alignment for the markdown editor",
+          "enum": [
+            "left",
+            "center",
+            "right",
+            "justify"
+          ]
+        },
+        "markdown-docs.bookView": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable book view mode with centered layout and padding"
         }
       }
     }

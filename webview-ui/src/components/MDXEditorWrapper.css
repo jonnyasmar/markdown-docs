@@ -1181,15 +1181,8 @@ button[role="combobox"][aria-label="Language"]:hover,
   font-family: "Source Sans Pro", Arial, sans-serif !important;
 }
 
-/* Book view styling */
-.mdx-editor-container.book-view {
-  background: #f5f5f5 !important;
-  padding: 40px 20px !important;
-  min-height: 100vh;
-  overflow-y: auto !important;
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: center !important;
+[role="checkbox"] span:before {
+  background-color: var(--vscode-editorWidget-background);
 }
 
 /* Individual page styling */
@@ -1227,58 +1220,6 @@ button[role="combobox"][aria-label="Language"]:hover,
   font-family: Arial, sans-serif !important;
 }
 
-/* Override for book view MDXEditor */
-.mdx-editor-container.book-view .mdx-content {
-  /* Remove individual page styling when in book view */
-  width: auto !important;
-  height: auto !important;
-  max-width: none !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  background: transparent !important;
-  color: inherit !important;
-  box-shadow: none !important;
-  border: none !important;
-  overflow: visible !important;
-  page-break-after: auto !important;
-  break-after: auto !important;
-}
-
-.mdx-editor-container.book-view .mdx-editor-content {
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: center !important;
-}
-
-.mdx-editor-container.book-view .mdx-editor {
-  width: 8.5in !important;
-  max-width: 8.5in !important;
-}
-
-/* Force page breaks in book view */
-.mdx-editor-container.book-view .mdx-content h1,
-.mdx-editor-container.book-view .mdx-content h2 {
-  page-break-before: auto;
-  break-before: auto;
-}
-
-/* Page numbers for book view */
-.mdx-editor-container.book-view {
-  counter-reset: page;
-}
-
-.mdx-editor-container.book-view .mdx-content::after {
-  content: counter(page);
-  position: absolute;
-  bottom: 0.25in;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 11px;
-  color: #666;
-  font-family: Arial, sans-serif;
-  counter-increment: page;
-}
-
 /* MDXEditor toolbar custom components styling - improved contrast */
 .mdx-editor .mdxeditor-toolbar button[data-state="on"],
 .mdx-editor .mdxeditor-toolbar button.active {
@@ -1307,6 +1248,17 @@ button[role="combobox"][aria-label="Language"]:hover,
 /* Only apply bottom padding to the main editor content area, not code blocks or table cells */
 .mdx-content[contenteditable="true"] {
   padding-bottom: 50vh !important;
+  margin: 0 auto !important;
+}
+
+.book-view .mdx-content[contenteditable="true"] {
+  max-width: 5.5in !important;
+  padding-left: 0.5in !important;
+  padding-right: 0.5in !important;
+}
+
+.custom-button {
+  padding: 5px;
 }
 
 /* Additional webview isolation */
