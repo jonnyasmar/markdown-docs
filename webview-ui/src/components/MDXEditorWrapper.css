@@ -70,6 +70,16 @@
   flex-direction: column;
 }
 
+[role='checkbox'] {
+  --accentSolid: var(--vscode-editorWidget-border);
+  --accentBorder: var(--vscode-editorWidget-border);
+  --baseBorder: var(--vscode-editorWidget-border);
+}
+
+[role='checkbox'][checked='true'] {
+  --accentSolid: var(--vscode-editorWidget-border);
+}
+
 /* Proper MDXEditor theming using semantic variables and VS Code integration */
 .mdx-editor.dark-theme {
   /* Admonition colors - Dark theme */

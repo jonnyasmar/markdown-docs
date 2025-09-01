@@ -36,6 +36,11 @@
         "command": "markdown-docs.openStandalone",
         "title": "New Markdown Docs File",
         "category": "Markdown Docs"
+      },
+      {
+        "command": "markdown-docs.openWithTextEditor",
+        "title": "Open with Text Editor",
+        "category": "Markdown Docs"
       }
     ],
     "customEditors": [
@@ -60,12 +65,22 @@
           "when": "resourceLangId == markdown",
           "command": "markdown-docs.openEditor",
           "group": "navigation"
+        },
+        {
+          "when": "resourceLangId == markdown",
+          "command": "markdown-docs.openWithTextEditor",
+          "group": "navigation"
         }
       ],
       "editor/title/context": [
         {
           "when": "resourceLangId == markdown",
           "command": "markdown-docs.openEditor",
+          "group": "1_open"
+        },
+        {
+          "when": "resourceLangId == markdown",
+          "command": "markdown-docs.openWithTextEditor",
           "group": "1_open"
         }
       ]

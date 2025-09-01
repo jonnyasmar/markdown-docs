@@ -529,6 +529,25 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
   );
 
+  context.subscriptions.push(
+    vscode.commands.registerCommand('markdown-docs.openWithTextEditor', async (uri?: vscode.Uri) => {
+      if (uri) {
+        // Force open with the built-in text editor
+        await vscode.commands.executeCommand('vscode.open', uri);
+      } else if (vscode.window.activeTextEditor) {
+        // Use current file
+        const currentUri = vscode.window.activeTextEditor.document.uri;
+        if (currentUri.scheme === 'file' && currentUri.fsPath.endsWith('.md')) {
+          await vscode.commands.executeCommand('vscode.open', currentUri);
+        } else {
+          void vscode.window.showErrorMessage('Please select a markdown file to open with the text editor');
+        }
+      } else {
+        void vscode.window.showErrorMessage('No markdown file selected');
+      }
+    }),
+  );
+
   logger.info('Markdown Docs extension activated successfully');
 }
 

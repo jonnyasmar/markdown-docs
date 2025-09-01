@@ -1652,7 +1652,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
       return () => clearTimeout(timer);
     }
-  }, [editorRef.current, markdown]);
+  }, [editorRef.current]);
 
   // Comprehensive sync state management with SyncManager
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -1753,6 +1753,9 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       setIsTyping(true);
       clearTimeout(typingTimeoutRef.current);
       typingTimeoutRef.current = setTimeout(() => setIsTyping(false), 300);
+
+      // Mark that user has interacted with editor to prevent auto-focus
+      hasInitiallyFocusedRef.current = true;
 
       // Apply postprocessing only in rich-text mode (source mode should stay clean)
       const processedMarkdown =
