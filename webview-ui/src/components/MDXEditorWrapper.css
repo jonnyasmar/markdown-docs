@@ -37,7 +37,7 @@
   --baseBgSubtle: var(--vscode-editorWidget-background);
   --baseBg: var(--vscode-input-background);
   --baseBgHover: var(--vscode-list-hoverBackground);
-  --baseBgActive: var(--vscode-list-activeSelectionBackground);
+  --baseBgActive: var(--vscode-input-border);
   --basePageBg: var(--vscode-editor-background);
   --baseLine: var(--vscode-input-border);
   --baseBorder: var(--vscode-input-border);
