@@ -31,14 +31,14 @@
   overflow: hidden; /* Container manages scrolling through child elements */
 }
 
-/* Proper MDXEditor theming using semantic variables and VS Code integration */
-.mdx-editor.dark-theme {
+.mdx-editor {
   /* Base colors - main backgrounds and surfaces */
   --baseBase: var(--vscode-editor-background);
   --baseBgSubtle: var(--vscode-editorWidget-background);
   --baseBg: var(--vscode-input-background);
   --baseBgHover: var(--vscode-list-hoverBackground);
   --baseBgActive: var(--vscode-list-activeSelectionBackground);
+  --basePageBg: var(--vscode-editor-background);
   --baseLine: var(--vscode-input-border);
   --baseBorder: var(--vscode-input-border);
   --baseBorderHover: var(--vscode-inputOption-activeBorder);
@@ -46,7 +46,7 @@
   --baseSolidHover: var(--vscode-button-hoverBackground);
   --baseText: var(--vscode-editor-foreground);
   --baseTextContrast: var(--vscode-editor-foreground);
-  
+
   /* Accent colors - use proper VS Code widget borders instead of button borders */
   --accentBase: var(--vscode-button-secondaryBackground);
   --accentBgSubtle: var(--vscode-button-secondaryBackground);
@@ -70,6 +70,44 @@
   flex-direction: column;
 }
 
+/* Proper MDXEditor theming using semantic variables and VS Code integration */
+.mdx-editor.dark-theme {
+  /* Admonition colors - Dark theme */
+  --admonitionTipBg: rgba(54, 163, 247, 0.15);
+  --admonitionTipBorder: #36a3f7;
+
+  --admonitionInfoBg: rgba(0, 184, 217, 0.15);
+  --admonitionInfoBorder: #00b8d9;
+
+  --admonitionCautionBg: rgba(255, 184, 0, 0.15);
+  --admonitionCautionBorder: #ffb800;
+
+  --admonitionDangerBg: rgba(250, 82, 82, 0.15);
+  --admonitionDangerBorder: #fa5252;
+
+  --admonitionNoteBg: var(--vscode-editorWidget-background);
+  --admonitionNoteBorder: rgba(255, 255, 255, 0.2);
+}
+
+/* Light theme variables for MDXEditor */
+.mdx-editor.light-theme {
+  /* Admonition colors - Light theme */
+  --admonitionTipBg: rgba(54, 163, 247, 0.1);
+  --admonitionTipBorder: #1e88e5;
+
+  --admonitionInfoBg: rgba(0, 184, 217, 0.1);
+  --admonitionInfoBorder: #0277bd;
+
+  --admonitionCautionBg: rgba(255, 152, 0, 0.1);
+  --admonitionCautionBorder: #f57c00;
+
+  --admonitionDangerBg: rgba(244, 67, 54, 0.1);
+  --admonitionDangerBorder: #d32f2f;
+
+  --admonitionNoteBg: var(--vscode-editorWidget-background);
+  --admonitionNoteBorder: rgba(0, 0, 0, 0.2);
+}
+
 /* Content styling - clean approach without heavy !important usage */
 .mdx-content {
   color: var(--vscode-editor-foreground);
@@ -86,9 +124,16 @@
 }
 
 /* Only target text elements that need font override */
-.mdx-content h1, .mdx-content h2, .mdx-content h3, 
-.mdx-content h4, .mdx-content h5, .mdx-content h6,
-.mdx-content p, .mdx-content li, .mdx-content td, .mdx-content th {
+.mdx-content h1,
+.mdx-content h2,
+.mdx-content h3,
+.mdx-content h4,
+.mdx-content h5,
+.mdx-content h6,
+.mdx-content p,
+.mdx-content li,
+.mdx-content td,
+.mdx-content th {
   color: var(--vscode-editor-foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
@@ -105,16 +150,32 @@
   line-height: 1.3;
 }
 
-.mdx-content h1 { font-size: 1.6em; }
-.mdx-content h2 { font-size: 1.4em; }
-.mdx-content h3 { font-size: 1.2em; }
-.mdx-content h4 { font-size: 1.1em; }
-.mdx-content h5 { font-size: 1.05em; }
-.mdx-content h6 { font-size: 1em; }
+.mdx-content h1 {
+  font-size: 1.6em;
+}
+.mdx-content h2 {
+  font-size: 1.4em;
+}
+.mdx-content h3 {
+  font-size: 1.2em;
+}
+.mdx-content h4 {
+  font-size: 1.1em;
+}
+.mdx-content h5 {
+  font-size: 1.05em;
+}
+.mdx-content h6 {
+  font-size: 1em;
+}
 
 .mdx-content p {
-  margin-bottom: 0.6em;
   font-size: 14px;
+}
+
+.prose :where(p):not(:where([class~='not-prose'] *)) {
+  margin-top: 0.6em;
+  margin-bottom: 0.6em;
 }
 
 .mdx-content strong {
@@ -186,10 +247,10 @@
 }
 
 /* Preserve mermaid auto-sizing behavior - exclude from height restrictions */
-.mdx-content .cm-editor[data-language="mermaid"],
-.mdx-content .cm-editor[data-language="mermaid"] .cm-content,
-.mdx-content .cm-editor[data-language="mermaid"] .cm-scroller,
-.mdx-content pre[data-language="mermaid"],
+.mdx-content .cm-editor[data-language='mermaid'],
+.mdx-content .cm-editor[data-language='mermaid'] .cm-content,
+.mdx-content .cm-editor[data-language='mermaid'] .cm-scroller,
+.mdx-content pre[data-language='mermaid'],
 .mdx-content .mermaid-container {
   height: auto !important;
   min-height: 200px !important;
@@ -252,24 +313,55 @@
 }
 
 /* Syntax highlighting using VS Code semantic tokens - clean approach */
-.cm-editor .tok-keyword { color: #569cd6; }
-.cm-editor .tok-string { color: #ce9178; }
-.cm-editor .tok-comment { color: #6a9955; font-style: italic; }
-.cm-editor .tok-function { color: #dcdcaa; }
-.cm-editor .tok-number { color: #b5cea8; }
-.cm-editor .tok-operator { color: #d4d4d4; }
-.cm-editor .tok-variable { color: #9cdcfe; }
-.cm-editor .tok-property { color: #9cdcfe; }
-.cm-editor .tok-punctuation { color: #d4d4d4; }
+.cm-editor .tok-keyword {
+  color: #569cd6;
+}
+.cm-editor .tok-string {
+  color: #ce9178;
+}
+.cm-editor .tok-comment {
+  color: #6a9955;
+  font-style: italic;
+}
+.cm-editor .tok-function {
+  color: #dcdcaa;
+}
+.cm-editor .tok-number {
+  color: #b5cea8;
+}
+.cm-editor .tok-operator {
+  color: #d4d4d4;
+}
+.cm-editor .tok-variable {
+  color: #9cdcfe;
+}
+.cm-editor .tok-property {
+  color: #9cdcfe;
+}
+.cm-editor .tok-punctuation {
+  color: #d4d4d4;
+}
 
 /* CodeMirror syntax highlighting classes */
-.cm-editor .cm-keyword { color: #569cd6; }
-.cm-editor .cm-string { color: #ce9178; }
-.cm-editor .cm-comment { color: #6a9955; font-style: italic; }
-.cm-editor .cm-variableName { color: #9cdcfe; }
-.cm-editor .cm-number { color: #b5cea8; }
+.cm-editor .cm-keyword {
+  color: #569cd6;
+}
+.cm-editor .cm-string {
+  color: #ce9178;
+}
+.cm-editor .cm-comment {
+  color: #6a9955;
+  font-style: italic;
+}
+.cm-editor .cm-variableName {
+  color: #9cdcfe;
+}
+.cm-editor .cm-number {
+  color: #b5cea8;
+}
 
-.mdx-content ul, .mdx-content ol {
+.mdx-content ul,
+.mdx-content ol {
   margin-bottom: 0.6em;
   padding-left: 1.5em;
 }
@@ -281,7 +373,7 @@
 
 /* Toolbar dropdown styling */
 .mdx-editor .mdxeditor-toolbar select,
-.mdx-editor .mdxeditor-toolbar [role="combobox"],
+.mdx-editor .mdxeditor-toolbar [role='combobox'],
 .mdx-editor .mdxeditor-select-content {
   background: var(--vscode-dropdown-background);
   color: var(--vscode-dropdown-foreground);
@@ -298,8 +390,8 @@
 
 /* Code block language selector styling - fix black/white buttons */
 .mdxeditor-code-block-language-select-button,
-button[class*="_selectTrigger_"],
-button[role="combobox"][aria-label="Language"],
+button[class*='_selectTrigger_'],
+button[role='combobox'][aria-label='Language'],
 .cm-editor .mdxeditor-language-selector,
 .cm-editor button[data-language-selector],
 .cm-editor .cm-editor-language-selector,
@@ -314,19 +406,18 @@ button[role="combobox"][aria-label="Language"],
   width: 100px;
 }
 
-button[class*="_selectTrigger_"][aria-label="Font"] {
+button[class*='_selectTrigger_'][aria-label='Font'] {
   width: 136px;
 }
 
-
-.toolbar-group.display-font-group [role="combobox"]{
+.toolbar-group.display-font-group [role='combobox'] {
   width: 110px;
 }
 
 /* Language selector hover state */
 .mdxeditor-code-block-language-select-button:hover,
-button[class*="_selectTrigger_"]:hover,
-button[role="combobox"][aria-label="Language"]:hover,
+button[class*='_selectTrigger_']:hover,
+button[role='combobox'][aria-label='Language']:hover,
 .cm-editor .mdxeditor-language-selector:hover,
 .cm-editor button[data-language-selector]:hover,
 [data-code-block-editor] button:hover {
@@ -362,7 +453,7 @@ button[role="combobox"][aria-label="Language"]:hover,
 
 /* Fix dropdown items */
 [data-radix-select-item],
-[data-radix-select-content] [role="option"] {
+[data-radix-select-content] [role='option'] {
   background: transparent !important;
   color: var(--vscode-dropdown-foreground) !important;
   padding: 8px 12px !important;
@@ -372,12 +463,12 @@ button[role="combobox"][aria-label="Language"]:hover,
 }
 
 [data-radix-select-item]:hover,
-[data-radix-select-content] [role="option"]:hover {
+[data-radix-select-content] [role='option']:hover {
   background: var(--vscode-list-hoverBackground) !important;
 }
 
 [data-radix-select-item][data-highlighted],
-[data-radix-select-content] [role="option"][data-highlighted] {
+[data-radix-select-content] [role='option'][data-highlighted] {
   background: var(--vscode-list-activeSelectionBackground) !important;
   color: var(--vscode-list-activeSelectionForeground) !important;
 }
@@ -413,7 +504,7 @@ button[role="combobox"][aria-label="Language"]:hover,
   max-height: none;
 }
 
-[class*="_rootContentEditableWrapper_"] {
+[class*='_rootContentEditableWrapper_'] {
   flex: 1 !important;
   min-height: 0 !important;
   overflow-y: auto !important;
@@ -438,11 +529,11 @@ button[role="combobox"][aria-label="Language"]:hover,
   flex-direction: column !important;
 }
 
-.mdxeditor-rich-text-editor[style="display: block;"] {
+.mdxeditor-rich-text-editor[style='display: block;'] {
   display: flex !important;
 }
 
-[class*="_diffSourceToggleWrapper_"] {
+[class*='_diffSourceToggleWrapper_'] {
   margin: 0 auto !important;
 }
 
@@ -499,18 +590,18 @@ button[role="combobox"][aria-label="Language"]:hover,
   width: 100%;
   gap: 0;
   position: relative;
-  
+
   /* Responsive breakpoint thresholds - adjust these to refine when groups hide */
-  --breakpoint-font-style: 1200px;   /* Font selection dropdown */
-  --breakpoint-blocks: 1000px;       /* Codeblock, Link, Table, Thematic Break */
-  --breakpoint-lists: 850px;         /* Lists toggle */
-  --breakpoint-formatting: 700px;    /* Bold, Italic, Underline */
-  --breakpoint-display-font: 550px;  /* Block type select (H1, H2, etc) */
-  --breakpoint-undo-redo: 400px;     /* Undo/Redo */
-  
+  --breakpoint-font-style: 1200px; /* Font selection dropdown */
+  --breakpoint-blocks: 1000px; /* Codeblock, Link, Table, Thematic Break */
+  --breakpoint-lists: 850px; /* Lists toggle */
+  --breakpoint-formatting: 700px; /* Bold, Italic, Underline */
+  --breakpoint-display-font: 550px; /* Block type select (H1, H2, etc) */
+  --breakpoint-undo-redo: 400px; /* Undo/Redo */
+
   /* Width sizing variables - adjust these to change component sizes */
   --text-style-width: 96px; /* 120px * 0.8 = 20% reduction */
-  --search-width: 130px;     /* 200px * 0.8 = 20% reduction */
+  --search-width: 130px; /* 200px * 0.8 = 20% reduction */
 }
 
 .toolbar-main {
@@ -526,7 +617,7 @@ button[role="combobox"][aria-label="Language"]:hover,
   align-items: end;
 }
 
-.toolbar-main.source-toolbar [class*="_diffSourceToggleWrapper_"] {
+.toolbar-main.source-toolbar [class*='_diffSourceToggleWrapper_'] {
   margin: 0 !important;
 }
 
@@ -616,6 +707,10 @@ button[role="combobox"][aria-label="Language"]:hover,
   align-items: center;
   gap: 4px;
   margin: 0 auto;
+}
+
+.overflow-book-view {
+  padding: 0 40px;
 }
 
 .overflow-separator {
@@ -807,7 +902,7 @@ button[role="combobox"][aria-label="Language"]:hover,
   font-size: 14px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   z-index: 100;
-  opacity: .65;
+  opacity: 0.65;
 }
 
 .show-comments-btn:hover {
@@ -866,7 +961,8 @@ button[role="combobox"][aria-label="Language"]:hover,
 }
 
 /* Comment highlighting - theme-aware subtle inline indicators */
-.comment-highlight, mark {
+.comment-highlight,
+mark {
   background-color: rgba(255, 255, 0, 0.25);
   padding: 1px 0px;
   margin: -1px 0px;
@@ -883,7 +979,8 @@ button[role="combobox"][aria-label="Language"]:hover,
   cursor: pointer;
 }
 
-.comment-highlight.editor-highlighted, mark.editor-highlighted {
+.comment-highlight.editor-highlighted,
+mark.editor-highlighted {
   background-color: rgba(var(--vscode-focusBorder-rgba, 0, 123, 255), 0.4);
   box-shadow: 0 0 8px rgba(var(--vscode-focusBorder-rgba, 0, 123, 255), 0.6);
   animation: pulse-editor-highlight 0.8s ease-out;
@@ -905,7 +1002,8 @@ button[role="combobox"][aria-label="Language"]:hover,
 }
 
 /* Persistent focus state for inline comments - with initial pulse animation */
-.comment-highlight.focused, mark.focused {
+.comment-highlight.focused,
+mark.focused {
   background-color: rgba(var(--vscode-focusBorder-rgba, 0, 123, 255), 0.3);
   border-radius: 2px;
   animation: highlight-pulse 0.6s ease-out;
@@ -930,7 +1028,8 @@ button[role="combobox"][aria-label="Language"]:hover,
   }
 }
 
-.comment-item.highlighted, mark.highlighted {
+.comment-item.highlighted,
+mark.highlighted {
   background-color: rgba(var(--vscode-focusBorder-rgba, 0, 123, 255), 0.15);
   border-left: 3px solid var(--vscode-focusBorder);
   transform: translateX(4px);
@@ -954,7 +1053,6 @@ button[role="combobox"][aria-label="Language"]:hover,
   }
 }
 
-
 .comment-item {
   transition: all 0.3s ease;
 }
@@ -971,53 +1069,111 @@ button[role="combobox"][aria-label="Language"]:hover,
 }
 
 /* Font application - using higher specificity instead of !important */
-.mdx-content.font-arial h1, .mdx-content.font-arial h2, .mdx-content.font-arial h3, 
-.mdx-content.font-arial h4, .mdx-content.font-arial h5, .mdx-content.font-arial h6,
-.mdx-content.font-arial p, .mdx-content.font-arial li, .mdx-content.font-arial td {
+.mdx-content.font-arial h1,
+.mdx-content.font-arial h2,
+.mdx-content.font-arial h3,
+.mdx-content.font-arial h4,
+.mdx-content.font-arial h5,
+.mdx-content.font-arial h6,
+.mdx-content.font-arial p,
+.mdx-content.font-arial li,
+.mdx-content.font-arial td {
   font-family: Arial, sans-serif;
 }
 
-.mdx-content.font-times-new-roman h1, .mdx-content.font-times-new-roman h2, .mdx-content.font-times-new-roman h3,
-.mdx-content.font-times-new-roman h4, .mdx-content.font-times-new-roman h5, .mdx-content.font-times-new-roman h6,
-.mdx-content.font-times-new-roman p, .mdx-content.font-times-new-roman li, .mdx-content.font-times-new-roman td {
-  font-family: "Times New Roman", Times, serif;
+.mdx-content.font-times-new-roman h1,
+.mdx-content.font-times-new-roman h2,
+.mdx-content.font-times-new-roman h3,
+.mdx-content.font-times-new-roman h4,
+.mdx-content.font-times-new-roman h5,
+.mdx-content.font-times-new-roman h6,
+.mdx-content.font-times-new-roman p,
+.mdx-content.font-times-new-roman li,
+.mdx-content.font-times-new-roman td {
+  font-family: 'Times New Roman', Times, serif;
 }
 
-.mdx-content.font-roboto h1, .mdx-content.font-roboto h2, .mdx-content.font-roboto h3,
-.mdx-content.font-roboto h4, .mdx-content.font-roboto h5, .mdx-content.font-roboto h6,
-.mdx-content.font-roboto p, .mdx-content.font-roboto li, .mdx-content.font-roboto td {
+.mdx-content.font-roboto h1,
+.mdx-content.font-roboto h2,
+.mdx-content.font-roboto h3,
+.mdx-content.font-roboto h4,
+.mdx-content.font-roboto h5,
+.mdx-content.font-roboto h6,
+.mdx-content.font-roboto p,
+.mdx-content.font-roboto li,
+.mdx-content.font-roboto td {
   font-family: Roboto, Arial, sans-serif;
 }
 
-.mdx-content.font-georgia h1, .mdx-content.font-georgia h2, .mdx-content.font-georgia h3,
-.mdx-content.font-georgia h4, .mdx-content.font-georgia h5, .mdx-content.font-georgia h6,
-.mdx-content.font-georgia p, .mdx-content.font-georgia li, .mdx-content.font-georgia td {
+.mdx-content.font-georgia h1,
+.mdx-content.font-georgia h2,
+.mdx-content.font-georgia h3,
+.mdx-content.font-georgia h4,
+.mdx-content.font-georgia h5,
+.mdx-content.font-georgia h6,
+.mdx-content.font-georgia p,
+.mdx-content.font-georgia li,
+.mdx-content.font-georgia td {
   font-family: Georgia, serif;
 }
 
-.mdx-content.font-calibri h1, .mdx-content.font-calibri h2, .mdx-content.font-calibri h3,
-.mdx-content.font-calibri h4, .mdx-content.font-calibri h5, .mdx-content.font-calibri h6,
-.mdx-content.font-calibri p, .mdx-content.font-calibri li, .mdx-content.font-calibri td {
+.mdx-content.font-calibri h1,
+.mdx-content.font-calibri h2,
+.mdx-content.font-calibri h3,
+.mdx-content.font-calibri h4,
+.mdx-content.font-calibri h5,
+.mdx-content.font-calibri h6,
+.mdx-content.font-calibri p,
+.mdx-content.font-calibri li,
+.mdx-content.font-calibri td {
   font-family: Calibri, sans-serif;
 }
 
-.mdx-content.font-garamond h1, .mdx-content.font-garamond h2, .mdx-content.font-garamond h3,
-.mdx-content.font-garamond h4, .mdx-content.font-garamond h5, .mdx-content.font-garamond h6,
-.mdx-content.font-garamond p, .mdx-content.font-garamond li, .mdx-content.font-garamond td {
+.mdx-content.font-garamond h1,
+.mdx-content.font-garamond h2,
+.mdx-content.font-garamond h3,
+.mdx-content.font-garamond h4,
+.mdx-content.font-garamond h5,
+.mdx-content.font-garamond h6,
+.mdx-content.font-garamond p,
+.mdx-content.font-garamond li,
+.mdx-content.font-garamond td {
   font-family: Garamond, serif;
 }
 
-.mdx-content.font-book-antiqua h1, .mdx-content.font-book-antiqua h2, .mdx-content.font-book-antiqua h3,
-.mdx-content.font-book-antiqua h4, .mdx-content.font-book-antiqua h5, .mdx-content.font-book-antiqua h6,
-.mdx-content.font-book-antiqua p, .mdx-content.font-book-antiqua li, .mdx-content.font-book-antiqua td {
-  font-family: "Book Antiqua", serif;
+.mdx-content.font-book-antiqua h1,
+.mdx-content.font-book-antiqua h2,
+.mdx-content.font-book-antiqua h3,
+.mdx-content.font-book-antiqua h4,
+.mdx-content.font-book-antiqua h5,
+.mdx-content.font-book-antiqua h6,
+.mdx-content.font-book-antiqua p,
+.mdx-content.font-book-antiqua li,
+.mdx-content.font-book-antiqua td {
+  font-family: 'Book Antiqua', serif;
 }
 
 /* Default Font - Uses the editor's configured font */
-.mdx-content.font-default h1, .mdx-content.font-default h2, .mdx-content.font-default h3,
-.mdx-content.font-default h4, .mdx-content.font-default h5, .mdx-content.font-default h6,
-.mdx-content.font-default p, .mdx-content.font-default li, .mdx-content.font-default td {
-  font-family: var(--vscode-editor-font-family, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif);
+.mdx-content.font-default h1,
+.mdx-content.font-default h2,
+.mdx-content.font-default h3,
+.mdx-content.font-default h4,
+.mdx-content.font-default h5,
+.mdx-content.font-default h6,
+.mdx-content.font-default p,
+.mdx-content.font-default li,
+.mdx-content.font-default td {
+  font-family: var(
+    --vscode-editor-font-family,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif
+  );
 }
 
 /* Ensure bold variants work for default font */
@@ -1029,108 +1185,167 @@ button[role="combobox"][aria-label="Language"]:hover,
 .mdx-content.font-default h4,
 .mdx-content.font-default h5,
 .mdx-content.font-default h6 {
-  font-family: var(--vscode-editor-font-family, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif);
+  font-family: var(
+    --vscode-editor-font-family,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif
+  );
   font-weight: bold;
 }
 
-.mdx-content.font-courier-new h1, .mdx-content.font-courier-new h2, .mdx-content.font-courier-new h3,
-.mdx-content.font-courier-new h4, .mdx-content.font-courier-new h5, .mdx-content.font-courier-new h6,
-.mdx-content.font-courier-new p, .mdx-content.font-courier-new li, .mdx-content.font-courier-new td {
-  font-family: "Courier New", Courier, monospace;
+.mdx-content.font-courier-new h1,
+.mdx-content.font-courier-new h2,
+.mdx-content.font-courier-new h3,
+.mdx-content.font-courier-new h4,
+.mdx-content.font-courier-new h5,
+.mdx-content.font-courier-new h6,
+.mdx-content.font-courier-new p,
+.mdx-content.font-courier-new li,
+.mdx-content.font-courier-new td {
+  font-family: 'Courier New', Courier, monospace;
 }
 
-.mdx-content.font-open-sans h1, .mdx-content.font-open-sans h2, .mdx-content.font-open-sans h3,
-.mdx-content.font-open-sans h4, .mdx-content.font-open-sans h5, .mdx-content.font-open-sans h6,
-.mdx-content.font-open-sans p, .mdx-content.font-open-sans li, .mdx-content.font-open-sans td {
-  font-family: "Open Sans", Arial, sans-serif;
+.mdx-content.font-open-sans h1,
+.mdx-content.font-open-sans h2,
+.mdx-content.font-open-sans h3,
+.mdx-content.font-open-sans h4,
+.mdx-content.font-open-sans h5,
+.mdx-content.font-open-sans h6,
+.mdx-content.font-open-sans p,
+.mdx-content.font-open-sans li,
+.mdx-content.font-open-sans td {
+  font-family: 'Open Sans', Arial, sans-serif;
 }
 
-.mdx-content.font-lato h1, .mdx-content.font-lato h2, .mdx-content.font-lato h3,
-.mdx-content.font-lato h4, .mdx-content.font-lato h5, .mdx-content.font-lato h6,
-.mdx-content.font-lato p, .mdx-content.font-lato li, .mdx-content.font-lato td {
-  font-family: "Lato", Arial, sans-serif;
+.mdx-content.font-lato h1,
+.mdx-content.font-lato h2,
+.mdx-content.font-lato h3,
+.mdx-content.font-lato h4,
+.mdx-content.font-lato h5,
+.mdx-content.font-lato h6,
+.mdx-content.font-lato p,
+.mdx-content.font-lato li,
+.mdx-content.font-lato td {
+  font-family: 'Lato', Arial, sans-serif;
 }
 
-.mdx-content.font-montserrat h1, .mdx-content.font-montserrat h2, .mdx-content.font-montserrat h3,
-.mdx-content.font-montserrat h4, .mdx-content.font-montserrat h5, .mdx-content.font-montserrat h6,
-.mdx-content.font-montserrat p, .mdx-content.font-montserrat li, .mdx-content.font-montserrat td {
-  font-family: "Montserrat", Arial, sans-serif;
+.mdx-content.font-montserrat h1,
+.mdx-content.font-montserrat h2,
+.mdx-content.font-montserrat h3,
+.mdx-content.font-montserrat h4,
+.mdx-content.font-montserrat h5,
+.mdx-content.font-montserrat h6,
+.mdx-content.font-montserrat p,
+.mdx-content.font-montserrat li,
+.mdx-content.font-montserrat td {
+  font-family: 'Montserrat', Arial, sans-serif;
 }
 
-.mdx-content.font-source-sans-pro h1, .mdx-content.font-source-sans-pro h2, .mdx-content.font-source-sans-pro h3,
-.mdx-content.font-source-sans-pro h4, .mdx-content.font-source-sans-pro h5, .mdx-content.font-source-sans-pro h6,
-.mdx-content.font-source-sans-pro p, .mdx-content.font-source-sans-pro li, .mdx-content.font-source-sans-pro td {
-  font-family: "Source Sans Pro", Arial, sans-serif;
+.mdx-content.font-source-sans-pro h1,
+.mdx-content.font-source-sans-pro h2,
+.mdx-content.font-source-sans-pro h3,
+.mdx-content.font-source-sans-pro h4,
+.mdx-content.font-source-sans-pro h5,
+.mdx-content.font-source-sans-pro h6,
+.mdx-content.font-source-sans-pro p,
+.mdx-content.font-source-sans-pro li,
+.mdx-content.font-source-sans-pro td {
+  font-family: 'Source Sans Pro', Arial, sans-serif;
 }
 
 /* Font option styling in dropdown - target Radix UI structure */
 /* Use JavaScript to add data attributes and target those */
-.mdxeditor-select-content [role="option"] {
+.mdxeditor-select-content [role='option'] {
   /* Base styling for all options */
 }
 
 /* Target specific font options using their IDs or content */
-[role="option"][aria-labelledby] span,
+[role='option'][aria-labelledby] span,
 ._selectItem_1e2ox_301 span {
   /* This will be overridden by JavaScript for specific fonts */
 }
 
 /* Fallback styles using more specific selectors */
-[aria-label="Font"] .mdxeditor-select-content [role="option"]:nth-child(1) span {
-  font-family: var(--vscode-editor-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif) !important; /* Default */
+[class*='font-'] div:has([role='option']:nth-child(13)) .mdxeditor-select-content [role='option']:nth-child(1) span {
+  font-family: var(
+    --vscode-editor-font-family,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif
+  ) !important; /* Default */
 }
 
-[aria-label="Font"] .mdxeditor-select-content [role="option"]:nth-child(2) span {
+[class*='font-'] div:has([role='option']:nth-child(13)) .mdxeditor-select-content [role='option']:nth-child(2) span {
   font-family: Arial, sans-serif !important; /* Arial */
 }
 
-[aria-label="Font"] .mdxeditor-select-content [role="option"]:nth-child(3) span {
-  font-family: "Times New Roman", Times, serif !important; /* Times New Roman */
+[class*='font-'] div:has([role='option']:nth-child(13)) .mdxeditor-select-content [role='option']:nth-child(3) span {
+  font-family: 'Times New Roman', Times, serif !important; /* Times New Roman */
 }
 
-[aria-label="Font"] .mdxeditor-select-content [role="option"]:nth-child(4) span {
+[class*='font-'] div:has([role='option']:nth-child(13)) .mdxeditor-select-content [role='option']:nth-child(4) span {
   font-family: Roboto, Arial, sans-serif !important; /* Roboto */
 }
 
-[aria-label="Font"] .mdxeditor-select-content [role="option"]:nth-child(5) span {
+[class*='font-'] div:has([role='option']:nth-child(13)) .mdxeditor-select-content [role='option']:nth-child(5) span {
   font-family: Georgia, serif !important; /* Georgia */
 }
 
-[aria-label="Font"] .mdxeditor-select-content [role="option"]:nth-child(6) span {
+[class*='font-'] div:has([role='option']:nth-child(13)) .mdxeditor-select-content [role='option']:nth-child(6) span {
   font-family: Calibri, sans-serif !important; /* Calibri */
 }
 
-[aria-label="Font"] .mdxeditor-select-content [role="option"]:nth-child(7) span {
+[class*='font-'] div:has([role='option']:nth-child(13)) .mdxeditor-select-content [role='option']:nth-child(7) span {
   font-family: Garamond, serif !important; /* Garamond */
 }
 
-[aria-label="Font"] .mdxeditor-select-content [role="option"]:nth-child(8) span {
-  font-family: "Book Antiqua", serif !important; /* Book Antiqua */
+[class*='font-'] div:has([role='option']:nth-child(13)) .mdxeditor-select-content [role='option']:nth-child(8) span {
+  font-family: 'Book Antiqua', serif !important; /* Book Antiqua */
 }
 
-[aria-label="Font"] .mdxeditor-select-content [role="option"]:nth-child(9) span {
-  font-family: "Courier New", monospace !important; /* Courier New */
+[class*='font-'] div:has([role='option']:nth-child(13)) .mdxeditor-select-content [role='option']:nth-child(9) span {
+  font-family: 'Courier New', monospace !important; /* Courier New */
 }
 
-[aria-label="Font"] .mdxeditor-select-content [role="option"]:nth-child(10) span {
-  font-family: "Open Sans", Arial, sans-serif !important; /* Open Sans */
+[class*='font-'] div:has([role='option']:nth-child(13)) .mdxeditor-select-content [role='option']:nth-child(10) span {
+  font-family: 'Open Sans', Arial, sans-serif !important; /* Open Sans */
 }
 
-[aria-label="Font"] .mdxeditor-select-content [role="option"]:nth-child(11) span {
-  font-family: "Lato", Arial, sans-serif !important; /* Lato */
+[class*='font-'] div:has([role='option']:nth-child(13)) .mdxeditor-select-content [role='option']:nth-child(11) span {
+  font-family: 'Lato', Arial, sans-serif !important; /* Lato */
 }
 
-[aria-label="Font"] .mdxeditor-select-content [role="option"]:nth-child(12) span {
-  font-family: "Montserrat", Arial, sans-serif !important; /* Montserrat */
+[class*='font-'] div:has([role='option']:nth-child(13)) .mdxeditor-select-content [role='option']:nth-child(12) span {
+  font-family: 'Montserrat', Arial, sans-serif !important; /* Montserrat */
 }
 
-[aria-label="Font"] .mdxeditor-select-content [role="option"]:nth-child(13) span {
-  font-family: "Source Sans Pro", Arial, sans-serif !important; /* Source Sans Pro */
+[class*='font-'] div:has([role='option']:nth-child(13)) .mdxeditor-select-content [role='option']:nth-child(13) span {
+  font-family: 'Source Sans Pro', Arial, sans-serif !important; /* Source Sans Pro */
 }
 
 /* Additional selectors for different dropdown implementations */
 .font-option-default {
-  font-family: var(--vscode-editor-font-family, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif) !important;
+  font-family: var(
+    --vscode-editor-font-family,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif
+  ) !important;
 }
 
 .font-option-arial {
@@ -1138,7 +1353,7 @@ button[role="combobox"][aria-label="Language"]:hover,
 }
 
 .font-option-times-new-roman {
-  font-family: "Times New Roman", Times, serif !important;
+  font-family: 'Times New Roman', Times, serif !important;
 }
 
 .font-option-roboto {
@@ -1158,30 +1373,30 @@ button[role="combobox"][aria-label="Language"]:hover,
 }
 
 .font-option-book-antiqua {
-  font-family: "Book Antiqua", serif !important;
+  font-family: 'Book Antiqua', serif !important;
 }
 
 .font-option-courier-new {
-  font-family: "Courier New", monospace !important;
+  font-family: 'Courier New', monospace !important;
 }
 
 .font-option-open-sans {
-  font-family: "Open Sans", Arial, sans-serif !important;
+  font-family: 'Open Sans', Arial, sans-serif !important;
 }
 
 .font-option-lato {
-  font-family: "Lato", Arial, sans-serif !important;
+  font-family: 'Lato', Arial, sans-serif !important;
 }
 
 .font-option-montserrat {
-  font-family: "Montserrat", Arial, sans-serif !important;
+  font-family: 'Montserrat', Arial, sans-serif !important;
 }
 
 .font-option-source-sans-pro {
-  font-family: "Source Sans Pro", Arial, sans-serif !important;
+  font-family: 'Source Sans Pro', Arial, sans-serif !important;
 }
 
-[role="checkbox"] span:before {
+[role='checkbox'] span:before {
   background-color: var(--vscode-editorWidget-background);
 }
 
@@ -1221,7 +1436,7 @@ button[role="combobox"][aria-label="Language"]:hover,
 }
 
 /* MDXEditor toolbar custom components styling - improved contrast */
-.mdx-editor .mdxeditor-toolbar button[data-state="on"],
+.mdx-editor .mdxeditor-toolbar button[data-state='on'],
 .mdx-editor .mdxeditor-toolbar button.active {
   background-color: rgba(var(--vscode-foreground-rgba, 128, 128, 128), 0.15);
   color: var(--vscode-foreground);
@@ -1238,7 +1453,7 @@ button[role="combobox"][aria-label="Language"]:hover,
 /* Advanced scroll containment for all editor containers to prevent VS Code editor scrolling */
 .ProseMirror,
 .mdx-editor-content,
-[contenteditable="true"] {
+[contenteditable='true'] {
   overscroll-behavior: contain !important;
   /* Additional scroll containment properties */
   scroll-behavior: auto !important; /* Override smooth scroll that might cause issues */
@@ -1246,12 +1461,12 @@ button[role="combobox"][aria-label="Language"]:hover,
 }
 
 /* Only apply bottom padding to the main editor content area, not code blocks or table cells */
-.mdx-content[contenteditable="true"] {
+.mdx-content[contenteditable='true'] {
   padding-bottom: 50vh !important;
   margin: 0 auto !important;
 }
 
-.book-view .mdx-content[contenteditable="true"] {
+.book-view .mdx-content[contenteditable='true'] {
   max-width: 5.5in !important;
   padding-left: 0.5in !important;
   padding-right: 0.5in !important;
@@ -1360,8 +1575,8 @@ body {
 /* Search highlighting styles - high specificity to override comment highlights */
 .mdx-content .search-highlight,
 .mdx-content * .search-highlight,
-[contenteditable="true"] .search-highlight,
-[contenteditable="true"] * .search-highlight {
+[contenteditable='true'] .search-highlight,
+[contenteditable='true'] * .search-highlight {
   /* background-color: #32cd32 !important; */
   color: #000000 !important;
   padding: 1px 2px !important;
@@ -1398,8 +1613,8 @@ body {
   background: var(--vscode-button-secondaryHoverBackground) !important;
 }
 
-.mdx-editor [data-diff-source-wrapper] button[data-state="on"],
-.mdx-editor .mdxeditor-diff-source-toggle-wrapper button[data-state="on"] {
+.mdx-editor [data-diff-source-wrapper] button[data-state='on'],
+.mdx-editor .mdxeditor-diff-source-toggle-wrapper button[data-state='on'] {
   background: var(--vscode-button-background) !important;
   color: var(--vscode-button-foreground) !important;
 }
@@ -1440,11 +1655,11 @@ body {
 
 /* Style mathematical angle brackets (⟨⟩) used for display */
 .mdx-content {
-  font-feature-settings: "liga" 0; /* Disable ligatures for cleaner angle bracket display */
+  font-feature-settings: 'liga' 0; /* Disable ligatures for cleaner angle bracket display */
 }
 
 /* Enhanced contrast for angle bracket content in different themes */
-.mdx-content:has(span:contains("⟨")):has(span:contains("⟩")) {
+.mdx-content:has(span:contains('⟨')):has(span:contains('⟩')) {
   font-variant-ligatures: none;
 }
 
@@ -1484,7 +1699,7 @@ body {
 /* Attribution styling within blockquotes */
 .mdx-content blockquote p:last-child:has(strong):before,
 .mdx-content blockquote p:last-child:has(em):before {
-  content: "— ";
+  content: '— ';
   font-weight: normal;
   font-style: normal;
 }
@@ -1498,8 +1713,8 @@ body {
 /* ===== IMAGE UPLOAD DIALOG STYLING ===== */
 /* EXTREMELY SPECIFIC targeting to avoid conflicts - target MDXEditor image dialog only */
 
-.mdx-editor-container [role="dialog"],
-.mdx-editor [role="dialog"] {
+.mdx-editor-container [role='dialog'],
+.mdx-editor [role='dialog'] {
   background: var(--vscode-editor-background) !important;
   border: 1px solid var(--vscode-widget-border) !important;
 }
@@ -1521,8 +1736,8 @@ body {
 } */
 
 /* Section labels and text */
-.mdx-editor [role="dialog"] p,
-.mdx-editor [role="dialog"] label {
+.mdx-editor [role='dialog'] p,
+.mdx-editor [role='dialog'] label {
   color: var(--vscode-foreground) !important;
   font-size: 14px !important;
   font-weight: 500 !important;
@@ -1532,12 +1747,12 @@ body {
 }
 
 /* Better spacing between sections */
-.mdx-editor [role="dialog"] > * + * {
+.mdx-editor [role='dialog'] > * + * {
   margin-top: 20px !important;
 }
 
 /* All input styling */
-.mdx-editor [role="dialog"] input {
+.mdx-editor [role='dialog'] input {
   background: var(--vscode-input-background) !important;
   color: var(--vscode-input-foreground) !important;
   border: 1px solid var(--vscode-input-border) !important;
@@ -1550,23 +1765,23 @@ body {
   margin-bottom: 16px !important;
 }
 
-.mdx-editor [role="dialog"] input[type="file"] {
+.mdx-editor [role='dialog'] input[type='file'] {
   background: var(--vscode-button-secondaryBackground) !important;
   color: var(--vscode-button-secondaryForeground) !important;
   cursor: pointer !important;
 }
 
-.mdx-editor [role="dialog"] input:focus {
+.mdx-editor [role='dialog'] input:focus {
   border-color: var(--vscode-focusBorder) !important;
   outline: none !important;
 }
 
-.mdx-editor [role="dialog"] input::placeholder {
+.mdx-editor [role='dialog'] input::placeholder {
   color: var(--vscode-input-placeholderForeground) !important;
 }
 
 /* Dialog buttons */
-.mdx-editor [role="dialog"] button {
+.mdx-editor [role='dialog'] button {
   background: var(--vscode-button-background) !important;
   color: var(--vscode-button-foreground) !important;
   border: 1px solid var(--vscode-widget-border) !important;
@@ -1579,17 +1794,17 @@ body {
   margin-top: 16px !important;
 }
 
-.mdx-editor [role="dialog"] button:hover {
+.mdx-editor [role='dialog'] button:hover {
   background: var(--vscode-button-hoverBackground) !important;
 }
 
 /* Secondary button (Cancel) */
-.mdx-editor [role="dialog"] button:first-of-type {
+.mdx-editor [role='dialog'] button:first-of-type {
   background: var(--vscode-button-secondaryBackground) !important;
   color: var(--vscode-button-secondaryForeground) !important;
 }
 
-.mdx-editor [role="dialog"] button:first-of-type:hover {
+.mdx-editor [role='dialog'] button:first-of-type:hover {
   background: var(--vscode-button-secondaryHoverBackground) !important;
 }
 
@@ -1598,7 +1813,16 @@ body {
 .mdx-editor .mdxeditor-diff-editor .cm-editor {
   background: var(--vscode-editor-background) !important;
   color: var(--vscode-editor-foreground) !important;
-  font-family: var(--vscode-editor-font-family, 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace) !important;
+  font-family: var(
+    --vscode-editor-font-family,
+    'SF Mono',
+    Monaco,
+    'Cascadia Code',
+    'Roboto Mono',
+    Consolas,
+    'Courier New',
+    monospace
+  ) !important;
   font-size: var(--vscode-editor-font-size, 13px) !important;
   line-height: var(--vscode-editor-font-weight, 1.4) !important;
   border: none !important;
@@ -1664,8 +1888,8 @@ body {
 }
 
 /* Target any selection-related classes */
-.mdx-editor .mdxeditor-source-editor [class*="selection"],
-.mdx-editor .mdxeditor-diff-editor [class*="selection"] {
+.mdx-editor .mdxeditor-source-editor [class*='selection'],
+.mdx-editor .mdxeditor-diff-editor [class*='selection'] {
   background: var(--vscode-editor-selectionBackground, rgba(0, 123, 255, 0.3)) !important;
 }
 
@@ -1811,10 +2035,10 @@ body {
 }
 
 /* Hide markdown parse errors when in source mode */
-.mdx-editor-container.source-mode [class*="_markdownParseError_"] {
+.mdx-editor-container.source-mode [class*='_markdownParseError_'] {
   display: none !important;
 }
 
-[class*="_tableEditor_"] thead > tr > th {
+[class*='_tableEditor_'] thead > tr > th {
   text-align: center !important;
 }

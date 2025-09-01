@@ -157,7 +157,47 @@ const ToolbarGroups = React.memo(
           </>
         )}
 
-        {shouldShowGroup('admonition') && <InsertAdmonition />}
+        {shouldShowGroup('formatting') && (
+          <>
+            <div className={`${groupClass} ${isOverflow ? 'overflow-group overflow-formatting' : 'formatting-group'}`}>
+              <BoldItalicUnderlineToggles />
+              {!isOverflow && <Separator />}
+            </div>
+          </>
+        )}
+
+        {shouldShowGroup('admonition') && (
+          <>
+            <div
+              className={`${groupClass} ${isOverflow ? 'overflow-admonition overflow-admonition' : 'admonition-group'}`}
+            >
+              <InsertAdmonition />
+              {!isOverflow && <Separator />}
+            </div>
+          </>
+        )}
+
+        {shouldShowGroup('blocks') && (
+          <>
+            <div className={`${groupClass} ${isOverflow ? 'overflow-group overflow-blocks' : 'blocks-group'}`}>
+              <ConditionalContents
+                options={[
+                  {
+                    when: editor => editor?.editorType === 'codeblock',
+                    contents: () => null,
+                  },
+                  {
+                    fallback: () => <InsertCodeBlock />,
+                  },
+                ]}
+              />
+              <CreateLink />
+              <InsertTable />
+              <InsertThematicBreak />
+              {!isOverflow && <Separator />}
+            </div>
+          </>
+        )}
 
         {/* Text Justification Controls */}
         {shouldShowGroup('text-align') && handleTextAlignChange && (
@@ -196,6 +236,15 @@ const ToolbarGroups = React.memo(
           </>
         )}
 
+        {shouldShowGroup('lists') && (
+          <>
+            <div className={`${groupClass} ${isOverflow ? 'overflow-group overflow-lists' : 'lists-group'}`}>
+              <ListsToggle />
+              {!isOverflow && <Separator />}
+            </div>
+          </>
+        )}
+
         {/* Book View Toggle */}
         {shouldShowGroup('book-view') && handleBookViewToggle && (
           <>
@@ -207,46 +256,6 @@ const ToolbarGroups = React.memo(
               >
                 <BookOpen size={16} />
               </button>
-              {!isOverflow && <Separator />}
-            </div>
-          </>
-        )}
-
-        {shouldShowGroup('formatting') && (
-          <>
-            <div className={`${groupClass} ${isOverflow ? 'overflow-group overflow-formatting' : 'formatting-group'}`}>
-              <BoldItalicUnderlineToggles />
-              {!isOverflow && <Separator />}
-            </div>
-          </>
-        )}
-
-        {shouldShowGroup('lists') && (
-          <>
-            <div className={`${groupClass} ${isOverflow ? 'overflow-group overflow-lists' : 'lists-group'}`}>
-              <ListsToggle />
-              {!isOverflow && <Separator />}
-            </div>
-          </>
-        )}
-
-        {shouldShowGroup('blocks') && (
-          <>
-            <div className={`${groupClass} ${isOverflow ? 'overflow-group overflow-blocks' : 'blocks-group'}`}>
-              <ConditionalContents
-                options={[
-                  {
-                    when: editor => editor?.editorType === 'codeblock',
-                    contents: () => null,
-                  },
-                  {
-                    fallback: () => <InsertCodeBlock />,
-                  },
-                ]}
-              />
-              <CreateLink />
-              <InsertTable />
-              <InsertThematicBreak />
               {!isOverflow && <Separator />}
             </div>
           </>
@@ -308,35 +317,35 @@ const ToolbarWithCommentButton = React.memo(
       const newHidden: string[] = [];
 
       // Use the same thresholds from CSS variables - updated for new groups
-      if (width < 1180 - 34 * 4) {
+      if (width < 1160) {
         newHidden.push('diff-view');
       }
-      if (width < 1120 - 34 * 4) {
-        newHidden.push('blocks');
-      }
-      if (width < 1000 - 34 * 4) {
-        newHidden.push('lists');
-      }
-      if (width < 930 - 34 * 4) {
-        newHidden.push('formatting');
-      }
-      if (width < 860 - 34 * 4) {
+      if (width < 1120) {
         newHidden.push('book-view');
       }
-      if (width < 760 - 34 * 4) {
+      if (width < 1085) {
+        newHidden.push('lists');
+      }
+      if (width < 980) {
         newHidden.push('text-align');
       }
-      if (width < 660 - 34 * 4) {
+      if (width < 870) {
+        newHidden.push('blocks');
+      }
+      if (width < 740) {
+        newHidden.push('admonition');
+      }
+      if (width < 660) {
+        newHidden.push('formatting');
+      }
+      if (width < 560) {
         newHidden.push('font-size');
       }
-      if (width < 560 - 34 * 4) {
+      if (width < 475) {
         newHidden.push('font-style');
       }
-      if (width < 430 - 34 * 4) {
+      if (width < 320) {
         newHidden.push('display-font');
-      }
-      if (width < 270 - 34 * 4) {
-        newHidden.push('undo-redo');
       }
       // Removed undo-redo group - VS Code handles undo/redo
 
@@ -899,6 +908,30 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   const typingTimeoutRef = useRef<NodeJS.Timeout>();
   const deferredMessageTimeoutRef = useRef<NodeJS.Timeout>();
 
+  // Theme detection - detect VS Code theme
+  const [isDarkTheme, setIsDarkTheme] = useState<boolean>(true); // Default to dark
+
+  // Detect VS Code theme on mount and when it changes
+  useEffect(() => {
+    const detectTheme = () => {
+      const computedStyle = getComputedStyle(document.body);
+      const bgColor = computedStyle.getPropertyValue('--vscode-editor-background') || '#1e1e1e';
+      // Parse RGB values to determine if theme is dark
+      const isDark = bgColor.includes('#')
+        ? parseInt(bgColor.slice(1, 3), 16) < 128
+        : bgColor.includes('rgb') && bgColor.match(/\d+/)?.[0] && parseInt(bgColor.match(/\d+/)?.[0] || '0') < 128;
+      setIsDarkTheme(isDark);
+    };
+
+    detectTheme();
+
+    // Listen for theme changes via mutation observer
+    const observer = new MutationObserver(detectTheme);
+    observer.observe(document.body, { attributes: true, attributeFilter: ['class', 'data-vscode-theme-kind'] });
+
+    return () => observer.disconnect();
+  }, []);
+
   // Store the content before entering source mode for proper restoration
   const preSourceContentRef = useRef<string | null>(null);
 
@@ -1188,7 +1221,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   // We're not intercepting them anymore since VS Code is the single source of truth
 
   // Apply font styles to dropdown options
-  React.useEffect(() => {
+  /* React.useEffect(() => {
     const styleDropdownOptions = () => {
       // Wait for dropdown to be rendered
       setTimeout(() => {
@@ -1223,7 +1256,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     return () => {
       observer.disconnect();
     };
-  }, [availableFonts, fontFamilyMap]);
+  }, [availableFonts, fontFamilyMap]); */
 
   // Parse comments from markdown
   const [parsedComments, setParsedComments] = useState<CommentWithAnchor[]>([]);
@@ -1986,6 +2019,12 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         if (commentId) {
           logger.debug('Clicked on highlighted text for comment:', commentId);
 
+          // Open sidebar if it's not already open
+          if (!showCommentSidebar) {
+            logger.debug('Opening comments sidebar for clicked highlight');
+            setShowCommentSidebar(true);
+          }
+
           // Find and highlight the comment in the sidebar
           const commentElements = document.querySelectorAll('.comment-item');
           commentElements.forEach(el => el.classList.remove('highlighted'));
@@ -2051,7 +2090,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     return () => {
       document.removeEventListener('click', handleDocumentClick);
     };
-  }, []);
+  }, [showCommentSidebar, setShowCommentSidebar]);
 
   // Sidebar resizing logic
   React.useEffect(() => {
@@ -2641,8 +2680,8 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
               markdown: `${markdown?.substring(0, 100)}...`,
               markdownLength: markdown?.length,
               selectedFont,
-              className: `mdx-editor dark-theme font-${selectedFont.toLowerCase().replace(/\s+/g, '-')}`,
-              contentEditableClassName: `mdx-content font-${selectedFont.toLowerCase().replace(/\s+/g, '-')}`,
+              className: `mdx-editor ${isDarkTheme ? 'dark-theme' : 'light-theme'} font-${selectedFont.toLowerCase().replace(/\s+/g, '-')}`,
+              contentEditableClassName: `mdx-content prose font-${selectedFont.toLowerCase().replace(/\s+/g, '-')}`,
             });
 
             // Plugins are now defined outside the JSX to follow React hooks rules
@@ -2700,8 +2739,8 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
                       'This error might be caused by angle brackets. Try using the source mode if available.',
                     );
                   }}
-                  className={`mdx-editor dark-theme font-${selectedFont.toLowerCase().replace(/\s+/g, '-')}`}
-                  contentEditableClassName={`mdx-content font-${selectedFont.toLowerCase().replace(/\s+/g, '-')}`}
+                  className={`mdx-editor ${isDarkTheme ? 'dark-theme' : 'light-theme'} font-${selectedFont.toLowerCase().replace(/\s+/g, '-')}`}
+                  contentEditableClassName={`mdx-content prose font-${selectedFont.toLowerCase().replace(/\s+/g, '-')}`}
                   plugins={plugins}
                 />
               );

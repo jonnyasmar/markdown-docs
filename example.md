@@ -2,17 +2,17 @@
 
 This document serves as an example to showcase the capabilities of the **Markdown Docs** VS Code extension. It includes various Markdown elements and highlights features relevant to the extension.
 
-***
+---
 
 ## 🚀 Key Features in Action
 
 ### ✍️ WYSIWYG Editing Experience
 
-With Markdown Docs, you get a :comment[seamless]{#comment-1756677243906 text="test"} **What You See Is What You** Get **(WYSIWYG)** editing experience. No more switching between raw Markdown and a preview pane! Edit directly and see your changes instantly.
+With Markdown Docs, you get a seamless **What You See Is What You** Get **(WYSIWYG)** editing experience. No more switching between raw Markdown and a preview pane! Edit directly and see your changes instantly.
 
 ### 💬 Interactive Commenting
 
-This extension allows you to add comments directly within your Markdown files. Imagine leaving feedback for an AI model, annotating your personal notes, or collaborating with a team. Comments appear in a dedicated sidebar, and you can **click to focus** on the corresponding text in the editor.
+This :comment[extension]{#comment-1756748684164 text="Example comment"} allows you to add comments directly within your Markdown :comment[files]{#comment-1756748715967 text="+ as custom Markdown directives"}. Imagine leaving feedback for an AI model, annotating your personal notes, or collaborating with a team. :comment[Comments appear in a dedicated sidebar, and you can click to focus on the corresponding text in the editor.]{#comment-1756748759452 text="Refine this sentence."}
 
 ### 🔍 Highlighted Search
 
@@ -22,7 +22,7 @@ Easily find content within your document with the built-in highlighted search fu
 
 Tailor your editing environment by changing the display font directly within the editor settings. Choose a font that suits your preference for optimal readability.
 
-***
+---
 
 ## Standard Markdown Elements
 
@@ -36,7 +36,7 @@ Tailor your editing environment by changing the display font directly within the
 
 ### Text Formatting
 
-This is a paragraph with some **bold text**, *italic text*, and even ***bold and italic text***. You can also `highlight code inline` or ~~strike through text~~.
+This is a paragraph with some **bold text**, _italic text_, and even **_bold and italic text_**. You can also `highlight code inline` or ~~strike through text~~.
 
 ### Lists
 
@@ -50,27 +50,49 @@ This is a paragraph with some **bold text**, *italic text*, and even ***bold and
 
 #### Unordered List
 
-* Apple
-* Banana
-  * Green banana
-  * Yellow banana
-* Cherry
+- Apple
+- Banana
+  - Green banana
+  - Yellow banana
+- Cherry
 
 #### Checkbox List
 
-* [x] Task completed
-* [ ] Task pending
-* [ ] Another task
+- [x] Task completed
+- [ ] Task pending
+- [ ] Another task
 
 ### Links
 
 Visit the [Google website](https://www.google.com).
 
+### Admonitions
+
+:::note
+Note
+:::
+
+:::tip
+Tip
+:::
+
+:::danger
+Danger
+:::
+
+:::info
+Info
+:::
+
+:::caution
+Caution
+:::
+
 ### Code Blocks
 
 ```javascript
 function helloWorld() {
-  logger.debug("Hello, Markdown Docs!");
+  logger.debug('Hello, Markdown Docs!');
 }
 helloWorld();
 ```
@@ -113,7 +135,7 @@ Here's a screenshot showing the extension in action:
 
 ![Markdown Docs Screenshot](media/screenshot.png)
 
-***
+---
 
 This example document should provide a good basis for showcasing the Markdown Docs extension in action. Feel free to add comments, modify content, and explore all the features!
 
