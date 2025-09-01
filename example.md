@@ -12,15 +12,15 @@ With Markdown Docs, you get a seamless **What You See Is What You** Get **(WYSIW
 
 ### 💬 Interactive Commenting
 
-This :comment[extension]{#comment-1756748684164 text="Example comment"} allows you to add comments directly within your Markdown :comment[files]{#comment-1756748715967 text="+ as custom Markdown directives"}. Imagine leaving feedback for an AI model, annotating your personal notes, or collaborating with a team. :comment[Comments appear in a dedicated sidebar, and you can click to focus on the corresponding text in the editor.]{#comment-1756748759452 text="Refine this sentence."}
+This extension allows you to add comments directly within your Markdown files as custom Markdown directives. Imagine leaving feedback for an AI model, annotating your personal notes, or collaborating with a team. Comments appear in a dedicated sidebar for easy navigation and focus.
 
 ### 🔍 Highlighted Search
 
-Easily find content within your document with the built-in highlighted search functionality. Type your query, and see matches highlighted in real-time.
+Easily find content within your document with the built-in highlighted search functionality. Type your query, and see matches highlighted in real-time as you type.
 
 ### 🔠 Customizable Display Font
 
-Tailor your editing environment by changing the display font directly within the editor settings. Choose a font that suits your preference for optimal readability.
+Tailor your editing environment by changing the display font directly within the editor settings. Choose a font that suits your preference for optimal readability, productivity, and comfort.
 
 ---
 
@@ -36,7 +36,7 @@ Tailor your editing environment by changing the display font directly within the
 
 ### Text Formatting
 
-This is a paragraph with some **bold text**, _italic text_, and even **_bold and italic text_**. You can also `highlight code inline` or ~~strike through text~~.
+This is a paragraph with some **bold text**, _italic text_, and even **_bold and italic text_**. You can also `highlight code inline`, ~~strike through text~~, create ==highlighted text==, or use [links](https://example.com).
 
 ### Lists
 

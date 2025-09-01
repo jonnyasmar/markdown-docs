@@ -37,6 +37,7 @@ export interface WebviewMessage {
   fontSize?: number;
   textAlign?: string;
   bookView?: boolean;
+  isInteracting?: boolean;
 }
 
 export interface VSCodeAPI {

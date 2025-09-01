@@ -40,7 +40,17 @@ import {
 } from '@mdxeditor/editor';
 import '@mdxeditor/editor/style.css';
 import { REDO_COMMAND, UNDO_COMMAND } from 'lexical';
-import { AArrowDown, AArrowUp, AlignCenter, AlignJustify, AlignLeft, AlignRight, BookOpen, List, Undo } from 'lucide-react';
+import {
+  AArrowDown,
+  AArrowUp,
+  AlignCenter,
+  AlignJustify,
+  AlignLeft,
+  AlignRight,
+  BookOpen,
+  List,
+  Undo,
+} from 'lucide-react';
 import React, { startTransition, useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 
 import { DirectiveService } from '../../../src/services/directive';
@@ -1021,16 +1031,19 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     // Find the heading element in the editor
     const editorContainer = document.querySelector('.mdxeditor-root-contenteditable');
     if (!editorContainer) return;
-    
+
     // Generate the same IDs as the TOC component to find the correct heading
     const headings = editorContainer.querySelectorAll('h1, h2, h3, h4, h5, h6');
     const idCounts: Record<string, number> = {};
-    
+
     for (let i = 0; i < headings.length; i++) {
       const heading = headings[i];
       const headingText = heading.textContent?.trim() || '';
-      const baseId = headingText.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
-      
+      const baseId = headingText
+        .toLowerCase()
+        .replace(/[^\w\s-]/g, '')
+        .replace(/\s+/g, '-');
+
       // Generate ID using same logic as TOC
       let generatedId = baseId;
       if (idCounts[baseId]) {
@@ -1039,16 +1052,16 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       } else {
         idCounts[baseId] = 1;
       }
-      
+
       if (generatedId === headingId) {
         // Add some offset to prevent overscroll
         const rect = heading.getBoundingClientRect();
         const editorRect = editorContainer.getBoundingClientRect();
         const offset = rect.top - editorRect.top - 20; // 20px padding from top
-        
+
         editorContainer.scrollBy({
           top: offset,
-          behavior: 'smooth'
+          behavior: 'smooth',
         });
         break;
       }
@@ -1059,27 +1072,28 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   useEffect(() => {
     const handleLinkClick = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-      
+
       // Check if clicked element is a link
       if (target.tagName === 'A' || target.closest('a')) {
-        const link = target.tagName === 'A' ? target as HTMLAnchorElement : target.closest('a') as HTMLAnchorElement;
+        const link =
+          target.tagName === 'A' ? (target as HTMLAnchorElement) : (target.closest('a') as HTMLAnchorElement);
         const href = link?.getAttribute('href');
-        
+
         if (!href) return;
-        
+
         event.preventDefault();
-        
+
         // Handle internal anchor links (e.g., #heading)
         if (href.startsWith('#')) {
           const headingId = href.substring(1);
           handleHeadingNavigation(headingId);
-        } 
+        }
         // Handle external links
         else if (href.startsWith('http://') || href.startsWith('https://')) {
           if (typeof window !== 'undefined' && window.vscodeApi) {
             window.vscodeApi.postMessage({
               command: 'openExternalLink',
-              url: href
+              url: href,
             });
           }
         }
@@ -1247,59 +1261,6 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const hasInitiallyFocusedRef = useRef(false);
 
-  // Create a custom plugin to completely disable MDX Editor's undo/redo
-  // This ensures VS Code is the single source of truth for undo/redo operations
-  const disableUndoRedoPlugin = useMemo(() => {
-    return realmPlugin({
-      init: realm => {
-        // Disable Lexical's undo/redo commands completely
-        const disableUndoRedo = () => {
-          const createRootEditorSubscription = realm.pub(createRootEditorSubscription$);
-
-          // Block UNDO command entirely
-          const unsubscribeUndo = createRootEditorSubscription((rootEditor): (() => void) => {
-            const unsubscribe = rootEditor.registerCommand(
-              UNDO_COMMAND,
-              () => {
-                logger.debug('MDX Editor undo blocked - letting VS Code handle it');
-                // Return true to stop propagation and prevent the undo
-                return true;
-              },
-              4, // High priority to intercept before Lexical's history plugin
-            );
-            return unsubscribe as () => void;
-          });
-
-          // Block REDO command entirely
-          const unsubscribeRedo = createRootEditorSubscription((rootEditor): (() => void) => {
-            const unsubscribe = rootEditor.registerCommand(
-              REDO_COMMAND,
-              () => {
-                logger.debug('MDX Editor redo blocked - letting VS Code handle it');
-                // Return true to stop propagation and prevent the redo
-                return true;
-              },
-              4, // High priority to intercept before Lexical's history plugin
-            );
-            return unsubscribe as () => void;
-          });
-
-          return () => {
-            if (unsubscribeUndo) {
-              unsubscribeUndo();
-            }
-            if (unsubscribeRedo) {
-              unsubscribeRedo();
-            }
-          };
-        };
-
-        // Set up the blocking when the editor is ready
-        setTimeout(disableUndoRedo, 100);
-      },
-    });
-  }, []);
-
   // Allow VS Code to handle undo/redo keyboard shortcuts naturally
   // We're not intercepting them anymore since VS Code is the single source of truth
 
@@ -1457,14 +1418,14 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         }
       } else {
         logger.debug('Updated markdown length after deletion:', updatedMarkdown.length);
-        logger.debug('Calling onMarkdownChange and updating editor content');
+        logger.debug('Calling onMarkdownChange - letting normal sync handle editor update');
 
-        // Update the editor content immediately to remove the highlight
         if (editorRef.current) {
           editorRef.current.setMarkdown(updatedMarkdown);
         }
 
-        // Also notify parent component of the change
+        // Only notify parent component of the change - let normal sync handle editor update
+        // This prevents breaking Lexical's undo coalescing
         onMarkdownChange(updatedMarkdown);
       }
       logger.debug('=== DELETE COMMENT DEBUG END ===');
@@ -1801,6 +1762,50 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     }
   }, []);
 
+  // Function to handle modifier key tracking (defined outside useEffect)
+  const handleKeyDown = useCallback((event: KeyboardEvent) => {
+    // Check if vscodeApi is available
+    if (!window.vscodeApi) {
+      return;
+    }
+
+    // Set interaction flag when Ctrl or Cmd key is pressed
+    if (event.ctrlKey || event.metaKey) {
+      window.vscodeApi.postMessage({
+        command: 'setUserInteracting',
+        isInteracting: true,
+      });
+    }
+  }, []);
+
+  const handleKeyUp = useCallback((event: KeyboardEvent) => {
+    // Check if vscodeApi is available
+    if (!window.vscodeApi) {
+      return;
+    }
+
+    // Clear interaction flag when Ctrl or Cmd key is released
+    if (event.key === 'Control' || event.key === 'Meta') {
+      window.vscodeApi.postMessage({
+        command: 'setUserInteracting',
+        isInteracting: false,
+      });
+    }
+  }, []);
+
+  // Track modifier keys to prevent cursor jumping during undo/redo
+  useEffect(() => {
+    // Listen for keydown/keyup to track modifier key state
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('keyup', handleKeyUp);
+
+    // Cleanup
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [handleKeyDown, handleKeyUp]);
+
   const handleMarkdownChange = useCallback(
     (newMarkdown: string) => {
       // Skip if SyncManager is handling external updates
@@ -1854,16 +1859,11 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       setHasUnsavedChanges(hasChanges);
       onDirtyStateChange?.(hasChanges);
 
-      // DO NOT update React state from user typing - let VS Code round-trip handle it
-      // This eliminates the circular dependency completely:
-      // User types → SyncManager → VS Code → 'update' message → React state → editor (if needed)
-
       // Use SyncManager for reliable, batched syncing to VS Code
       if (syncManagerRef.current) {
         syncManagerRef.current.sendContentToVSCode(processedMarkdown);
       } else {
-        // Fallback to direct messaging if SyncManager not ready
-        logger.warn('SyncManager not ready, using fallback messaging');
+        // Fallback to direct messaging if SyncManager is not available
         if (typeof window !== 'undefined' && window.vscodeApi) {
           window.vscodeApi.postMessage({
             command: 'edit',
@@ -2573,8 +2573,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         diffMarkdown: '',
         codeMirrorExtensions: createCodeMirrorExtensions,
       }),
-      // Disable MDX Editor's undo/redo to let VS Code handle it
-      disableUndoRedoPlugin,
+      // Use default MDXEditor history behavior - our fix is to avoid setMarkdown() calls
       imagePlugin({
         imageUploadHandler: async (image: File) => {
           return new Promise(resolve => {

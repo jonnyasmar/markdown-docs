@@ -21,6 +21,7 @@ interface WebviewMessage {
   fontSize?: number;
   textAlign?: string;
   bookView?: boolean;
+  isInteracting?: boolean;
   settings?: {
     defaultFont: string;
     fontSize: number;
@@ -29,6 +30,9 @@ interface WebviewMessage {
   };
 }
 
+// Global registry to track user interaction state that should block incoming changes
+const userInteractionRegistry = new Set<string>();
+
 /**
  * Custom text editor provider for markdown documents with integrated webview
  */
@@ -36,6 +40,7 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
   private updatingFromWebview = false;
   private lastWebviewContent: string | null = null;
   private lastSentToWebview: string | null = null;
+  private isExternalFileEdit = false;
 
   constructor(
     private readonly context: vscode.ExtensionContext,
@@ -86,11 +91,28 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
       // Listen for document changes and update webview with echo prevention
       const changeDocumentSubscription = vscode.workspace.onDidChangeTextDocument(e => {
         if (e.document.uri.toString() === document.uri.toString()) {
-          // Don't sync VS Code changes back to webview when webview is actively focused
-          // This prevents interference during rapid typing
-          if (webviewPanel.active) {
+          const fileUri = e.document.uri.toString();
+
+          // Don't sync VS Code changes back to webview if we're currently updating from webview
+          // This prevents echo loops between webview and VS Code
+          if (this.updatingFromWebview) {
             return;
           }
+
+          // Check if user is actively interacting (should block to prevent cursor jumping)
+          const isUserInteracting = userInteractionRegistry.has(fileUri);
+
+          // Never allow incoming changes if file is dirty (has unsaved changes)
+          if (document.isDirty) {
+            return;
+          }
+
+          // For active user interaction, respect the active panel to prevent cursor jumping
+          // For external edits, always update regardless of focus
+          if (webviewPanel.active && isUserInteracting) {
+            return;
+          }
+
           this.sendContentToWebview(document, webviewPanel);
         }
       });
@@ -287,6 +309,16 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
             });
           }
           break;
+
+        case 'setUserInteracting': {
+          const fileUri = document.uri.toString();
+          if (message.isInteracting) {
+            userInteractionRegistry.add(fileUri);
+          } else {
+            userInteractionRegistry.delete(fileUri);
+          }
+          break;
+        }
       }
     });
   }
@@ -316,6 +348,7 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
       logger.debug('Skipping document update - content unchanged');
       return;
     }
+
 
     this.updatingFromWebview = true;
     this.lastWebviewContent = newContent;
@@ -544,6 +577,18 @@ export function activate(context: vscode.ExtensionContext): void {
         }
       } else {
         void vscode.window.showErrorMessage('No markdown file selected');
+      }
+    }),
+  );
+
+  // Command to set user interaction state from webview
+  context.subscriptions.push(
+    vscode.commands.registerCommand('markdown-docs.setUserInteracting', (uri: vscode.Uri, isInteracting: boolean) => {
+      const fileUri = uri.toString();
+      if (isInteracting) {
+        userInteractionRegistry.add(fileUri);
+      } else {
+        userInteractionRegistry.delete(fileUri);
       }
     }),
   );
