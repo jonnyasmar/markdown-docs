@@ -1,0 +1,114 @@
+.toc-container {
+  background-color: var(--vscode-sideBar-background);
+  border-right: 1px solid var(--vscode-sideBar-border, var(--vscode-widget-border));
+  padding: 12px 8px;
+  height: 100%;
+  overflow-y: auto;
+  min-width: 200px;
+  max-width: 300px;
+}
+
+.toc-header {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--vscode-sideBarTitle-foreground);
+  margin-bottom: 12px;
+  padding: 0 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.toc-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.toc-item {
+  background: none;
+  border: none;
+  color: var(--vscode-sideBarSectionHeader-foreground);
+  cursor: pointer;
+  font-size: 12px;
+  text-align: left;
+  padding: 6px 8px;
+  border-radius: 4px;
+  transition: background-color 0.15s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.toc-item:hover {
+  background-color: var(--vscode-list-hoverBackground);
+  color: var(--vscode-list-hoverForeground);
+}
+
+.toc-item:active {
+  background-color: var(--vscode-list-activeSelectionBackground);
+  color: var(--vscode-list-activeSelectionForeground);
+}
+
+/* Indentation for different heading levels */
+.toc-level-1 {
+  padding-left: 8px;
+  font-weight: 600;
+}
+
+.toc-level-2 {
+  padding-left: 20px;
+  font-weight: 500;
+}
+
+.toc-level-3 {
+  padding-left: 32px;
+  font-weight: 400;
+  font-size: 11px;
+}
+
+.toc-level-4 {
+  padding-left: 44px;
+  font-weight: 400;
+  font-size: 11px;
+  opacity: 0.9;
+}
+
+.toc-level-5 {
+  padding-left: 56px;
+  font-weight: 400;
+  font-size: 10px;
+  opacity: 0.8;
+}
+
+.toc-level-6 {
+  padding-left: 68px;
+  font-weight: 400;
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+.toc-empty {
+  color: var(--vscode-descriptionForeground);
+  font-size: 11px;
+  font-style: italic;
+  padding: 8px;
+  text-align: center;
+}
+
+/* Dark theme adjustments */
+.dark-theme .toc-container {
+  border-right-color: var(--vscode-sideBar-border, rgba(255, 255, 255, 0.1));
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .toc-container {
+    min-width: 180px;
+    max-width: 250px;
+  }
+  
+  .toc-item {
+    font-size: 11px;
+    padding: 5px 6px;
+  }
+}

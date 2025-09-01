@@ -8,6 +8,7 @@ interface WebviewMessage {
   range?: { start: number; end: number };
   comment?: string;
   commentId?: string;
+  url?: string;
 }
 
 export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
@@ -68,6 +69,9 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
         case 'deleteComment':
           this.deleteComment(document, e.commentId as string);
           break;
+        case 'openExternalLink':
+          void vscode.env.openExternal(vscode.Uri.parse(e.url as string));
+          return;
       }
     });
 

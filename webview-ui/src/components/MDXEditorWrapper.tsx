@@ -40,7 +40,7 @@ import {
 } from '@mdxeditor/editor';
 import '@mdxeditor/editor/style.css';
 import { REDO_COMMAND, UNDO_COMMAND } from 'lexical';
-import { AArrowDown, AArrowUp, AlignCenter, AlignJustify, AlignLeft, AlignRight, BookOpen, Undo } from 'lucide-react';
+import { AArrowDown, AArrowUp, AlignCenter, AlignJustify, AlignLeft, AlignRight, BookOpen, List, Undo } from 'lucide-react';
 import React, { startTransition, useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 
 import { DirectiveService } from '../../../src/services/directive';
@@ -54,6 +54,7 @@ import { MermaidEditor } from './MermaidEditor';
 import './MermaidEditor.css';
 import { postprocessAngleBrackets, preprocessAngleBrackets } from './SimplifiedAngleBracketPlugin';
 import StatusBar from './StatusBar';
+import TableOfContents from './TableOfContents';
 
 // No longer using portal - overflow menu is within toolbar context
 
@@ -883,6 +884,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   logger.debug('MDXEditorWrapper markdown ends with expected?', markdown?.includes('explore all the features!'));
   // UI state
   const [showCommentSidebar, setShowCommentSidebar] = useState(false);
+  const [showTOCSidebar, setShowTOCSidebar] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(240);
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [selectedText, setSelectedText] = useState('');
@@ -1013,6 +1015,83 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
   // Use the view mode tracking hook
   useViewModeTracking(handleViewModeChange);
+
+  // Handle TOC heading navigation
+  const handleHeadingNavigation = useCallback((headingId: string) => {
+    // Find the heading element in the editor
+    const editorContainer = document.querySelector('.mdxeditor-root-contenteditable');
+    if (!editorContainer) return;
+    
+    // Generate the same IDs as the TOC component to find the correct heading
+    const headings = editorContainer.querySelectorAll('h1, h2, h3, h4, h5, h6');
+    const idCounts: Record<string, number> = {};
+    
+    for (let i = 0; i < headings.length; i++) {
+      const heading = headings[i];
+      const headingText = heading.textContent?.trim() || '';
+      const baseId = headingText.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+      
+      // Generate ID using same logic as TOC
+      let generatedId = baseId;
+      if (idCounts[baseId]) {
+        idCounts[baseId]++;
+        generatedId = `${baseId}-${idCounts[baseId]}`;
+      } else {
+        idCounts[baseId] = 1;
+      }
+      
+      if (generatedId === headingId) {
+        // Add some offset to prevent overscroll
+        const rect = heading.getBoundingClientRect();
+        const editorRect = editorContainer.getBoundingClientRect();
+        const offset = rect.top - editorRect.top - 20; // 20px padding from top
+        
+        editorContainer.scrollBy({
+          top: offset,
+          behavior: 'smooth'
+        });
+        break;
+      }
+    }
+  }, []);
+
+  // Handle link clicks in the editor
+  useEffect(() => {
+    const handleLinkClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      
+      // Check if clicked element is a link
+      if (target.tagName === 'A' || target.closest('a')) {
+        const link = target.tagName === 'A' ? target as HTMLAnchorElement : target.closest('a') as HTMLAnchorElement;
+        const href = link?.getAttribute('href');
+        
+        if (!href) return;
+        
+        event.preventDefault();
+        
+        // Handle internal anchor links (e.g., #heading)
+        if (href.startsWith('#')) {
+          const headingId = href.substring(1);
+          handleHeadingNavigation(headingId);
+        } 
+        // Handle external links
+        else if (href.startsWith('http://') || href.startsWith('https://')) {
+          if (typeof window !== 'undefined' && window.vscodeApi) {
+            window.vscodeApi.postMessage({
+              command: 'openExternalLink',
+              url: href
+            });
+          }
+        }
+      }
+    };
+
+    const editorContainer = document.querySelector('.mdxeditor-root-contenteditable');
+    if (editorContainer) {
+      editorContainer.addEventListener('click', handleLinkClick);
+      return () => editorContainer.removeEventListener('click', handleLinkClick);
+    }
+  }, [handleHeadingNavigation]);
 
   // Update selected font when defaultFont prop changes
   React.useEffect(() => {
@@ -2806,10 +2885,31 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
           </div>
         )}
 
+        {/* Table of Contents Sidebar */}
+        {showTOCSidebar && (
+          <div className="toc-sidebar" style={{ width: `${sidebarWidth}px` }}>
+            <div className="sidebar-resize-handle"></div>
+            <div className="toc-header-wrapper">
+              <h3>Table of Contents</h3>
+              <button onClick={() => setShowTOCSidebar(false)} className="sidebar-close" title="Hide Table of Contents">
+                ✕
+              </button>
+            </div>
+            <TableOfContents content={markdown} onHeadingClick={handleHeadingNavigation} />
+          </div>
+        )}
+
         {/* Show comments button when sidebar is hidden */}
         {!showCommentSidebar && (
           <button className="show-comments-btn" onClick={() => setShowCommentSidebar(true)} title="Show Comments">
             💬 {parsedComments.length}
+          </button>
+        )}
+
+        {/* Show TOC button when sidebar is hidden */}
+        {!showTOCSidebar && (
+          <button className="show-toc-btn" onClick={() => setShowTOCSidebar(true)} title="Show Table of Contents">
+            <List size={16} />
           </button>
         )}
       </div>
