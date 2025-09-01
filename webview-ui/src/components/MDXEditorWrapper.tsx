@@ -10,6 +10,7 @@ import {
   GenericDirectiveEditor,
   InsertAdmonition,
   InsertCodeBlock,
+  InsertFrontmatter,
   InsertTable,
   InsertThematicBreak,
   ListsToggle,
@@ -194,6 +195,7 @@ const ToolbarGroups = React.memo(
                 ]}
               />
               <CreateLink />
+              <InsertFrontmatter />
               <InsertTable />
               <InsertThematicBreak />
               {!isOverflow && <Separator />}
@@ -319,19 +321,19 @@ const ToolbarWithCommentButton = React.memo(
       const newHidden: string[] = [];
 
       // Use the same thresholds from CSS variables - updated for new groups
-      if (width < 1160) {
+      if (width < 1160 + 25) {
         newHidden.push('diff-view');
       }
-      if (width < 1120) {
+      if (width < 1120 + 25) {
         newHidden.push('book-view');
       }
-      if (width < 1085) {
+      if (width < 1085 + 25) {
         newHidden.push('lists');
       }
-      if (width < 980) {
+      if (width < 980 + 25) {
         newHidden.push('text-align');
       }
-      if (width < 870) {
+      if (width < 870 + 25) {
         newHidden.push('blocks');
       }
       if (width < 740) {
