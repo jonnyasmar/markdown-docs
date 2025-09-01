@@ -533,12 +533,12 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('markdown-docs.openWithTextEditor', async (uri?: vscode.Uri) => {
       if (uri) {
         // Force open with the built-in text editor
-        await vscode.commands.executeCommand('vscode.open', uri);
+        await vscode.commands.executeCommand('vscode.openWith', uri, 'default');
       } else if (vscode.window.activeTextEditor) {
         // Use current file
         const currentUri = vscode.window.activeTextEditor.document.uri;
         if (currentUri.scheme === 'file' && currentUri.fsPath.endsWith('.md')) {
-          await vscode.commands.executeCommand('vscode.open', currentUri);
+          await vscode.commands.executeCommand('vscode.openWith', currentUri, 'default');
         } else {
           void vscode.window.showErrorMessage('Please select a markdown file to open with the text editor');
         }
