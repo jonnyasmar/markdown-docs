@@ -53,11 +53,18 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
 
   /**
    * Get current VS Code editor configuration relevant to the markdown editor
+   * Prioritizes markdown-specific settings over general editor settings
    */
   private getEditorConfig(): { wordWrap: string } {
-    const editorConfig = vscode.workspace.getConfiguration('editor');
+    // Get markdown-specific configuration first (language-specific settings take precedence)
+    const markdownConfig = vscode.workspace.getConfiguration('editor', { languageId: 'markdown' });
+    const generalConfig = vscode.workspace.getConfiguration('editor');
+    
+    // Check for markdown-specific word wrap setting, fall back to general setting
+    const wordWrap = markdownConfig.get<string>('wordWrap') ?? generalConfig.get<string>('wordWrap', 'off');
+    
     return {
-      wordWrap: editorConfig.get<string>('wordWrap', 'off'),
+      wordWrap,
     };
   }
 
