@@ -26,6 +26,8 @@ interface EditorAppProps {
     fontSize: number;
     textAlign: string;
     bookView: boolean;
+    bookViewWidth?: string;
+    bookViewMargin?: string;
   };
 }
 
@@ -38,6 +40,8 @@ function EditorApp({initialSettings}: EditorAppProps) {
   const [fontSize, setFontSize] = useState(initialSettings.fontSize);
   const [textAlign, setTextAlign] = useState(initialSettings.textAlign);
   const [bookView, setBookView] = useState(initialSettings.bookView);
+  const [bookViewWidth, setBookViewWidth] = useState(initialSettings.bookViewWidth || '5.5in');
+  const [bookViewMargin, setBookViewMargin] = useState(initialSettings.bookViewMargin || '0.5in');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [editorConfig, setEditorConfig] = useState<{ wordWrap: string }>({ wordWrap: 'off' });
 
@@ -103,11 +107,20 @@ function EditorApp({initialSettings}: EditorAppProps) {
           case 'settingsUpdate':
             console.log('EditorApp: Received settingsUpdate message:', message);
             if (message.settings) {
-              const { defaultFont, fontSize: newFontSize, textAlign: newTextAlign, bookView: newBookView } = message.settings;
+              const { 
+                defaultFont, 
+                fontSize: newFontSize, 
+                textAlign: newTextAlign, 
+                bookView: newBookView,
+                bookViewWidth: newBookViewWidth,
+                bookViewMargin: newBookViewMargin 
+              } = message.settings;
               if (defaultFont) setDefaultFont(defaultFont);
               if (typeof newFontSize === 'number') setFontSize(newFontSize);
               if (newTextAlign) setTextAlign(newTextAlign);
               if (typeof newBookView === 'boolean') setBookView(newBookView);
+              if (newBookViewWidth) setBookViewWidth(newBookViewWidth);
+              if (newBookViewMargin) setBookViewMargin(newBookViewMargin);
             }
             break;
           default:
@@ -273,6 +286,8 @@ function EditorApp({initialSettings}: EditorAppProps) {
         fontSize={fontSize}
         textAlign={textAlign}
         bookView={bookView}
+        bookViewWidth={bookViewWidth}
+        bookViewMargin={bookViewMargin}
         onDirtyStateChange={setHasUnsavedChanges}
         editorConfig={editorConfig}
       />

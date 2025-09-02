@@ -1526,12 +1526,6 @@ mark.highlighted {
   margin: 0 auto !important;
 }
 
-.book-view .mdx-content[contenteditable='true'] {
-  max-width: 5.5in !important;
-  padding-left: 0.5in !important;
-  padding-right: 0.5in !important;
-}
-
 .custom-button {
   padding: 5px;
 }

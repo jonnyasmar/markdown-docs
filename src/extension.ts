@@ -21,12 +21,16 @@ interface WebviewMessage {
   fontSize?: number;
   textAlign?: string;
   bookView?: boolean;
+  bookViewWidth?: string;
+  bookViewMargin?: string;
   isInteracting?: boolean;
   settings?: {
     defaultFont: string;
     fontSize: number;
     textAlign: string;
     bookView: boolean;
+    bookViewWidth: string;
+    bookViewMargin: string;
   };
 }
 
@@ -217,6 +221,8 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
             fontSize: config.get<number>('fontSize', 14),
             textAlign: config.get<string>('textAlign', 'left'),
             bookView: config.get<boolean>('bookView', false),
+            bookViewWidth: config.get<string>('bookViewWidth', '5.5in'),
+            bookViewMargin: config.get<string>('bookViewMargin', '0.5in'),
           };
           void webviewPanel.webview.postMessage({
             command: 'settingsUpdate',
@@ -256,6 +262,8 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
               fontSize: message.fontSize,
               textAlign: config.get<string>('textAlign', 'left'),
               bookView: config.get<boolean>('bookView', false),
+              bookViewWidth: config.get<string>('bookViewWidth', '5.5in'),
+              bookViewMargin: config.get<string>('bookViewMargin', '0.5in'),
             };
 
             console.log('Extension: Sending settingsUpdate for fontSize:', settings);
@@ -278,6 +286,8 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
               fontSize: config.get<number>('fontSize', 14),
               textAlign: message.textAlign,
               bookView: config.get<boolean>('bookView', false),
+              bookViewWidth: config.get<string>('bookViewWidth', '5.5in'),
+              bookViewMargin: config.get<string>('bookViewMargin', '0.5in'),
             };
 
             console.log('Extension: Sending settingsUpdate for textAlign:', settings);
@@ -300,9 +310,59 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
               fontSize: config.get<number>('fontSize', 14),
               textAlign: config.get<string>('textAlign', 'left'),
               bookView: message.bookView,
+              bookViewWidth: config.get<string>('bookViewWidth', '5.5in'),
+              bookViewMargin: config.get<string>('bookViewMargin', '0.5in'),
             };
 
             console.log('Extension: Sending settingsUpdate for bookView:', settings);
+            void webviewPanel.webview.postMessage({
+              command: 'settingsUpdate',
+              settings,
+            });
+          }
+          break;
+
+        case 'setBookViewWidth':
+          console.log('Extension: setBookViewWidth handler reached, width:', message.bookViewWidth);
+          if (typeof message.bookViewWidth === 'string') {
+            const config = vscode.workspace.getConfiguration('markdown-docs');
+            await config.update('bookViewWidth', message.bookViewWidth, vscode.ConfigurationTarget.Global);
+
+            // Send updated settings back to webview
+            const settings = {
+              defaultFont: config.get<string>('defaultFont', 'Default'),
+              fontSize: config.get<number>('fontSize', 14),
+              textAlign: config.get<string>('textAlign', 'left'),
+              bookView: config.get<boolean>('bookView', false),
+              bookViewWidth: message.bookViewWidth,
+              bookViewMargin: config.get<string>('bookViewMargin', '0.5in'),
+            };
+
+            console.log('Extension: Sending settingsUpdate for bookViewWidth:', settings);
+            void webviewPanel.webview.postMessage({
+              command: 'settingsUpdate',
+              settings,
+            });
+          }
+          break;
+
+        case 'setBookViewMargin':
+          console.log('Extension: setBookViewMargin handler reached, margin:', message.bookViewMargin);
+          if (typeof message.bookViewMargin === 'string') {
+            const config = vscode.workspace.getConfiguration('markdown-docs');
+            await config.update('bookViewMargin', message.bookViewMargin, vscode.ConfigurationTarget.Global);
+
+            // Send updated settings back to webview
+            const settings = {
+              defaultFont: config.get<string>('defaultFont', 'Default'),
+              fontSize: config.get<number>('fontSize', 14),
+              textAlign: config.get<string>('textAlign', 'left'),
+              bookView: config.get<boolean>('bookView', false),
+              bookViewWidth: config.get<string>('bookViewWidth', '5.5in'),
+              bookViewMargin: message.bookViewMargin,
+            };
+
+            console.log('Extension: Sending settingsUpdate for bookViewMargin:', settings);
             void webviewPanel.webview.postMessage({
               command: 'settingsUpdate',
               settings,

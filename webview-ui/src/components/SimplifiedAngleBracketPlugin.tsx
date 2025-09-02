@@ -26,10 +26,16 @@ const isInCodeBlock = (text: string, position: number): boolean => {
   return inCodeBlock;
 };
 
-// Main preprocessing function - escape ALL angle brackets AND protect curly braces
+// Main preprocessing function - escape ALL angle brackets AND protect curly braces, clean up unwanted escaping
 export const preprocessAngleBrackets = (markdown: string): string => {
-  // First protect curly brace patterns
-  const result = preprocessCurlyBraces(markdown);
+  // First clean up any unwanted escaping from previous processing
+  let cleanedMarkdown = markdown;
+  cleanedMarkdown = cleanedMarkdown.replace(/\\\[/g, '[');
+  cleanedMarkdown = cleanedMarkdown.replace(/\\\]/g, ']');
+  cleanedMarkdown = cleanedMarkdown.replace(/\\\|/g, '|');
+
+  // Then protect curly brace patterns
+  const result = preprocessCurlyBraces(cleanedMarkdown);
 
   // Then process character by character to respect code contexts for angle brackets
   let finalResult = '';
@@ -87,8 +93,15 @@ export const postprocessAngleBrackets = (markdown: string): string => {
   // Also fix any escaped underscores that might have been created by MDX
   result = unescapeUnderscoresInCurlyBraces(result);
 
-  // Then remove backslash escaping from < characters (we no longer escape >)
-  return result.replace(/\\</g, '<');
+  // Remove backslash escaping from < characters (we no longer escape >)
+  result = result.replace(/\\</g, '<');
+
+  // Remove backslash escaping from square brackets and pipes
+  result = result.replace(/\\\[/g, '[');
+  result = result.replace(/\\\]/g, ']');
+  result = result.replace(/\\\|/g, '|');
+
+  return result;
 };
 
 // Postprocessing function to restore underscores in curly brace patterns

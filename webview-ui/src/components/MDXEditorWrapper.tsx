@@ -1,4 +1,5 @@
-import { EditorView } from '@codemirror/view';
+import { RangeSetBuilder } from '@codemirror/state';
+import { Decoration, DecorationSet, EditorView, ViewPlugin, WidgetType } from '@codemirror/view';
 import {
   AdmonitionDirectiveDescriptor,
   BlockTypeSelect,
@@ -82,7 +83,13 @@ const ToolbarGroups = React.memo(
     textAlign,
     handleTextAlignChange,
     bookView,
+    bookViewWidth,
+    bookViewMargin,
     handleBookViewToggle,
+    localBookViewWidth,
+    localBookViewMargin,
+    handleBookViewWidthChange,
+    handleBookViewMarginChange,
   }: {
     selectedFont: string;
     handleFontChange: (font: string) => void;
@@ -95,7 +102,13 @@ const ToolbarGroups = React.memo(
     textAlign?: string;
     handleTextAlignChange?: (align: string) => void;
     bookView?: boolean;
-    handleBookViewToggle?: () => void;
+    bookViewWidth?: string;
+    bookViewMargin?: string;
+    localBookViewWidth?: string;
+    localBookViewMargin?: string;
+    handleBookViewToggle: () => void;
+    handleBookViewWidthChange: (width: string) => void;
+    handleBookViewMarginChange: (margin: string) => void;
   }) => {
     const groupClass = isOverflow ? 'overflow-group' : 'toolbar-group';
 
@@ -266,11 +279,49 @@ const ToolbarGroups = React.memo(
             <div className={`${groupClass} ${isOverflow ? 'overflow-group overflow-book-view' : 'book-view-group'}`}>
               <button
                 className={`custom-button _toolbarToggleItem_1e2ox_208 ${bookView ? 'active' : ''}`}
-                title="Book View"
+                title="Toggle book view mode"
                 onClick={handleBookViewToggle}
               >
                 <BookOpen size={16} />
               </button>
+              <input
+                type="number"
+                placeholder="5.5"
+                title="Book view content width in inches (e.g., 5.5)"
+                value={localBookViewWidth}
+                onChange={e => handleBookViewWidthChange(e.target.value)}
+                step="0.1"
+                min="1"
+                style={{
+                  width: '50px',
+                  padding: '3px 2px',
+                  margin: '0 2px',
+                  fontSize: '17px',
+                  border: '1px solid var(--vscode-input-border)',
+                  background: 'var(--vscode-input-background)',
+                  color: 'var(--vscode-input-foreground)',
+                  borderRadius: '2px',
+                }}
+              />
+              <input
+                type="number"
+                placeholder="0.5"
+                title="Book view horizontal margins in inches (e.g., 0.5)"
+                value={localBookViewMargin}
+                onChange={e => handleBookViewMarginChange(e.target.value)}
+                step="0.1"
+                min="0"
+                style={{
+                  width: '50px',
+                  padding: '3px 2px',
+                  margin: '0 2px',
+                  fontSize: '17px',
+                  border: '1px solid var(--vscode-input-border)',
+                  background: 'var(--vscode-input-background)',
+                  color: 'var(--vscode-input-foreground)',
+                  borderRadius: '2px',
+                }}
+              />
               {!isOverflow && <Separator />}
             </div>
           </>
@@ -313,6 +364,10 @@ const ToolbarWithCommentButton = React.memo(
     handleTextAlignChange,
     bookView,
     handleBookViewToggle,
+    localBookViewWidth,
+    localBookViewMargin,
+    handleBookViewWidthChange,
+    handleBookViewMarginChange,
   }: any) => {
     const [isOverflowOpen, setIsOverflowOpen] = useState(false);
     const [hiddenGroups, setHiddenGroups] = useState<string[]>([]);
@@ -332,10 +387,10 @@ const ToolbarWithCommentButton = React.memo(
       const newHidden: string[] = [];
 
       // Use the same thresholds from CSS variables - updated for new groups
-      if (width < 1160 + 25) {
+      if (width < 1160 + 25 + 100) {
         newHidden.push('diff-view');
       }
-      if (width < 1120 + 25) {
+      if (width < 1120 + 25 + 100) {
         newHidden.push('book-view');
       }
       if (width < 1085 + 25) {
@@ -423,6 +478,10 @@ const ToolbarWithCommentButton = React.memo(
               handleTextAlignChange={handleTextAlignChange}
               bookView={bookView}
               handleBookViewToggle={handleBookViewToggle}
+              localBookViewWidth={localBookViewWidth}
+              localBookViewMargin={localBookViewMargin}
+              handleBookViewWidthChange={handleBookViewWidthChange}
+              handleBookViewMarginChange={handleBookViewMarginChange}
             />
           </DiffViewWrapper>
 
@@ -462,6 +521,10 @@ const ToolbarWithCommentButton = React.memo(
                     handleTextAlignChange={handleTextAlignChange}
                     bookView={bookView}
                     handleBookViewToggle={handleBookViewToggle}
+                    localBookViewWidth={localBookViewWidth}
+                    localBookViewMargin={localBookViewMargin}
+                    handleBookViewWidthChange={handleBookViewWidthChange}
+                    handleBookViewMarginChange={handleBookViewMarginChange}
                   />
                 </DiffViewWrapper>
               </div>
@@ -856,6 +919,8 @@ interface MDXEditorWrapperProps {
   fontSize?: number;
   textAlign?: string;
   bookView?: boolean;
+  bookViewWidth?: string;
+  bookViewMargin?: string;
   onDirtyStateChange?: (isDirty: boolean) => void;
   editorConfig?: EditorConfig;
 }
@@ -869,6 +934,8 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   fontSize = 14,
   textAlign = 'left',
   bookView = false,
+  bookViewWidth = '5.5in',
+  bookViewMargin = '0.5in',
   onDirtyStateChange,
   editorConfig = { wordWrap: 'off' },
 }) => {
@@ -914,9 +981,17 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   const [showEditModal, setShowEditModal] = useState(false);
   const [focusedCommentId, setFocusedCommentId] = useState<string | null>(null);
 
+  // Local state for book view inputs to prevent cursor jumping (numbers only, default to 'in' units)
+  const [localBookViewWidth, setLocalBookViewWidth] = useState<string>((bookViewWidth || '5.5in').replace('in', ''));
+  const [localBookViewMargin, setLocalBookViewMargin] = useState<string>((bookViewMargin || '0.5in').replace('in', ''));
+
   // View mode tracking for hiding comments in source/diff view
   const [currentViewMode, setCurrentViewMode] = useState<'rich-text' | 'source' | 'diff'>('rich-text');
   const currentViewModeRef = useRef<'rich-text' | 'source' | 'diff'>('rich-text');
+
+  // Refs for debouncing book view input changes
+  const bookViewWidthTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const bookViewMarginTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   // Performance optimization: Track typing state to prevent expensive operations during typing
   const [isTyping, setIsTyping] = useState(false);
@@ -947,6 +1022,15 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
     return () => observer.disconnect();
   }, []);
+
+  // Sync local book view state with props when they change externally
+  useEffect(() => {
+    setLocalBookViewWidth((bookViewWidth || '5.5in').replace('in', ''));
+  }, [bookViewWidth]);
+
+  useEffect(() => {
+    setLocalBookViewMargin((bookViewMargin || '0.5in').replace('in', ''));
+  }, [bookViewMargin]);
 
   // Store the content before entering source mode for proper restoration
   const preSourceContentRef = useRef<string | null>(null);
@@ -1187,6 +1271,34 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       });
     }
   }, [bookView]);
+
+  // Debounced handlers for book view inputs to prevent cursor jumping
+  const handleBookViewWidthChange = useCallback((value: string) => {
+    setLocalBookViewWidth(value);
+    clearTimeout(bookViewWidthTimeoutRef.current);
+    bookViewWidthTimeoutRef.current = setTimeout(() => {
+      if (typeof window !== 'undefined' && window.vscodeApi) {
+        window.vscodeApi.postMessage({
+          command: 'setBookViewWidth',
+          bookViewWidth: value + 'in',
+        });
+      }
+    }, 500);
+  }, []);
+
+  const handleBookViewMarginChange = useCallback((value: string) => {
+    setLocalBookViewMargin(value);
+    clearTimeout(bookViewMarginTimeoutRef.current);
+    bookViewMarginTimeoutRef.current = setTimeout(() => {
+      if (typeof window !== 'undefined' && window.vscodeApi) {
+        window.vscodeApi.postMessage({
+          command: 'setBookViewMargin',
+          bookViewMargin: value + 'in',
+        });
+      }
+    }, 500);
+  }, []);
+
   // Apply dynamic styles to the editor content
   useEffect(() => {
     const applyDynamicStyles = () => {
@@ -1209,9 +1321,9 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
       // Apply Book View styles
       if (bookView) {
-        editorContent.style.maxWidth = '5.5in';
-        editorContent.style.paddingLeft = '.5in';
-        editorContent.style.paddingRight = '.5in';
+        editorContent.style.maxWidth = bookViewWidth || '5.5in';
+        editorContent.style.paddingLeft = bookViewMargin || '0.5in';
+        editorContent.style.paddingRight = bookViewMargin || '0.5in';
         editorContent.style.margin = '0 auto';
       } else {
         editorContent.style.maxWidth = '';
@@ -1235,7 +1347,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     return () => {
       observer.disconnect();
     };
-  }, [fontSize, textAlign, bookView]);
+  }, [fontSize, textAlign, bookView, bookViewWidth, bookViewMargin]);
 
   // Available fonts with their CSS font-family values
   const fontFamilyMap = {
@@ -1718,6 +1830,70 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       editorConfig.wordWrap === 'wordWrapColumn' ||
       editorConfig.wordWrap === 'bounded';
 
+    // Custom widget for unescaping characters
+    class UnescapeWidget extends WidgetType {
+      constructor(private char: string) {
+        super();
+      }
+
+      toDOM() {
+        const span = document.createElement('span');
+        span.textContent = this.char;
+        return span;
+      }
+
+      eq(other: UnescapeWidget) {
+        return other.char === this.char;
+      }
+    }
+
+    // Custom plugin to fix escaped characters in source mode display
+    const fixEscapingPlugin = ViewPlugin.fromClass(
+      class {
+        decorations: DecorationSet;
+
+        constructor(view: EditorView) {
+          this.decorations = this.buildDecorations(view);
+        }
+
+        update(update: any) {
+          if (update.docChanged || update.viewportChanged) {
+            this.decorations = this.buildDecorations(update.view);
+          }
+        }
+
+        buildDecorations(view: EditorView): DecorationSet {
+          const builder = new RangeSetBuilder<Decoration>();
+          const doc = view.state.doc;
+
+          for (let i = 1; i <= doc.lines; i++) {
+            const line = doc.line(i);
+            const text = line.text;
+
+            // Find escaped square brackets and pipes that should be unescaped
+            const escapePattern = /\\(\[|\]|\|)/g;
+            let match;
+
+            while ((match = escapePattern.exec(text)) !== null) {
+              const from = line.from + match.index;
+              const to = from + match[0].length;
+
+              // Replace with unescaped version
+              const replacement = match[1];
+              const decoration = Decoration.replace({
+                widget: new UnescapeWidget(replacement),
+              });
+
+              builder.add(from, to, decoration);
+            }
+          }
+
+          return builder.finish();
+        }
+      },
+      { decorations: v => v.decorations },
+    );
+
     return [
       EditorView.theme({
         '&': {
@@ -1731,6 +1907,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
           'white-space': shouldWrap ? 'pre-wrap !important' : 'pre !important',
         },
       }),
+      fixEscapingPlugin,
     ];
   }, [editorConfig.wordWrap]);
 
@@ -1845,9 +2022,8 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       // Mark that user has interacted with editor to prevent auto-focus
       hasInitiallyFocusedRef.current = true;
 
-      // Apply postprocessing only in rich-text mode (source mode should stay clean)
-      const processedMarkdown =
-        currentViewModeRef.current === 'rich-text' ? postprocessAngleBrackets(newMarkdown) : newMarkdown;
+      // Apply postprocessing in all modes to clean up unwanted escaping
+      const processedMarkdown = postprocessAngleBrackets(newMarkdown);
 
       // Check if this is actually a change
       const hasChanges = processedMarkdown !== markdown;
@@ -2572,6 +2748,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         // Use VS Code editor configuration for word wrap behavior
         diffMarkdown: '',
         codeMirrorExtensions: createCodeMirrorExtensions,
+        suppressHtmlProcessing: true,
       }),
       // Use default MDXEditor history behavior - our fix is to avoid setMarkdown() calls
       imagePlugin({
@@ -2617,9 +2794,9 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         directiveDescriptors: [
           AdmonitionDirectiveDescriptor,
           createCommentDirectiveDescriptor(focusedCommentId, setFocusedCommentId),
-          genericDirectiveDescriptor, // Refined version - only catches actual directives
+          genericDirectiveDescriptor,
         ],
-        // Try disabling escapeUnknownTextDirectives to see if it causes the equals escaping
+        // Disable escaping of unknown text directives
         escapeUnknownTextDirectives: false,
       }),
 
@@ -2631,6 +2808,8 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
             handleFontChange={handleFontChange}
             availableFonts={availableFonts}
             bookView={bookView}
+            bookViewWidth={bookViewWidth}
+            bookViewMargin={bookViewMargin}
             currentViewMode={currentViewMode}
             onViewModeChange={handleViewModeChange}
             searchInputRef={searchInputRef}
@@ -2640,6 +2819,10 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
             textAlign={textAlign}
             handleTextAlignChange={handleTextAlignChange}
             handleBookViewToggle={handleBookViewToggle}
+            localBookViewWidth={localBookViewWidth}
+            localBookViewMargin={localBookViewMargin}
+            handleBookViewWidthChange={handleBookViewWidthChange}
+            handleBookViewMarginChange={handleBookViewMarginChange}
           />
         ),
       }),
@@ -2731,6 +2914,8 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       handleFontChange,
       availableFonts,
       bookView,
+      bookViewWidth,
+      bookViewMargin,
       searchInputRef,
       isTyping,
       focusedCommentId,

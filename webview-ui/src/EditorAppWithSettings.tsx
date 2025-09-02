@@ -24,6 +24,8 @@ interface Settings {
   fontSize: number;
   textAlign: string;
   bookView: boolean;
+  bookViewWidth?: string;
+  bookViewMargin?: string;
 }
 
 function EditorAppWithSettings() {
@@ -52,6 +54,8 @@ function EditorAppWithSettings() {
           fontSize: message.settings.fontSize || 14,
           textAlign: message.settings.textAlign || 'left',
           bookView: message.settings.bookView || false,
+          bookViewWidth: message.settings.bookViewWidth || '5.5in',
+          bookViewMargin: message.settings.bookViewMargin || '0.5in',
         });
       }
     };

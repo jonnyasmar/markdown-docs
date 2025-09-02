@@ -2,7 +2,7 @@
   "name": "markdown-docs",
   "displayName": "Markdown Docs & Comments",
   "description": "WYSIWYG Markdown Editor with Inline Commenting (great for working with AI!)",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "icon": "media/icon.png",
   "publisher": "jonnyasmar",
   "repository": {
@@ -138,6 +138,16 @@
           "type": "boolean",
           "default": false,
           "description": "Enable book view mode with centered layout and padding"
+        },
+        "markdown-docs.bookViewWidth": {
+          "type": "string",
+          "default": "5.5in",
+          "description": "Width of the content area in book view mode (CSS units: px, em, rem, in, cm, etc.)"
+        },
+        "markdown-docs.bookViewMargin": {
+          "type": "string",
+          "default": "0.5in",
+          "description": "Horizontal margins in book view mode (CSS units: px, em, rem, in, cm, etc.)"
         }
       }
     }

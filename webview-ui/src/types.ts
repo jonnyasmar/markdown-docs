@@ -37,6 +37,8 @@ export interface WebviewMessage {
   fontSize?: number;
   textAlign?: string;
   bookView?: boolean;
+  bookViewWidth?: string;
+  bookViewMargin?: string;
   isInteracting?: boolean;
 }
 
