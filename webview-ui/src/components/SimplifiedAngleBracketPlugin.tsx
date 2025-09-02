@@ -63,7 +63,7 @@ export const preprocessCurlyBraces = (markdown: string): string => {
   // This prevents MDX from treating them as italic markdown syntax
   return markdown.replace(/\{\{([^}]*)\}\}/g, (match, content) => {
     // Skip if already processed (contains placeholder)
-    if (content.includes('UUUNDERSCOREUUU')) {
+    if (content.includes('＿')) {
       return match;
     }
 
@@ -74,7 +74,7 @@ export const preprocessCurlyBraces = (markdown: string): string => {
     }
 
     // Replace underscores with a unique placeholder (no underscores in placeholder!)
-    const protectedContent = content.replace(/_/g, 'UUUNDERSCOREUUU');
+    const protectedContent = content.replace(/_/g, '＿');
     return `{{${String(protectedContent)}}}`;
   });
 };
@@ -96,7 +96,7 @@ export const postprocessCurlyBraces = (markdown: string): string => {
   // Restore underscores that were protected as placeholders
   return markdown.replace(/\{\{([^}]*)\}\}/g, (match, content) => {
     // Replace placeholders back to underscores
-    const restoredContent = content.replace(/UUUNDERSCOREUUU/g, '_');
+    const restoredContent = content.replace(/＿/g, '_');
     return `{{${String(restoredContent)}}}`;
   });
 };
@@ -115,7 +115,7 @@ export const unescapeUnderscoresInCurlyBraces = (markdown: string): string => {
 export const displayCurlyBraces = (markdown: string): string => {
   // Convert placeholders back to underscores for display only
   return markdown.replace(/\{\{([^}]*)\}\}/g, (match, content) => {
-    const displayContent = content.replace(/UUUNDERSCOREUUU/g, '_');
+    const displayContent = content.replace(/＿/g, '_');
     return `{{${String(displayContent)}}}`;
   });
 };

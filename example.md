@@ -146,3 +146,5 @@ This example document should provide a good basis for showcasing the Markdown Do
 This<Still<Works>>
 
 {{so_does_this}}
+
+test<test<test>>
