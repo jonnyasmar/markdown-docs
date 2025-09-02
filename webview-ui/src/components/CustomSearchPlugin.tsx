@@ -251,12 +251,37 @@ export const customSearchPlugin = realmPlugin<CustomSearchPluginParams>({
     // Expose search API globally for the input component to access
     (window as any).customSearchAPI = searchAPI;
 
+    // Add keyboard shortcut listener for Cmd+F / Ctrl+F
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+        e.preventDefault();
+        e.stopPropagation();
+
+        // Focus the search input
+        const searchInput = document.querySelector('.inline-search-input') as HTMLInputElement;
+        if (searchInput) {
+          searchInput.focus();
+          searchInput.select(); // Select existing text for easy replacement
+        }
+      }
+    };
+
+    // Attach keyboard listener
+    document.addEventListener('keydown', handleKeyDown, true);
+
     return {
       update: () => {
         // Re-run search if we have a term and content has changed
         if (searchState.searchTerm && searchState.isHighlighted) {
           searchAPI.search(searchState.searchTerm, false); // Don't auto-scroll on content updates
         }
+      },
+
+      destroy: () => {
+        // Clean up keyboard listener
+        document.removeEventListener('keydown', handleKeyDown, true);
+        // Restore original scrollIntoView
+        restoreScrollIntoView();
       },
     };
   },
@@ -372,7 +397,7 @@ export const CustomSearchInput: React.FC = () => {
           type="text"
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
-          placeholder="Search... ⏎"
+          placeholder="Search..."
           className="inline-search-input"
           onMouseDown={e => e.stopPropagation()}
         />
