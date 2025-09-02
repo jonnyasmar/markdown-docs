@@ -885,15 +885,15 @@ button[role='combobox'][aria-label='Language']:hover,
   opacity: 0.8;
 }
 
-/* Built-in MDXEditor search highlights (CSS Custom Highlight API) */
+/* Custom search highlights (CSS Custom Highlight API) - controlled by our custom plugin */
 /* General matches */
-.mdx-editor ::highlight(MdxSearch) {
+.mdx-editor ::highlight(mdx-search) {
   background-color: rgba(0, 200, 0, 0.35);
   color: inherit;
 }
 /* Focused/current match */
-.mdx-editor ::highlight(MdxFocusSearch) {
-  background-color: rgba(0, 200, 0, 0.35);
+.mdx-editor ::highlight(mdx-focus-search) {
+  background-color: rgba(255, 165, 0, 0.5);
   color: inherit;
 }
 
@@ -1601,8 +1601,9 @@ body {
   padding: 0;
   width: 130px;
   padding-left: 30px;
-  margin-left: -30px;
+  margin-left: -28px;
   padding-right: 20px;
+  border-radius: 4px;
 }
 
 .inline-search-input::placeholder {
@@ -1624,6 +1625,17 @@ body {
 .search-clear-btn:hover {
   background: var(--vscode-button-hoverBackground);
   color: var(--vscode-button-foreground);
+}
+
+.search-match-info {
+  position: absolute;
+  right: 25px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  pointer-events: none;
+  font-family: monospace;
 }
 
 /* Search highlighting styles - high specificity to override comment highlights */

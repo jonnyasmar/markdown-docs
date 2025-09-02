@@ -33,14 +33,13 @@ import {
   markdownShortcutPlugin,
   quotePlugin,
   realmPlugin,
-  searchPlugin,
   tablePlugin,
   thematicBreakPlugin,
   toolbarPlugin,
-  useEditorSearch,
 } from '@mdxeditor/editor';
 import '@mdxeditor/editor/style.css';
 import { REDO_COMMAND, UNDO_COMMAND } from 'lexical';
+import { customSearchPlugin, CustomSearchInput } from './CustomSearchPlugin';
 import {
   AArrowDown,
   AArrowUp,
@@ -356,7 +355,6 @@ const ToolbarWithCommentButton = React.memo(
     handleFontChange,
     availableFonts,
     searchInputRef,
-    isTyping,
     currentViewMode,
     fontSize,
     handleFontSizeChange,
@@ -488,7 +486,7 @@ const ToolbarWithCommentButton = React.memo(
           {/* Search - only in rich-text mode */}
           {currentViewMode !== 'source' && (
             <div className="toolbar-search">
-              <MDXInlineSearchInput searchInputRef={searchInputRef} isTyping={isTyping} />
+              <CustomSearchInput />
             </div>
           )}
         </div>
@@ -587,92 +585,6 @@ const useViewModeTracking = (onViewModeChange: (mode: 'rich-text' | 'source' | '
   }, [onViewModeChange]);
 };
 
-// Stateless search input with debounced search operation based on ref value
-const MDXInlineSearchInput = ({
-  searchInputRef,
-  isTyping,
-}: {
-  searchInputRef: React.RefObject<HTMLInputElement>;
-  isTyping?: boolean;
-}) => {
-  const { setSearch, openSearch } = useEditorSearch();
-  const debounceTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
-  const [hasValue, setHasValue] = React.useState(false);
-
-  // Optimized debounced search function that reads from the input ref
-  const debouncedSearch = React.useCallback(() => {
-    if (debounceTimeoutRef.current !== null) {
-      clearTimeout(debounceTimeoutRef.current);
-    }
-
-    // Use longer debounce during active typing for better performance
-    const debounceTime = isTyping ? 300 : 150;
-
-    debounceTimeoutRef.current = setTimeout(() => {
-      const currentValue = searchInputRef.current?.value ?? '';
-      // Use startTransition for non-urgent search updates
-      startTransition(() => {
-        setSearch(currentValue);
-      });
-    }, debounceTime);
-  }, [setSearch, searchInputRef, isTyping]);
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    e.stopPropagation();
-    const value = e.target.value;
-    setHasValue(!!value); // Track if input has value for clear button visibility
-    // Don't interfere with the input's natural state - just trigger debounced search
-    debouncedSearch();
-  };
-
-  const handleClear = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (searchInputRef.current) {
-      searchInputRef.current.value = '';
-    }
-    setHasValue(false);
-    setSearch('');
-    if (debounceTimeoutRef.current !== null) {
-      clearTimeout(debounceTimeoutRef.current);
-    }
-    requestAnimationFrame(() => searchInputRef.current?.focus());
-  };
-
-  React.useEffect(() => {
-    openSearch();
-  }, [openSearch]);
-
-  // Cleanup timeout on unmount
-  React.useEffect(() => {
-    return () => {
-      if (debounceTimeoutRef.current !== null) {
-        clearTimeout(debounceTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  return (
-    <div className="inline-search-container" onMouseDown={e => e.stopPropagation()}>
-      <div className="search-input-wrapper">
-        <span className="search-icon">🔍</span>
-        <input
-          ref={searchInputRef}
-          type="text"
-          onChange={handleInputChange}
-          placeholder="Search..."
-          className="inline-search-input"
-          onMouseDown={e => e.stopPropagation()}
-        />
-        {hasValue && (
-          <button type="button" onClick={handleClear} className="search-clear-btn" title="Clear search">
-            ×
-          </button>
-        )}
-      </div>
-    </div>
-  );
-};
 
 // Memoized comment item to prevent unnecessary re-renders with many comments
 const CommentItem = React.memo(
@@ -2742,13 +2654,12 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       tablePlugin(),
       thematicBreakPlugin(),
       markdownShortcutPlugin(),
-      searchPlugin(),
+      customSearchPlugin({}),
       frontmatterPlugin(),
       diffSourcePlugin({
         // Use VS Code editor configuration for word wrap behavior
         diffMarkdown: '',
         codeMirrorExtensions: createCodeMirrorExtensions,
-        suppressHtmlProcessing: true,
       }),
       // Use default MDXEditor history behavior - our fix is to avoid setMarkdown() calls
       imagePlugin({
@@ -2813,7 +2724,6 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
             currentViewMode={currentViewMode}
             onViewModeChange={handleViewModeChange}
             searchInputRef={searchInputRef}
-            isTyping={isTyping}
             fontSize={fontSize}
             handleFontSizeChange={handleFontSizeChange}
             textAlign={textAlign}
@@ -2917,7 +2827,6 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       bookViewWidth,
       bookViewMargin,
       searchInputRef,
-      isTyping,
       focusedCommentId,
       setFocusedCommentId,
       pendingComment,

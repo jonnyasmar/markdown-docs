@@ -62,7 +62,9 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
   }
 
   resolveCustomTextEditor(document: vscode.TextDocument, webviewPanel: vscode.WebviewPanel): void | Thenable<void> {
-    this.outputChannel.appendLine(`resolveCustomTextEditor called for: ${document.uri.fsPath}`);
+    this.outputChannel.appendLine(
+      `resolveCustomTextEditor called for: ${document.uri.fsPath} // ${JSON.stringify(document)}`,
+    );
 
     try {
       this.outputChannel.appendLine('Step 1: Setting title');
@@ -409,7 +411,6 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
       return;
     }
 
-
     this.updatingFromWebview = true;
     this.lastWebviewContent = newContent;
     // Clear the last sent to webview so we can send updates back
@@ -584,6 +585,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     vscode.window.registerCustomEditorProvider('markdown-docs.editor', provider, {
+      supportsMultipleEditorsPerDocument: true,
       webviewOptions: {
         retainContextWhenHidden: true,
       },

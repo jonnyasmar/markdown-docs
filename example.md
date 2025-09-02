@@ -1,6 +1,6 @@
 # Markdown Docs: Example Document
 
-This document serves as an example to showcase the capabilities of the **Markdown Docs** VS Code extension. It includes various Markdown elements and highlights features relevant to the extension.
+This document serves as an example to showcase the capabilities of the **Markdown Docs** VS Code extension. It includes various Markdown elements and highlights features relevant to the extension. Test. Test.
 
 ---
 
@@ -146,5 +146,3 @@ This example document should provide a good basis for showcasing the Markdown Do
 This<Still<Works>>
 
 {{so_does_this}}
-
-test<test<test>>
