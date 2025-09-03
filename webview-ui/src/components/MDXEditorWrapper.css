@@ -455,6 +455,18 @@ button[role='combobox'][aria-label='Language']:hover,
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
 }
 
+[data-radix-select-viewport] {
+  max-height: 300px !important;
+  overflow-y: auto !important;
+  scrollbar-width: auto !important;
+  -ms-overflow-style: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+[data-radix-select-viewport]::-webkit-scrollbar {
+  display: block !important;
+}
+
 /* Fix dropdown items */
 [data-radix-select-item],
 [data-radix-select-content] [role='option'] {
@@ -1773,8 +1785,8 @@ body {
 /* ===== IMAGE UPLOAD DIALOG STYLING ===== */
 /* EXTREMELY SPECIFIC targeting to avoid conflicts - target MDXEditor image dialog only */
 
-.mdx-editor-container [role='dialog'],
-.mdx-editor [role='dialog'] {
+.mdx-editor-container [role='not-dialog'],
+.mdx-editor [role='not-dialog'] {
   background: var(--vscode-editor-background) !important;
   border: 1px solid var(--vscode-widget-border) !important;
 }
@@ -1796,8 +1808,8 @@ body {
 } */
 
 /* Section labels and text */
-.mdx-editor [role='dialog'] p,
-.mdx-editor [role='dialog'] label {
+.mdx-editor [role='not-dialog'] p,
+.mdx-editor [role='not-dialog'] label {
   color: var(--vscode-foreground) !important;
   font-size: 14px !important;
   font-weight: 500 !important;
@@ -1807,12 +1819,12 @@ body {
 }
 
 /* Better spacing between sections */
-.mdx-editor [role='dialog'] > * + * {
+.mdx-editor [role='not-dialog'] > * + * {
   margin-top: 20px !important;
 }
 
 /* All input styling */
-.mdx-editor [role='dialog'] input {
+.mdx-editor [role='not-dialog'] input {
   background: var(--vscode-input-background) !important;
   color: var(--vscode-input-foreground) !important;
   border: 1px solid var(--vscode-input-border) !important;
@@ -1825,23 +1837,23 @@ body {
   margin-bottom: 16px !important;
 }
 
-.mdx-editor [role='dialog'] input[type='file'] {
+.mdx-editor [role='not-dialog'] input[type='file'] {
   background: var(--vscode-button-secondaryBackground) !important;
   color: var(--vscode-button-secondaryForeground) !important;
   cursor: pointer !important;
 }
 
-.mdx-editor [role='dialog'] input:focus {
+.mdx-editor [role='not-dialog'] input:focus {
   border-color: var(--vscode-focusBorder) !important;
   outline: none !important;
 }
 
-.mdx-editor [role='dialog'] input::placeholder {
+.mdx-editor [role='not-dialog'] input::placeholder {
   color: var(--vscode-input-placeholderForeground) !important;
 }
 
 /* Dialog buttons */
-.mdx-editor [role='dialog'] button {
+.mdx-editor [role='not-dialog'] button {
   background: var(--vscode-button-background) !important;
   color: var(--vscode-button-foreground) !important;
   border: 1px solid var(--vscode-widget-border) !important;
@@ -1854,17 +1866,17 @@ body {
   margin-top: 16px !important;
 }
 
-.mdx-editor [role='dialog'] button:hover {
+.mdx-editor [role='not-dialog'] button:hover {
   background: var(--vscode-button-hoverBackground) !important;
 }
 
 /* Secondary button (Cancel) */
-.mdx-editor [role='dialog'] button:first-of-type {
+.mdx-editor [role='not-dialog'] button:first-of-type {
   background: var(--vscode-button-secondaryBackground) !important;
   color: var(--vscode-button-secondaryForeground) !important;
 }
 
-.mdx-editor [role='dialog'] button:first-of-type:hover {
+.mdx-editor [role='not-dialog'] button:first-of-type:hover {
   background: var(--vscode-button-secondaryHoverBackground) !important;
 }
 

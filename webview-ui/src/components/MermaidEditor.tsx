@@ -212,15 +212,29 @@ export const MermaidEditor: React.FC<MermaidEditorProps> = ({
   }, [isDarkTheme, renderMermaid]);
 
   // Debounced rendering for performance optimization
+  // Memory leak fix: Store timeout ref for proper cleanup
+  const timeoutRef = useRef<NodeJS.Timeout | undefined>();
+  
   const debouncedRenderMermaid = useMemo(() => {
-    let timeoutId: NodeJS.Timeout;
     return () => {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      timeoutRef.current = setTimeout(() => {
         void renderMermaid();
       }, 300); // 300ms debounce
     };
   }, [renderMermaid]);
+  
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = undefined;
+      }
+    };
+  }, []);
 
   // Re-render when code changes and when in preview or split mode
   useEffect(() => {

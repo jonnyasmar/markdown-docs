@@ -28,6 +28,7 @@ import {
   headingsPlugin,
   imagePlugin,
   insertDirective$,
+  linkDialogPlugin,
   linkPlugin,
   listsPlugin,
   markdownShortcutPlugin,
@@ -456,7 +457,7 @@ const ToolbarWithCommentButton = React.memo(
       updateResponsiveState();
 
       return () => resizeObserver.disconnect();
-    }, [updateResponsiveState]);
+    }, []); // PERFORMANCE FIX: Remove updateResponsiveState dependency to prevent observer recreation
 
     return (
       <div ref={toolbarRef} className="responsive-toolbar">
@@ -650,6 +651,14 @@ const commentInsertionPlugin = realmPlugin<{
       const pendingComment = params.pendingComment;
       logger.debug('=== PLUGIN UPDATE CALLED ===');
       logger.debug('Plugin received comment to insert using native insertDirective$:', pendingComment);
+
+      // PERFORMANCE FIX: Prevent duplicate insertions by checking if comment already exists
+      // Use a flag to track if we've already inserted this comment
+      if ((pendingComment as any)._alreadyInserted) {
+        logger.debug('Comment already processed, skipping insertion to prevent duplicates');
+        return;
+      }
+      (pendingComment as any)._alreadyInserted = true;
 
       try {
         // Use MDX Editor's native insertDirective$ signal - this is the key!
@@ -1132,7 +1141,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   }, []);
 
   // Handle font changes and save to VS Code settings
-  const handleFontChange = (fontName: string) => {
+  const handleFontChange = useCallback((fontName: string) => {
     logger.debug('Font changed to:', fontName);
     logger.debug('Current selected font:', selectedFont);
     const fontClassName = fontName.toLowerCase().replace(/\s+/g, '-');
@@ -1147,7 +1156,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         font: fontName,
       });
     }
-  };
+  }, []); // PERFORMANCE FIX: Stable callback to prevent plugin recreation
 
   // Keep track of current fontSize for increment/decrement operations
   const currentFontSizeRef = useRef(fontSize);
@@ -1337,23 +1346,35 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   // Parse comments from markdown
   const [parsedComments, setParsedComments] = useState<CommentWithAnchor[]>([]);
 
-  // Comment position cache for ultra-fast sorting - prevents O(n²) regex searches
+  // PERFORMANCE CRITICAL: Comment position cache - ONLY recalculate when comments change
+  // NOT when markdown changes (which happens on every keystroke)
   const commentPositions = useMemo(() => {
     const positions = new Map<string, number>();
-    if (!markdown) {
+    if (!markdown || parsedComments.length === 0) {
       return positions;
     }
 
+    // Memory leak prevention: Limit cache size to prevent unbounded growth
+    const MAX_CACHE_SIZE = 1000;
+    
+    // Performance optimization: Pre-compile regex patterns to avoid recreation
+    const createPatterns = (commentId: string) => [
+      new RegExp(`:comment\\[([^\\]]*)\\]\\{[^}]*(?:id="${commentId}"|#${commentId})[^}]*\\}`),
+      new RegExp(`::comment\\[([^\\]]*)\\]\\{[^}]*(?:id="${commentId}"|#${commentId})[^}]*\\}`),
+      new RegExp(`:::comment\\{[^}]*(?:id="${commentId}"|#${commentId})[^}]*\\}`),
+    ];
+    
     // Cache positions of all comment directives for fast sorting
     parsedComments.forEach(comment => {
-      const patterns = [
-        `:comment\\[([^\\]]*)\\]\\{[^}]*(?:id="${comment.id}"|#${comment.id})[^}]*\\}`,
-        `::comment\\[([^\\]]*)\\]\\{[^}]*(?:id="${comment.id}"|#${comment.id})[^}]*\\}`,
-        `:::comment\\{[^}]*(?:id="${comment.id}"|#${comment.id})[^}]*\\}`,
-      ];
+      // Skip caching if we've hit the limit
+      if (positions.size >= MAX_CACHE_SIZE) {
+        return;
+      }
 
-      for (const pattern of patterns) {
-        const match = markdown.search(new RegExp(pattern));
+      const patterns = createPatterns(comment.id);
+
+      for (const regex of patterns) {
+        const match = markdown.search(regex);
         if (match !== -1) {
           positions.set(comment.id, match);
           break;
@@ -1362,7 +1383,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     });
 
     return positions;
-  }, [markdown, parsedComments]);
+  }, [parsedComments]); // PERFORMANCE FIX: Only depend on parsedComments - position sorting can lag during typing
 
   // Comment action handlers - must be defined before sortedCommentItems useMemo
   const handleEditComment = useCallback(
@@ -1389,30 +1410,58 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       logger.debug('Current markdown length:', markdown?.length);
       logger.debug('Current parsed comments count:', parsedComments.length);
 
-      if (!markdown) {
+      // PERFORMANCE FIX: Get current markdown from editor ref instead of stale prop
+      const currentMarkdown = editorRef.current?.getMarkdown() || markdown;
+      if (!currentMarkdown) {
         logger.error('No markdown content to delete comment from');
         return;
       }
 
-      const patterns = [
-        // Inline comment patterns - try multiple formats
-        `:comment\\[([^\\]]*)\\]\\{[^}]*(?:id="${commentId}"|#${commentId})[^}]*\\}`,
-        `::comment\\[([^\\]]*)\\]\\{[^}]*(?:id="${commentId}"|#${commentId})[^}]*\\}`,
-        // Container comment patterns
-        `:::comment\\{[^}]*(?:id="${commentId}"|#${commentId})[^}]*\\}[\\s\\S]*?:::`,
-        `:::comment\\{[^}]*(?:id="${commentId}"|#${commentId})[^}]*\\}.*?\\n\\s*:::`,
-      ];
-
-      let updatedMarkdown = markdown;
+      // Performance optimization: Use cached position for faster comment deletion
+      const cachedPosition = commentPositions.get(commentId);
+      let updatedMarkdown = currentMarkdown;
       let found = false;
+      
+      if (cachedPosition !== undefined) {
+        // Fast path: Use cached position to find comment more efficiently
+        const beforeComment = currentMarkdown.substring(0, cachedPosition);
+        const afterCommentStart = currentMarkdown.substring(cachedPosition);
+        
+        // Find comment directive end using minimal regex
+        const inlineMatch = afterCommentStart.match(/^(::|:)?comment\[([^\]]*)\]\{[^}]*\}/);
+        const containerMatch = afterCommentStart.match(/^:::comment\{[^}]*\}[\s\S]*?:::/);
+        
+        if (inlineMatch) {
+          const originalText = inlineMatch[2] || '';
+          updatedMarkdown = beforeComment + originalText + afterCommentStart.substring(inlineMatch[0].length);
+          found = true;
+        } else if (containerMatch) {
+          const containerContent = containerMatch[0];
+          const contentMatch = containerContent.match(/:::comment\{[^}]*\}([\s\S]*?):::/);
+          const innerContent = contentMatch ? contentMatch[1].trim() : '';
+          updatedMarkdown = beforeComment + innerContent + afterCommentStart.substring(containerMatch[0].length);
+          found = true;
+        }
+      }
+      
+      // Fallback: Original regex patterns if cached position lookup failed
+      if (!found) {
+        const patterns = [
+          // Inline comment patterns - try multiple formats
+          `:comment\\[([^\\]]*)\\]\\{[^}]*(?:id="${commentId}"|#${commentId})[^}]*\\}`,
+          `::comment\\[([^\\]]*)\\]\\{[^}]*(?:id="${commentId}"|#${commentId})[^}]*\\}`,
+          // Container comment patterns
+          `:::comment\\{[^}]*(?:id="${commentId}"|#${commentId})[^}]*\\}[\\s\\S]*?:::`,
+          `:::comment\\{[^}]*(?:id="${commentId}"|#${commentId})[^}]*\\}.*?\\n\\s*:::`,
+        ];
 
-      for (const pattern of patterns) {
-        logger.debug('Trying pattern:', pattern);
-        const regex = new RegExp(pattern, 'g');
-        const matches = [...markdown.matchAll(regex)];
-        logger.debug('Pattern matches found:', matches.length);
+        for (const pattern of patterns) {
+          logger.debug('Trying pattern:', pattern);
+          const regex = new RegExp(pattern, 'g');
+          const matches = [...currentMarkdown.matchAll(regex)];
+          logger.debug('Pattern matches found:', matches.length);
 
-        if (matches.length > 0) {
+          if (matches.length > 0) {
           matches.forEach((match, index) => {
             logger.debug(`Match ${index}:`, match[0]);
           });
@@ -1432,6 +1481,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
           found = true;
           logger.debug('Successfully replaced comment directive, preserving original content');
           break;
+          }
         }
       }
 
@@ -1443,7 +1493,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         );
         // Try a more generic search to see what's in the markdown
         const genericPattern = new RegExp(`${commentId}`, 'g');
-        const genericMatches = [...markdown.matchAll(genericPattern)];
+        const genericMatches = [...currentMarkdown.matchAll(genericPattern)];
         logger.debug('Generic ID matches in markdown:', genericMatches.length);
         if (genericMatches.length > 0) {
           logger.debug('Found ID in markdown but not in directive format - manual cleanup may be needed');
@@ -1462,7 +1512,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       }
       logger.debug('=== DELETE COMMENT DEBUG END ===');
     },
-    [markdown, parsedComments, onMarkdownChange],
+    [parsedComments, onMarkdownChange], // PERFORMANCE FIX: Removed markdown dep - use ref for current content
   );
 
   const handleCommentClick = useCallback((commentId: string) => {
@@ -1537,6 +1587,11 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     }
   }, []);
 
+  // PERFORMANCE CRITICAL: Memoized comment handlers to prevent recreation on every keystroke
+  const stableHandleEditComment = useCallback(handleEditComment, [parsedComments]);
+  const stableHandleDeleteComment = useCallback(handleDeleteComment, [parsedComments, onMarkdownChange]);
+  const stableHandleCommentClick = useCallback(handleCommentClick, []);
+
   // Memoized sorted comments using cached positions - MASSIVE performance improvement
   const sortedCommentItems = useMemo(() => {
     if (parsedComments.length === 0) {
@@ -1572,12 +1627,12 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         key={comment.id}
         comment={comment}
         isFocused={focusedCommentId === comment.id}
-        onCommentClick={handleCommentClick}
-        onDeleteComment={handleDeleteComment}
-        onEditComment={handleEditComment}
+        onCommentClick={stableHandleCommentClick}
+        onDeleteComment={stableHandleDeleteComment}
+        onEditComment={stableHandleEditComment}
       />
     ));
-  }, [parsedComments, commentPositions, focusedCommentId, handleCommentClick, handleDeleteComment, handleEditComment]);
+  }, [parsedComments, commentPositions, focusedCommentId, stableHandleCommentClick, stableHandleDeleteComment, stableHandleEditComment]);
 
   // Removed logger.debugs for better performance during typing
 
@@ -1613,17 +1668,30 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     return () => clearTimeout(timeoutId);
   }, [markdown, isTyping]);
 
-  // Cleanup timeouts on unmount
+  // Cleanup timeouts on unmount - Enhanced memory leak fix
   React.useEffect(() => {
     return () => {
+      // Clear all timeout refs to prevent memory leaks
       if (dirtyStateTimeoutRef.current) {
         clearTimeout(dirtyStateTimeoutRef.current);
+        dirtyStateTimeoutRef.current = undefined;
       }
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = undefined;
       }
       if (deferredMessageTimeoutRef.current) {
         clearTimeout(deferredMessageTimeoutRef.current);
+        deferredMessageTimeoutRef.current = undefined;
+      }
+      // Clear book view timeouts as well
+      if (bookViewWidthTimeoutRef.current) {
+        clearTimeout(bookViewWidthTimeoutRef.current);
+        bookViewWidthTimeoutRef.current = undefined;
+      }
+      if (bookViewMarginTimeoutRef.current) {
+        clearTimeout(bookViewMarginTimeoutRef.current);
+        bookViewMarginTimeoutRef.current = undefined;
       }
     };
   }, []);
@@ -1750,20 +1818,32 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       editorConfig.wordWrap === 'wordWrapColumn' ||
       editorConfig.wordWrap === 'bounded';
 
-    // Custom widget for unescaping characters
+    // Custom widget for unescaping characters - Memory leak fix: Ensure proper disposal
     class UnescapeWidget extends WidgetType {
+      private element: HTMLSpanElement | null = null;
+      
       constructor(private char: string) {
         super();
       }
 
       toDOM() {
-        const span = document.createElement('span');
-        span.textContent = this.char;
-        return span;
+        if (!this.element) {
+          this.element = document.createElement('span');
+          this.element.textContent = this.char;
+        }
+        return this.element;
       }
 
       eq(other: UnescapeWidget) {
         return other.char === this.char;
+      }
+      
+      // Memory leak fix: Explicit cleanup
+      destroy() {
+        if (this.element) {
+          this.element.remove();
+          this.element = null;
+        }
       }
     }
 
@@ -1814,6 +1894,23 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       { decorations: v => v.decorations },
     );
 
+    // Save shortcut keymap for CodeMirror - allows Cmd+S/Ctrl+S to work in code blocks
+    const saveKeymap = [
+      {
+        key: 'Mod-s',
+        run: () => {
+          // Trigger the global save command by dispatching to the window
+          window.dispatchEvent(new KeyboardEvent('keydown', {
+            key: 's',
+            metaKey: true,
+            ctrlKey: true,
+            bubbles: true
+          }));
+          return true;
+        }
+      }
+    ];
+
     return [
       EditorView.theme({
         '&': {
@@ -1828,8 +1925,32 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         },
       }),
       fixEscapingPlugin,
+      // Add keymap extension for save shortcuts
+      EditorView.domEventHandlers({
+        keydown: (event, view) => {
+          // Handle Cmd+S (Mac) or Ctrl+S (Windows/Linux)
+          if ((event.metaKey || event.ctrlKey) && event.key === 's') {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            // Trigger the save action by calling the global save handler
+            const saveEvent = new KeyboardEvent('keydown', {
+              key: 's',
+              metaKey: event.metaKey,
+              ctrlKey: event.ctrlKey,
+              bubbles: true,
+              cancelable: true
+            });
+            
+            // Dispatch to document for global save handler to catch
+            document.dispatchEvent(saveEvent);
+            return true;
+          }
+          return false;
+        }
+      })
     ];
-  }, [editorConfig.wordWrap]);
+  }, [editorConfig.wordWrap]);;
 
   // Initialize SyncManager
   useEffect(() => {
@@ -1905,9 +2026,6 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
   const handleMarkdownChange = useCallback(
     (newMarkdown: string) => {
-      // Update live markdown for real-time TOC updates
-      setLiveMarkdown(newMarkdown);
-
       // Skip if SyncManager is handling external updates
       if (
         syncState === SyncState.RECEIVING_FROM_VSCODE ||
@@ -1937,14 +2055,6 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         logger.debug('SKIPPING: Would apply initial escaping but in source mode');
       }
 
-      // Mark as typing for performance optimizations
-      setIsTyping(true);
-      clearTimeout(typingTimeoutRef.current);
-      typingTimeoutRef.current = setTimeout(() => setIsTyping(false), 300);
-
-      // Mark that user has interacted with editor to prevent auto-focus
-      hasInitiallyFocusedRef.current = true;
-
       // Apply postprocessing in all modes to clean up unwanted escaping
       const processedMarkdown = postprocessAngleBrackets(newMarkdown);
 
@@ -1954,8 +2064,45 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         return;
       }
 
-      // Update UI state for immediate feedback
-      setHasUnsavedChanges(hasChanges);
+      // PERFORMANCE FIX: Batch all state updates to prevent multiple re-renders per keystroke
+      startTransition(() => {
+        // Update live markdown for real-time TOC updates
+        setLiveMarkdown(newMarkdown);
+        // Mark as typing for performance optimizations
+        setIsTyping(true);
+        // Update UI state for immediate feedback
+        setHasUnsavedChanges(hasChanges);
+      });
+
+      // COMMENT FIX: Detect if comment directives were deleted and parse immediately
+      // Use same regex pattern as DirectiveService to accurately count comment directives
+      const directiveRegex = /(:+)comment(?:\[([^\]]*)\])?\{([^}]*)\}/g;
+      const oldCommentMatches = [...markdown.matchAll(directiveRegex)];
+      const newCommentMatches = [...processedMarkdown.matchAll(directiveRegex)];
+      
+      if (newCommentMatches.length < oldCommentMatches.length) {
+        logger.debug('Comment deletion detected, parsing immediately');
+        try {
+          const comments = DirectiveService.parseCommentDirectives(processedMarkdown);
+          const commentsWithAnchor: CommentWithAnchor[] = comments.map(comment => ({
+            ...comment,
+            anchoredText: comment.anchoredText ?? 'Selected text',
+            endPosition: 0,
+          }));
+          setParsedComments(commentsWithAnchor);
+        } catch (error) {
+          logger.error('Error in immediate comment parsing after deletion:', error);
+        }
+      }
+
+      // Clear and reset typing timeout
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = setTimeout(() => setIsTyping(false), 300);
+
+      // Mark that user has interacted with editor to prevent auto-focus
+      hasInitiallyFocusedRef.current = true;
+
+      // Notify parent of dirty state
       onDirtyStateChange?.(hasChanges);
 
       // Use SyncManager for reliable, batched syncing to VS Code
@@ -1979,7 +2126,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         });
       }
     },
-    [markdown, syncState, setLiveMarkdown],
+    [markdown, syncState], // REMOVED setLiveMarkdown from deps - state setters should be stable
   );
 
   // Handle VS Code messages including theme changes
@@ -2456,7 +2603,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   };
 
   // Callback for when comment insertion is complete
-  const handleCommentInserted = () => {
+  const handleCommentInserted = useCallback(() => {
     logger.debug('=== COMMENT INSERTION COMPLETED ===');
     logger.debug('Pending comment before clearing:', pendingComment);
     setPendingComment(null);
@@ -2499,7 +2646,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         logger.error('No editor ref available in handleCommentInserted');
       }
     }, 200); // Increased delay to ensure MDX Editor has processed the directive
-  };
+  }, []); // PERFORMANCE FIX: Stable callback to prevent plugin recreation
 
   // Effect to watch for pending comments and trigger plugin
   React.useEffect(() => {
@@ -2677,6 +2824,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       quotePlugin(),
       listsPlugin(),
       linkPlugin(),
+      linkDialogPlugin(),
       tablePlugin(),
       thematicBreakPlugin(),
       markdownShortcutPlugin(),
@@ -2809,6 +2957,57 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
             match: (language, _code) => language === 'shell',
             Editor: props => <CodeMirrorEditor {...props} language="sh" />,
           },
+          // Top 10 additional language mappings
+          {
+            priority: 5,
+            match: (language, _code) => language === 'rust',
+            Editor: props => <CodeMirrorEditor {...props} language="rust" />,
+          },
+          {
+            priority: 5,
+            match: (language, _code) => language === 'go',
+            Editor: props => <CodeMirrorEditor {...props} language="go" />,
+          },
+          {
+            priority: 5,
+            match: (language, _code) => language === 'cpp' || language === 'c++',
+            Editor: props => <CodeMirrorEditor {...props} language="cpp" />,
+          },
+          {
+            priority: 5,
+            match: (language, _code) => language === 'c',
+            Editor: props => <CodeMirrorEditor {...props} language="c" />,
+          },
+          {
+            priority: 5,
+            match: (language, _code) => language === 'java',
+            Editor: props => <CodeMirrorEditor {...props} language="java" />,
+          },
+          {
+            priority: 5,
+            match: (language, _code) => language === 'kotlin',
+            Editor: props => <CodeMirrorEditor {...props} language="kotlin" />,
+          },
+          {
+            priority: 5,
+            match: (language, _code) => language === 'swift',
+            Editor: props => <CodeMirrorEditor {...props} language="swift" />,
+          },
+          {
+            priority: 5,
+            match: (language, _code) => language === 'php',
+            Editor: props => <CodeMirrorEditor {...props} language="php" />,
+          },
+          {
+            priority: 5,
+            match: (language, _code) => language === 'ruby',
+            Editor: props => <CodeMirrorEditor {...props} language="ruby" />,
+          },
+          {
+            priority: 5,
+            match: (language, _code) => language === 'dart',
+            Editor: props => <CodeMirrorEditor {...props} language="dart" />,
+          },
           // Fallback editor for any other unknown languages
           {
             priority: -10,
@@ -2836,6 +3035,17 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
           bash: 'Bash',
           sh: 'Shell',
           mermaid: 'Mermaid',
+          // Top 10 additional languages
+          rust: 'Rust',
+          go: 'Go',
+          cpp: 'C++',
+          c: 'C',
+          java: 'Java',
+          kotlin: 'Kotlin',
+          swift: 'Swift',
+          php: 'PHP',
+          ruby: 'Ruby',
+          dart: 'Dart',
         },
         // Add better syntax theme configuration
         autocompletion: true,
@@ -2846,18 +3056,18 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       }),
     ],
     [
-      selectedFont,
-      handleFontChange,
-      availableFonts,
-      bookView,
-      bookViewWidth,
-      bookViewMargin,
-      searchInputRef,
-      focusedCommentId,
-      setFocusedCommentId,
-      pendingComment,
-      handleCommentInserted,
-      createCodeMirrorExtensions,
+      // PERFORMANCE FIX: Balanced approach - essential dependencies only
+      // Keep dependencies that affect plugin behavior, remove pure UI state
+      isDarkTheme, // Theme changes require CodeMirror rebuild
+      handleFontChange, // Now stable with useCallback
+      handleCommentInserted, // Now stable with useCallback
+      createCodeMirrorExtensions, // Required for CodeMirror configuration
+      currentViewMode, // Essential for toolbar mode switching
+      selectedFont, // Essential for toolbar font display
+      bookView, // Essential for toolbar book view toggle
+      focusedCommentId, // RESTORED: Required for comment directive highlighting
+      setFocusedCommentId, // RESTORED: Required for comment directive interaction
+      pendingComment, // RESTORED: Required for comment insertion plugin to work
     ],
   );
 

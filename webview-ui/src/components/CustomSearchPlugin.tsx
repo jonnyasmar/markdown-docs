@@ -271,10 +271,12 @@ export const customSearchPlugin = realmPlugin<CustomSearchPluginParams>({
 
     return {
       update: () => {
-        // Re-run search if we have a term and content has changed
-        if (searchState.searchTerm && searchState.isHighlighted) {
-          searchAPI.search(searchState.searchTerm, false); // Don't auto-scroll on content updates
-        }
+        // PERFORMANCE FIX: Disable automatic search re-run on content changes
+        // This was causing full DOM traversal + regex matching on every keystroke
+        // User can manually refresh search if needed after typing
+        // if (searchState.searchTerm && searchState.isHighlighted) {
+        //   searchAPI.search(searchState.searchTerm, false);
+        // }
       },
 
       destroy: () => {

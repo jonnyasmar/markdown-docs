@@ -27,7 +27,7 @@ export const useEditorStatus = (
   const statsTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
   const cursorTrackerRef = React.useRef<CursorTracker | null>(null);
 
-  // Memoized stats calculation function
+  // PERFORMANCE FIX: Stable stats calculation to prevent constant recreation
   const calculateStats = React.useCallback(() => {
     const markdownContent = editorRef?.current?.getMarkdown() || content;
 
@@ -40,15 +40,13 @@ export const useEditorStatus = (
     cursorTrackerRef.current?.updatePosition(markdownContent);
 
     const charCount = markdownContent.length;
-    const words = markdownContent
-      .trim()
-      .split(/\s+/)
-      .filter(word => word.length > 0);
-    const wordCount = words.length;
+    // PERFORMANCE FIX: More efficient word counting - avoid filter()
+    const words = markdownContent.trim().split(/\s+/);
+    const wordCount = words.length === 1 && words[0] === '' ? 0 : words.length;
     const readingTime = Math.ceil(wordCount / 200);
 
     setStats({ wordCount, charCount, readingTime });
-  }, [content, editorRef]);
+  }, []); // CRITICAL: Remove content dep to prevent constant recreation
 
   // Initialize cursor tracker
   React.useEffect(() => {

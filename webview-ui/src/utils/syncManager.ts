@@ -45,8 +45,12 @@ export class SyncManager {
   private onStateChange?: (state: SyncState) => void;
   private onContentUpdate?: (content: string) => void;
 
+  // Memory leak fix: Store listener reference for proper cleanup
+  private messageListener: (event: MessageEvent) => void;
+
   constructor(vscodeApi: any) {
     this.vscodeApi = vscodeApi;
+    this.messageListener = this.handleMessage.bind(this);
     this.setupMessageListener();
   }
 
@@ -55,15 +59,20 @@ export class SyncManager {
    */
   private setupMessageListener(): void {
     if (typeof window !== 'undefined') {
-      window.addEventListener('message', event => {
-        const message = event.data;
+      window.addEventListener('message', this.messageListener);
+    }
+  }
 
-        if (message.command === 'syncResponse') {
-          this.handleSyncResponse(message as SyncResponse);
-        } else if (message.command === 'update') {
-          this.handleExternalUpdate(message.content);
-        }
-      });
+  /**
+   * Handle message events (bound method for proper cleanup)
+   */
+  private handleMessage(event: MessageEvent): void {
+    const message = event.data;
+
+    if (message.command === 'syncResponse') {
+      this.handleSyncResponse(message as SyncResponse);
+    } else if (message.command === 'update') {
+      this.handleExternalUpdate(message.content);
     }
   }
 
@@ -308,13 +317,24 @@ export class SyncManager {
   }
 
   /**
-   * Clean shutdown
+   * Clean shutdown - CRITICAL for preventing memory leaks
    */
   dispose(): void {
+    // Remove global message listener - prevents exponential listener accumulation
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('message', this.messageListener);
+    }
+    
     if (this.batchTimeout) {
       clearTimeout(this.batchTimeout);
+      this.batchTimeout = null;
     }
+    
     this.pendingMessages.clear();
     this.setState(SyncState.IDLE);
+    
+    // Clear callbacks to prevent reference retention
+    this.onStateChange = undefined;
+    this.onContentUpdate = undefined;
   }
 }
