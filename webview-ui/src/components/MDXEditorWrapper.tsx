@@ -901,6 +901,14 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   const [currentViewMode, setCurrentViewMode] = useState<'rich-text' | 'source' | 'diff'>('rich-text');
   const currentViewModeRef = useRef<'rich-text' | 'source' | 'diff'>('rich-text');
 
+  // Live content tracking for real-time TOC updates
+  const [liveMarkdown, setLiveMarkdown] = useState(markdown);
+
+  // Update live markdown when prop changes (initial load)
+  useEffect(() => {
+    setLiveMarkdown(markdown);
+  }, [markdown]);
+
   // Refs for debouncing book view input changes
   const bookViewWidthTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const bookViewMarginTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
@@ -1897,6 +1905,9 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
   const handleMarkdownChange = useCallback(
     (newMarkdown: string) => {
+      // Update live markdown for real-time TOC updates
+      setLiveMarkdown(newMarkdown);
+
       // Skip if SyncManager is handling external updates
       if (
         syncState === SyncState.RECEIVING_FROM_VSCODE ||
@@ -1968,7 +1979,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         });
       }
     },
-    [markdown, syncState],
+    [markdown, syncState, setLiveMarkdown],
   );
 
   // Handle internal search messages
@@ -2988,7 +2999,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
                 ✕
               </button>
             </div>
-            <TableOfContents content={markdown} onHeadingClick={handleHeadingNavigation} />
+            <TableOfContents content={liveMarkdown} onHeadingClick={handleHeadingNavigation} />
           </div>
         )}
 
