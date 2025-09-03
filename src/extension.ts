@@ -151,11 +151,20 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
         }
       });
 
+      // Listen for theme changes
+      const themeChangeSubscription = vscode.window.onDidChangeActiveColorTheme(theme => {
+        void webviewPanel.webview.postMessage({
+          command: 'themeChanged',
+          theme: theme.kind === vscode.ColorThemeKind.Dark ? 'dark' : 'light',
+        });
+      });
+
       // Clean up listeners when webview is disposed
       webviewPanel.onDidDispose(() => {
         changeDocumentSubscription.dispose();
         renameSubscription.dispose();
         configChangeSubscription.dispose();
+        themeChangeSubscription.dispose();
       });
 
       this.outputChannel.appendLine('resolveCustomTextEditor completed successfully');

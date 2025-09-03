@@ -62,8 +62,6 @@
   --accentTextContrast: var(--vscode-button-secondaryForeground);
 
   /* Layout and structure */
-  background: var(--vscode-editor-background);
-  color: var(--vscode-editor-foreground);
   border: none;
   height: 100%;
   display: flex;
@@ -120,8 +118,6 @@
 
 /* Content styling - clean approach without heavy !important usage */
 .mdx-content {
-  color: var(--vscode-editor-foreground);
-  background: var(--vscode-editor-background);
   overscroll-behavior: contain;
   font-family: Arial, Helvetica, sans-serif;
   font-size: 14px;
@@ -144,7 +140,6 @@
 .mdx-content li,
 .mdx-content td,
 .mdx-content th {
-  color: var(--vscode-editor-foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
 
@@ -190,7 +185,6 @@
 
 .mdx-content strong {
   font-weight: bold;
-  color: var(--vscode-editor-foreground);
   /* Ensure system fonts load with proper bold weights */
   font-synthesis: weight style;
 }

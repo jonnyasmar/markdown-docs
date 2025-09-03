@@ -1982,10 +1982,13 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     [markdown, syncState, setLiveMarkdown],
   );
 
-  // Handle internal search messages
+  // Handle VS Code messages including theme changes
   React.useEffect(() => {
-    const handleSearchMessage = (event: MessageEvent) => {
-      if (event.data.type === 'open-search') {
+    const handleVSCodeMessage = (event: MessageEvent) => {
+      const { data } = event;
+      console.log('Received VS Code message:', data);
+      
+      if (data.type === 'open-search') {
         logger.debug('Received open-search message, triggering search');
         // Find search button and click it programmatically
         const searchButton = document.querySelector('button[title*="Search"]');
@@ -1993,10 +1996,22 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
           (searchButton as HTMLButtonElement).click();
         }
       }
+      
+      if (data.type === 'init' && data.theme) {
+        console.log('Received theme from VS Code init:', data.theme);
+        const isDark = data.theme === 'dark';
+        setIsDarkTheme(isDark);
+      }
+      
+      if (data.command === 'themeChanged' && data.theme) {
+        console.log('Received theme change from VS Code:', data.theme);
+        const isDark = data.theme === 'dark';
+        setIsDarkTheme(isDark);
+      }
     };
 
-    window.addEventListener('message', handleSearchMessage);
-    return () => window.removeEventListener('message', handleSearchMessage);
+    window.addEventListener('message', handleVSCodeMessage);
+    return () => window.removeEventListener('message', handleVSCodeMessage);
   }, []);
 
   // Manual save only - removed auto-save after comment operations
@@ -2756,7 +2771,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
           {
             priority: 10,
             match: (language, _code) => language === 'mermaid',
-            Editor: MermaidEditor,
+            Editor: props => <MermaidEditor {...props} isDarkTheme={isDarkTheme} />,
           },
           // Specific mappings for common aliases
           {

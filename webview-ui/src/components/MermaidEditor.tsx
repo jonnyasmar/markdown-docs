@@ -10,6 +10,7 @@ interface MermaidEditorProps {
   setCode: (code: string) => void;
   focusEmitter: any;
   parentEditor: any;
+  isDarkTheme?: boolean;
 }
 
 type ViewMode = 'preview' | 'edit' | 'split';
@@ -19,6 +20,7 @@ export const MermaidEditor: React.FC<MermaidEditorProps> = ({
   setCode,
   focusEmitter,
   parentEditor,
+  isDarkTheme = false,
   ...props
 }) => {
   const [viewMode, setViewMode] = useState<ViewMode>('preview');
@@ -30,16 +32,6 @@ export const MermaidEditor: React.FC<MermaidEditorProps> = ({
   const mermaidRef = useRef<HTMLDivElement>(null);
   const splitContainerRef = useRef<HTMLDivElement>(null);
   const diagramId = useRef(`mermaid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
-
-  // Initialize mermaid
-  useEffect(() => {
-    mermaid.initialize({
-      startOnLoad: false,
-      theme: 'dark',
-      securityLevel: 'loose',
-      fontFamily: 'inherit',
-    });
-  }, []);
 
   // SVG sanitization function to prevent XSS
   const sanitizeSVG = useCallback((svg: string): string => {
@@ -74,11 +66,64 @@ export const MermaidEditor: React.FC<MermaidEditorProps> = ({
       setError('');
       setSvgContent(''); // Clear previous content
 
-      // Reuse the same diagram ID to prevent memory leaks
-      const { svg } = await mermaid.render(diagramId.current, code);
+      // Generate new diagram ID for each render to avoid cache issues
+      const newDiagramId = `mermaid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+      // Render with fresh ID
+      const { svg } = await mermaid.render(newDiagramId, code);
 
       // Sanitize SVG content before setting it
-      const sanitizedSVG = sanitizeSVG(svg);
+      let sanitizedSVG = sanitizeSVG(svg);
+
+      // Debug: Log the SVG content to see what's being generated
+      console.log('Generated SVG sample:', svg.substring(0, 500));
+
+      // Inject theme-specific CSS directly into the SVG to override hardcoded colors
+      const themeCSS = isDarkTheme
+        ? `
+        <style>
+          .node rect, .node polygon, .node circle, .node path { 
+            fill: #2d3748 !important; 
+            stroke: #4a5568 !important; 
+          }
+          .nodeLabel, .nodeLabel p { 
+            color: #ffffff !important; 
+          }
+          .label-container { 
+            fill: #2d3748 !important; 
+            stroke: #4a5568 !important; 
+          }
+          .edgeLabel { 
+            background-color: #2d3748 !important; 
+            color: #ffffff !important; 
+          }
+        </style>
+      `
+        : `
+        <style>
+          .node rect, .node polygon, .node circle, .node path { 
+            fill: #e3f2fd !important; 
+            stroke: #1976d2 !important; 
+          }
+          .nodeLabel, .nodeLabel p { 
+            color: #000000 !important; 
+          }
+          .label-container { 
+            fill: #e3f2fd !important; 
+            stroke: #1976d2 !important; 
+          }
+          .edgeLabel { 
+            background-color: #ffffff !important; 
+            color: #000000 !important; 
+          }
+        </style>
+      `;
+
+      // Inject CSS into SVG
+      if (sanitizedSVG.includes('<svg')) {
+        sanitizedSVG = sanitizedSVG.replace(/<svg([^>]*)>/, `<svg$1>${themeCSS}`);
+      }
+
       setSvgContent(sanitizedSVG);
     } catch (err: any) {
       const errorMessage = err.message || 'Failed to render mermaid diagram';
@@ -88,7 +133,83 @@ export const MermaidEditor: React.FC<MermaidEditorProps> = ({
       // Log error for debugging but don't expose sensitive information
       logger.error('Mermaid rendering failed:', errorMessage);
     }
-  }, [code, sanitizeSVG]);
+  }, [code, sanitizeSVG, isDarkTheme]);
+
+  // Initialize mermaid with proper theme configuration
+  useEffect(() => {
+    console.log('Mermaid: Initializing with isDarkTheme =', isDarkTheme);
+
+    // Use mermaid's built-in themes with darkMode setting for proper color derivation
+    const themeConfig = isDarkTheme
+      ? {
+          // Dark theme - let mermaid derive most colors automatically
+          primaryColor: '#3182ce', // Blue primary
+          primaryTextColor: '#ffffff', // White text
+          primaryBorderColor: '#2b77cb', // Darker blue border
+          lineColor: '#a0aec0', // Light gray lines
+          secondaryColor: '#805ad5', // Purple secondary
+          tertiaryColor: '#38a169', // Green tertiary
+          background: '#1a202c', // Dark background
+          mainBkg: '#2d3748', // Main background
+          textColor: '#ffffff', // White text
+        }
+      : {
+          // Light theme - let mermaid derive most colors automatically
+          primaryColor: '#3182ce', // Blue primary
+          primaryTextColor: '#1a202c', // Dark text
+          primaryBorderColor: '#2b77cb', // Darker blue border
+          lineColor: '#4a5568', // Dark gray lines
+          secondaryColor: '#805ad5', // Purple secondary
+          tertiaryColor: '#38a169', // Green tertiary
+          background: '#ffffff', // White background
+          mainBkg: '#f7fafc', // Light gray background
+          textColor: '#1a202c', // Dark text
+        };
+
+    // Completely destroy and recreate mermaid instance
+    try {
+      // @ts-ignore - Force clear all internal state
+      if (mermaid.mermaidAPI) {
+        mermaid.mermaidAPI.reset();
+      }
+      if (mermaid.reset) {
+        mermaid.reset();
+      }
+      // @ts-ignore - Clear diagram registry completely
+      if (mermaid.getDiagramRegistry) {
+        const registry = mermaid.getDiagramRegistry();
+        registry.clear();
+      }
+      // @ts-ignore - Clear any cached configurations
+      delete mermaid.defaultConfig;
+    } catch (e) {
+      console.log('Mermaid aggressive reset warning:', e);
+    }
+
+    // Use proper mermaid theming with darkMode setting
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: isDarkTheme ? 'dark' : 'default',
+      securityLevel: 'loose',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      //themeVariables: themeConfig,
+      // Force fresh configuration - no caching
+      deterministicIds: false,
+      deterministicIDSeed: Date.now().toString(),
+    });
+
+    // Clear SVG and force complete re-render
+    setSvgContent('');
+    setError('');
+    setRenderKey(prev => prev + 100); // Large increment to ensure fresh render
+
+    // Force immediate re-render with aggressive timing
+    if (code.trim()) {
+      setTimeout(() => {
+        renderMermaid();
+      }, 200); // Longer timeout for complete reset
+    }
+  }, [isDarkTheme, renderMermaid]);
 
   // Debounced rendering for performance optimization
   const debouncedRenderMermaid = useMemo(() => {
@@ -107,9 +228,6 @@ export const MermaidEditor: React.FC<MermaidEditorProps> = ({
       debouncedRenderMermaid();
     }
   }, [code, viewMode, debouncedRenderMermaid]);
-
-  // Let the split container grow naturally with its content
-  // No height manipulation needed - CSS flexbox handles this
 
   // Handle split pane resizing
   useEffect(() => {
