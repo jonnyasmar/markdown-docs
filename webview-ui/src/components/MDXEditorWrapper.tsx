@@ -1,5 +1,3 @@
-import { RangeSetBuilder } from '@codemirror/state';
-import { Decoration, DecorationSet, EditorView, ViewPlugin, WidgetType, keymap } from '@codemirror/view';
 import {
   AdmonitionDirectiveDescriptor,
   BlockTypeSelect,
@@ -39,7 +37,6 @@ import {
   toolbarPlugin,
 } from '@mdxeditor/editor';
 import '@mdxeditor/editor/style.css';
-import { vscodeKeymap } from '@replit/codemirror-vscode-keymap';
 import { REDO_COMMAND, UNDO_COMMAND } from 'lexical';
 import {
   AArrowDown,
@@ -1840,107 +1837,14 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     }
   }, [editorConfig]);
 
-  // Generate CodeMirror extensions based on VS Code editor configuration
+  // Generate simple CodeMirror extensions without direct CodeMirror imports
+  // This avoids multiple CodeMirror instance conflicts
   const createCodeMirrorExtensions = useMemo(() => {
-    const shouldWrap =
-      editorConfig.wordWrap === 'on' ||
-      editorConfig.wordWrap === 'wordWrapColumn' ||
-      editorConfig.wordWrap === 'bounded';
-
-    // Custom widget for unescaping characters - Memory leak fix: Ensure proper disposal
-    class UnescapeWidget extends WidgetType {
-      private element: HTMLSpanElement | null = null;
-
-      constructor(private char: string) {
-        super();
-      }
-
-      toDOM() {
-        if (!this.element) {
-          this.element = document.createElement('span');
-          this.element.textContent = this.char;
-        }
-        return this.element;
-      }
-
-      eq(other: UnescapeWidget) {
-        return other.char === this.char;
-      }
-
-      // Memory leak fix: Explicit cleanup
-      destroy() {
-        if (this.element) {
-          this.element.remove();
-          this.element = null;
-        }
-      }
-    }
-
-    // Custom plugin to fix escaped characters in source mode display
-    const fixEscapingPlugin = ViewPlugin.fromClass(
-      class {
-        decorations: DecorationSet;
-
-        constructor(view: EditorView) {
-          this.decorations = this.buildDecorations(view);
-        }
-
-        update(update: any) {
-          if (update.docChanged || update.viewportChanged) {
-            this.decorations = this.buildDecorations(update.view);
-          }
-        }
-
-        buildDecorations(view: EditorView): DecorationSet {
-          const builder = new RangeSetBuilder<Decoration>();
-          const doc = view.state.doc;
-
-          for (let i = 1; i <= doc.lines; i++) {
-            const line = doc.line(i);
-            const text = line.text;
-
-            // Find escaped square brackets and pipes that should be unescaped
-            const escapePattern = /\\(\[|\]|\|)/g;
-            let match;
-
-            while ((match = escapePattern.exec(text)) !== null) {
-              const from = line.from + match.index;
-              const to = from + match[0].length;
-
-              // Replace with unescaped version
-              const replacement = match[1];
-              const decoration = Decoration.replace({
-                widget: new UnescapeWidget(replacement),
-              });
-
-              builder.add(from, to, decoration);
-            }
-          }
-
-          return builder.finish();
-        }
-      },
-      { decorations: v => v.decorations },
-    );
-
-    return [
-      EditorView.theme({
-        '&': {
-          'white-space': shouldWrap ? 'pre-wrap !important' : 'pre !important',
-          'overflow-x': shouldWrap ? 'hidden !important' : 'auto !important',
-        },
-        '.cm-line': {
-          'white-space': shouldWrap ? 'pre-wrap !important' : 'pre !important',
-        },
-        '.cm-content': {
-          'white-space': shouldWrap ? 'pre-wrap !important' : 'pre !important',
-        },
-      }),
-      fixEscapingPlugin,
-      // Spread vscodeKeymap array to avoid nested arrays causing extension set errors
-      ...vscodeKeymap,
-    ];
-  }, [editorConfig.wordWrap]);
+    // Return empty array to avoid instanceof conflicts
+    // Word wrap and other styling is handled via CSS
+    // VS Code keymap is handled by MDXEditor internally
+    return [];
+  }, []);
   // Custom wrapper for CodeMirrorEditor that handles save shortcuts
   const CodeMirrorEditorWithSave: React.FC<any> = props => {
     return <CodeMirrorEditor {...props} />;
