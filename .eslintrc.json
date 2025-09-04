@@ -7,7 +7,8 @@
         "project": "./tsconfig.json"
     },
     "plugins": [
-        "@typescript-eslint"
+        "@typescript-eslint",
+        "react-hooks"
     ],
     "extends": [
         "eslint:recommended",
@@ -62,7 +63,9 @@
         
         // Existing rules (keeping for backward compatibility)
         "eqeqeq": "error",
-        "no-throw-literal": "error"
+        "no-throw-literal": "error",
+        "react-hooks/rules-of-hooks": "error",
+        "react-hooks/exhaustive-deps": "error"
     },
     "overrides": [
         {

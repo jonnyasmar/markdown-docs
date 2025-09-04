@@ -1043,7 +1043,9 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   const handleHeadingNavigation = useCallback((headingId: string) => {
     // Find the heading element in the editor
     const editorContainer = document.querySelector('.mdxeditor-root-contenteditable');
-    if (!editorContainer) return;
+    if (!editorContainer) {
+      return;
+    }
 
     // Generate the same IDs as the TOC component to find the correct heading
     const headings = editorContainer.querySelectorAll('h1, h2, h3, h4, h5, h6');
@@ -1092,7 +1094,9 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
           target.tagName === 'A' ? (target as HTMLAnchorElement) : (target.closest('a') as HTMLAnchorElement);
         const href = link?.getAttribute('href');
 
-        if (!href) return;
+        if (!href) {
+          return;
+        }
 
         event.preventDefault();
 
@@ -1216,7 +1220,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         if (typeof window !== 'undefined' && window.vscodeApi) {
           window.vscodeApi.postMessage({
             command: 'setBookViewWidth',
-            bookViewWidth: value + 'in',
+            bookViewWidth: `${value}in`,
           });
         }
       }, 500);
@@ -1238,7 +1242,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         if (typeof window !== 'undefined' && window.vscodeApi) {
           window.vscodeApi.postMessage({
             command: 'setBookViewMargin',
-            bookViewMargin: value + 'in',
+            bookViewMargin: `${value}in`,
           });
         }
       }, 500);
@@ -3066,20 +3070,28 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       }),
     ],
     [
-      // PERFORMANCE FIX: Balanced approach - essential dependencies only
-      // Keep dependencies that affect plugin behavior, remove pure UI state
-      isDarkTheme, // Theme changes require CodeMirror rebuild
-      handleFontChange, // Now stable with useCallback
-      handleCommentInserted, // Now stable with useCallback
-      createCodeMirrorExtensions, // Required for CodeMirror configuration
-      currentViewMode, // Essential for toolbar mode switching
-      selectedFont, // Essential for toolbar font display
-      bookView, // Essential for toolbar book view toggle
-      focusedCommentId, // RESTORED: Required for comment directive highlighting
-      setFocusedCommentId, // RESTORED: Required for comment directive interaction
-      pendingComment, // RESTORED: Required for comment insertion plugin to work
-      localBookViewWidth, // RESTORED: Required for toolbar book view width display
-      localBookViewMargin, // RESTORED: Required for toolbar book view margin display
+      availableFonts,
+      bookView,
+      bookViewMargin,
+      bookViewWidth,
+      createCodeMirrorExtensions,
+      currentViewMode,
+      focusedCommentId,
+      fontSize,
+      handleBookViewMarginChange,
+      handleBookViewToggle,
+      handleBookViewWidthChange,
+      handleCommentInserted,
+      handleFontChange,
+      handleFontSizeChange,
+      handleTextAlignChange,
+      handleViewModeChange,
+      isDarkTheme,
+      localBookViewMargin,
+      localBookViewWidth,
+      pendingComment,
+      selectedFont,
+      textAlign,
     ],
   );
 

@@ -4,7 +4,7 @@
 
 # Markdown Docs: Example Document
 
-This document serves as an example to showcase the capabilities of the **Markdown Docs** VS Code extension. It includes various Markdown elements and highlights features relevant to the extension. Test. Test.
+This document serves as an example to showcase the capabilities of the **Markdown Docs** VS Code extension. It includes various Markdown elements and highlights features relevant to the extension.
 
 ---
 
