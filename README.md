@@ -4,7 +4,7 @@
 
 **Transform your Markdown workflow with Markdown Docs, a powerful VS Code extension designed for a seamless and intuitive document review and commenting experience.**
 
-- [ ] Whether you're collaborating with AI, taking personal notes, or working with a team, Markdown Docs provides the tools you need to streamline your process and focus on what matters most: your content.
+Whether you're collaborating with AI, taking personal notes, or working with a team, Markdown Docs provides the tools you need to streamline your process and focus on what matters most: your content.
 
 ![Markdown Docs Screenshot](media/screenshot.png)
 
