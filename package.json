@@ -148,6 +148,11 @@
           "type": "string",
           "default": "0.5in",
           "description": "Horizontal margins in book view mode (CSS units: px, em, rem, in, cm, etc.)"
+        },
+        "markdown-docs.autoSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable or disable automatic saving of changes"
         }
       }
     }

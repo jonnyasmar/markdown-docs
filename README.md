@@ -8,26 +8,63 @@ Whether you're collaborating with AI, taking personal notes, or working with a t
 
 ![Markdown Docs Screenshot](media/screenshot.png)
 
-## A WYSIWYG Editor That Works for You
+## ✨ Comprehensive Feature Overview
 
-At the heart of Markdown Docs is a state-of-the-art **What You See Is What You Get (WYSIWYG)** editor, powered by the acclaimed MDX Editor. This means you can say goodbye to constant context switching between raw Markdown and a preview pane. With Markdown Docs, you write and format your documents in a single, beautiful interface.
+### 🎨 **Rich Text Editing**
 
-### Effortless Formatting
+- **WYSIWYG Editor** - State-of-the-art What You See Is What You Get editing powered by MDX Editor
+- **Real-time Preview** - No context switching between raw Markdown and preview
+- **Source View Toggle** - Switch between rich text and raw Markdown source
+- **Diff View** - Compare different versions side-by-side
 
-Our intuitive toolbar puts all the essential formatting tools at your fingertips:
+### 💬 **Interactive Commenting System**
 
-- **Text Styling:** Undo, Redo, Bold, Italic, Underline, and various font styles.
-- **Lists:** Create ordered, unordered, and check lists with ease.
-- **Content Blocks:** Insert links and tables effortlessly.
-- **Search:** A powerful, highlighted search capability to find what you need, when you need it.
-- **Customization:** Change the display font within the editor to suit your preferences.
+- **Inline Comments** - Add comments directly within your Markdown using custom directives
+- **Comment Sidebar** - Dedicated panel for managing all comments
+- **Two-Way Navigation** - Click comments to jump to text, click text to see comments
+- **Comment Management** - Edit, delete, and organize comments with ease
+- **Collapsible Sidebar** - Resizable and hideable comment panel
 
-## Seamless Commenting and Review
+### 🔍 **Advanced Search & Navigation**
 
-Markdown Docs redefines the review process with its intuitive and powerful commenting system.
+- **Highlighted Search** - Real-time search with live highlighting as you type
+- **Table of Contents** - Auto-generated navigation from document headings
+- **Quick Jump** - Navigate through large documents effortlessly
 
-- **Two-Way Sync:** Click on a comment in the sidebar to instantly jump to the corresponding text in the editor, and vice-versa. This creates a seamless feedback loop that keeps you in flow.
-- **Flexible Layout:** The comments side panel is both collapsible and resizable, allowing you to customize your workspace for optimal productivity.
+### 📝 **Rich Content Support**
+
+- **Admonitions** - Note, tip, danger, info, and caution callout blocks
+- **Mermaid Diagrams** - Interactive diagram editor with live preview
+- **Code Blocks** - Syntax highlighting with multiple language support
+- **Tables** - Rich table editing and formatting
+- **Images** - Drag-and-drop image support with automatic linking
+- **Links** - Easy link creation and management
+- **Lists** - Ordered, unordered, and checkbox task lists
+- **Frontmatter** - YAML metadata support
+
+### 🎯 **Customization & Theming**
+
+- **Font Selection** - Choose from 13+ font families (Arial, Times New Roman, Roboto, Georgia, etc.)
+- **Font Size Control** - Adjustable from 8px to 48px
+- **Text Alignment** - Left, center, right, or justified alignment
+- **Book View Mode** - Centered layout with customizable width and margins
+- **Theme Integration** - Seamlessly follows VS Code's dark/light theme
+- **Word Wrap** - Configurable based on VS Code editor settings
+
+### ⌨️ **Productivity Features**
+
+- **Keyboard Shortcuts** - Full VS Code keyboard shortcut integration
+- **Auto-save** - Automatic document saving
+- **Undo/Redo** - Complete edit history with granular control
+- **Status Bar** - Real-time editor status and information
+
+### 🔧 **Technical Capabilities**
+
+- **Custom Editor** - Full VS Code custom editor integration
+- **Multiple View Modes** - Rich text and source view
+- **Extension Commands** - "Open with Markdown Docs", "New Markdown Docs File"
+- **Context Menu Integration** - Right-click options in file explorer
+- **Frontmatter Processing** - Proper handling of YAML document metadata
 
 ## Use Cases
 
