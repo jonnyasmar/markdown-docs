@@ -1338,7 +1338,11 @@ mark.highlighted {
 }
 
 /* Fallback styles using more specific selectors */
-[class*='font-'] div:has([role='option']:nth-child(13)) .mdxeditor-select-content [role='option']:nth-child(1) span {
+[class*='font-']
+  div:has([role='option']:nth-child(13)):not(:has([role='option']:nth-child(14)))
+  .mdxeditor-select-content
+  [role='option']:nth-child(1)
+  span {
   font-family: var(
     --vscode-editor-font-family,
     -apple-system,
@@ -1351,51 +1355,99 @@ mark.highlighted {
   ) !important; /* Default */
 }
 
-[class*='font-'] div:has([role='option']:nth-child(13)) .mdxeditor-select-content [role='option']:nth-child(2) span {
+[class*='font-']
+  div:has([role='option']:nth-child(13)):not(:has([role='option']:nth-child(14)))
+  .mdxeditor-select-content
+  [role='option']:nth-child(2)
+  span {
   font-family: Arial, sans-serif !important; /* Arial */
 }
 
-[class*='font-'] div:has([role='option']:nth-child(13)) .mdxeditor-select-content [role='option']:nth-child(3) span {
+[class*='font-']
+  div:has([role='option']:nth-child(13)):not(:has([role='option']:nth-child(14)))
+  .mdxeditor-select-content
+  [role='option']:nth-child(3)
+  span {
   font-family: 'Times New Roman', Times, serif !important; /* Times New Roman */
 }
 
-[class*='font-'] div:has([role='option']:nth-child(13)) .mdxeditor-select-content [role='option']:nth-child(4) span {
+[class*='font-']
+  div:has([role='option']:nth-child(13)):not(:has([role='option']:nth-child(14)))
+  .mdxeditor-select-content
+  [role='option']:nth-child(4)
+  span {
   font-family: Roboto, Arial, sans-serif !important; /* Roboto */
 }
 
-[class*='font-'] div:has([role='option']:nth-child(13)) .mdxeditor-select-content [role='option']:nth-child(5) span {
+[class*='font-']
+  div:has([role='option']:nth-child(13)):not(:has([role='option']:nth-child(14)))
+  .mdxeditor-select-content
+  [role='option']:nth-child(5)
+  span {
   font-family: Georgia, serif !important; /* Georgia */
 }
 
-[class*='font-'] div:has([role='option']:nth-child(13)) .mdxeditor-select-content [role='option']:nth-child(6) span {
+[class*='font-']
+  div:has([role='option']:nth-child(13)):not(:has([role='option']:nth-child(14)))
+  .mdxeditor-select-content
+  [role='option']:nth-child(6)
+  span {
   font-family: Calibri, sans-serif !important; /* Calibri */
 }
 
-[class*='font-'] div:has([role='option']:nth-child(13)) .mdxeditor-select-content [role='option']:nth-child(7) span {
+[class*='font-']
+  div:has([role='option']:nth-child(13)):not(:has([role='option']:nth-child(14)))
+  .mdxeditor-select-content
+  [role='option']:nth-child(7)
+  span {
   font-family: Garamond, serif !important; /* Garamond */
 }
 
-[class*='font-'] div:has([role='option']:nth-child(13)) .mdxeditor-select-content [role='option']:nth-child(8) span {
+[class*='font-']
+  div:has([role='option']:nth-child(13)):not(:has([role='option']:nth-child(14)))
+  .mdxeditor-select-content
+  [role='option']:nth-child(8)
+  span {
   font-family: 'Book Antiqua', serif !important; /* Book Antiqua */
 }
 
-[class*='font-'] div:has([role='option']:nth-child(13)) .mdxeditor-select-content [role='option']:nth-child(9) span {
+[class*='font-']
+  div:has([role='option']:nth-child(13)):not(:has([role='option']:nth-child(14)))
+  .mdxeditor-select-content
+  [role='option']:nth-child(9)
+  span {
   font-family: 'Courier New', monospace !important; /* Courier New */
 }
 
-[class*='font-'] div:has([role='option']:nth-child(13)) .mdxeditor-select-content [role='option']:nth-child(10) span {
+[class*='font-']
+  div:has([role='option']:nth-child(13)):not(:has([role='option']:nth-child(14)))
+  .mdxeditor-select-content
+  [role='option']:nth-child(10)
+  span {
   font-family: 'Open Sans', Arial, sans-serif !important; /* Open Sans */
 }
 
-[class*='font-'] div:has([role='option']:nth-child(13)) .mdxeditor-select-content [role='option']:nth-child(11) span {
+[class*='font-']
+  div:has([role='option']:nth-child(13)):not(:has([role='option']:nth-child(14)))
+  .mdxeditor-select-content
+  [role='option']:nth-child(11)
+  span {
   font-family: 'Lato', Arial, sans-serif !important; /* Lato */
 }
 
-[class*='font-'] div:has([role='option']:nth-child(13)) .mdxeditor-select-content [role='option']:nth-child(12) span {
+[class*='font-']
+  div:has([role='option']:nth-child(13)):not(:has([role='option']:nth-child(14)))
+  .mdxeditor-select-content
+  [role='option']:nth-child(12)
+  span {
   font-family: 'Montserrat', Arial, sans-serif !important; /* Montserrat */
 }
 
-[class*='font-'] div:has([role='option']:nth-child(13)) .mdxeditor-select-content [role='option']:nth-child(13) span {
+[class*='font-']
+  div:has([role='option']:nth-child(13)):not(:has([role='option']:nth-child(14)))
+  .mdxeditor-select-content
+  [role='option']:nth-child(13)
+  span {
   font-family: 'Source Sans Pro', Arial, sans-serif !important; /* Source Sans Pro */
 }
 

@@ -90,14 +90,14 @@ Caution
 
 ### Code Blocks
 
-```javascript
+```js
 function helloWorld() {
   logger.debug('Hello, Markdown Docs!');
 }
 helloWorld();
 ```
 
-```python
+```py
 def greet(name):
     return f"Hello, {name}!"
 
@@ -154,4 +154,4 @@ This example document should provide a good basis for showcasing the Markdown Do
 
 This<Still<Works>>
 
-{{so_does_this}}
+{{so_does_this}}. &#x20;

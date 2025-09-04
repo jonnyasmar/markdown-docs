@@ -59,10 +59,10 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
     // Get markdown-specific configuration first (language-specific settings take precedence)
     const markdownConfig = vscode.workspace.getConfiguration('editor', { languageId: 'markdown' });
     const generalConfig = vscode.workspace.getConfiguration('editor');
-    
+
     // Check for markdown-specific word wrap setting, fall back to general setting
     const wordWrap = markdownConfig.get<string>('wordWrap') ?? generalConfig.get<string>('wordWrap', 'off');
-    
+
     return {
       wordWrap,
     };
@@ -184,220 +184,244 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
 
   private setupWebviewMessageHandling(document: vscode.TextDocument, webviewPanel: vscode.WebviewPanel): void {
     webviewPanel.webview.onDidReceiveMessage(async (message: WebviewMessage) => {
+      this.outputChannel.appendLine(`=== MESSAGE HANDLER START ===`);
       this.outputChannel.appendLine(`Received message from webview: ${message.command}`);
-      logger.debug('Custom editor received message:', message.command);
+      this.outputChannel.appendLine(`Message object: ${JSON.stringify(message)}`);
 
-      switch (message.command) {
-        case 'ready':
-          this.outputChannel.appendLine('Webview sent ready message - forcing content send');
-          // Reset echo prevention for ready messages since webview is requesting content
-          this.lastSentToWebview = null;
-          this.sendContentToWebview(document, webviewPanel);
-          break;
+      try {
+        logger.debug('Custom editor received message:', message.command);
 
-        case 'edit': {
-          // Handle both SyncManager format and direct format
-          const content = message.content ?? message.payload?.content;
-          this.outputChannel.appendLine(`Edit message received, content length: ${content?.length ?? 0}`);
-          this.outputChannel.appendLine(
-            `Message format - content: ${String(message.content !== undefined)}, ` +
-              `payload.content: ${String(message.payload?.content !== undefined)}`,
-          );
+        this.outputChannel.appendLine(`About to enter switch statement for: ${message.command}`);
+        switch (message.command) {
+          case 'ready':
+            this.outputChannel.appendLine('Webview sent ready message - forcing content send');
+            // Reset echo prevention for ready messages since webview is requesting content
+            this.lastSentToWebview = null;
+            this.sendContentToWebview(document, webviewPanel);
+            break;
 
-          if (content) {
-            const editContent = postprocessAngleBrackets(content);
-            this.outputChannel.appendLine(`About to update TextDocument with content length: ${editContent.length}`);
-            await this.updateTextDocument(document, editContent);
-            this.outputChannel.appendLine(`TextDocument updated, isDirty: ${String(document.isDirty)}`);
+          case 'edit': {
+            // Handle both SyncManager format and direct format
+            const content = message.content ?? message.payload?.content;
+            this.outputChannel.appendLine(`Edit message received, content length: ${content?.length ?? 0}`);
+            this.outputChannel.appendLine(
+              `Message format - content: ${String(message.content !== undefined)}, ` +
+                `payload.content: ${String(message.payload?.content !== undefined)}`,
+            );
+
+            if (content) {
+              const editContent = postprocessAngleBrackets(content);
+              this.outputChannel.appendLine(`About to update TextDocument with content length: ${editContent.length}`);
+              await this.updateTextDocument(document, editContent);
+              this.outputChannel.appendLine(`TextDocument updated, isDirty: ${String(document.isDirty)}`);
+            }
+            break;
           }
-          break;
-        }
 
-        case 'save':
-          // With CustomTextEditorProvider, VS Code handles saving automatically
-          // Just update TextDocument, VS Code will handle the save operation
-          if (message.content) {
-            const saveContent = postprocessAngleBrackets(message.content);
-            await this.updateTextDocument(document, saveContent);
-          }
-          break;
+          case 'save':
+            // With CustomTextEditorProvider, VS Code handles saving automatically
+            // Just update TextDocument, VS Code will handle the save operation
+            this.outputChannel.appendLine(
+              `Save message received: ${message.content ? 'with content' : 'without content'}`,
+            );
+            if (message.content) {
+              const saveContent = postprocessAngleBrackets(message.content);
+              await this.updateTextDocument(document, saveContent);
 
-        case 'getFont': {
-          const config = vscode.workspace.getConfiguration('markdown-docs');
-          const defaultFont = config.get<string>('defaultFont', 'Arial');
-          void webviewPanel.webview.postMessage({
-            command: 'fontUpdate',
-            font: defaultFont,
-          });
-          break;
-        }
+              this.outputChannel.appendLine('Save complete');
 
-        case 'getSettings': {
-          const config = vscode.workspace.getConfiguration('markdown-docs');
-          const settings = {
-            defaultFont: config.get<string>('defaultFont', 'Default'),
-            fontSize: config.get<number>('fontSize', 14),
-            textAlign: config.get<string>('textAlign', 'left'),
-            bookView: config.get<boolean>('bookView', false),
-            bookViewWidth: config.get<string>('bookViewWidth', '5.5in'),
-            bookViewMargin: config.get<string>('bookViewMargin', '0.5in'),
-          };
-          void webviewPanel.webview.postMessage({
-            command: 'settingsUpdate',
-            settings,
-          });
-          break;
-        }
+              // save the file
+              await vscode.workspace.save(document.uri);
 
-        case 'setFont':
-          if (message.font) {
+              // Send confirmation back to webview to clear dirty state
+              void webviewPanel.webview.postMessage({
+                command: 'saveComplete',
+              });
+            }
+            break;
+
+          case 'getFont': {
             const config = vscode.workspace.getConfiguration('markdown-docs');
-            await config.update('defaultFont', message.font, vscode.ConfigurationTarget.Global);
-          }
-          break;
-
-        case 'addComment':
-        case 'navigateToComment':
-        case 'editComment':
-        case 'deleteComment':
-          this.outputChannel.appendLine(`Comment operation: ${message.command}`);
-          this.outputChannel.appendLine(
-            `Comment data: range=${JSON.stringify(message.range)}, comment="${message.comment ?? ''}", commentId="${message.commentId ?? ''}"`,
-          );
-
-          // Handle comment operations with CommentService and update webview
-          await this.handleCommentOperation(message, document);
-          break;
-        case 'setFontSize':
-          console.log('Extension: setFontSize handler reached, fontSize:', message.fontSize);
-          if (typeof message.fontSize === 'number') {
-            const config = vscode.workspace.getConfiguration('markdown-docs');
-            await config.update('fontSize', message.fontSize, vscode.ConfigurationTarget.Global);
-
-            // Send updated settings back to webview
-            const settings = {
-              defaultFont: config.get<string>('defaultFont', 'Default'),
-              fontSize: message.fontSize,
-              textAlign: config.get<string>('textAlign', 'left'),
-              bookView: config.get<boolean>('bookView', false),
-              bookViewWidth: config.get<string>('bookViewWidth', '5.5in'),
-              bookViewMargin: config.get<string>('bookViewMargin', '0.5in'),
-            };
-
-            console.log('Extension: Sending settingsUpdate for fontSize:', settings);
+            const defaultFont = config.get<string>('defaultFont', 'Arial');
             void webviewPanel.webview.postMessage({
-              command: 'settingsUpdate',
-              settings,
+              command: 'fontUpdate',
+              font: defaultFont,
             });
+            break;
           }
-          break;
 
-        case 'setTextAlign':
-          console.log('Extension: setTextAlign handler reached, textAlign:', message.textAlign);
-          if (message.textAlign) {
+          case 'getSettings': {
             const config = vscode.workspace.getConfiguration('markdown-docs');
-            await config.update('textAlign', message.textAlign, vscode.ConfigurationTarget.Global);
-
-            // Send updated settings back to webview
-            const settings = {
-              defaultFont: config.get<string>('defaultFont', 'Default'),
-              fontSize: config.get<number>('fontSize', 14),
-              textAlign: message.textAlign,
-              bookView: config.get<boolean>('bookView', false),
-              bookViewWidth: config.get<string>('bookViewWidth', '5.5in'),
-              bookViewMargin: config.get<string>('bookViewMargin', '0.5in'),
-            };
-
-            console.log('Extension: Sending settingsUpdate for textAlign:', settings);
-            void webviewPanel.webview.postMessage({
-              command: 'settingsUpdate',
-              settings,
-            });
-          }
-          break;
-
-        case 'setBookView':
-          console.log('Extension: setBookView handler reached, bookView:', message.bookView);
-          if (typeof message.bookView === 'boolean') {
-            const config = vscode.workspace.getConfiguration('markdown-docs');
-            await config.update('bookView', message.bookView, vscode.ConfigurationTarget.Global);
-
-            // Send updated settings back to webview
-            const settings = {
-              defaultFont: config.get<string>('defaultFont', 'Default'),
-              fontSize: config.get<number>('fontSize', 14),
-              textAlign: config.get<string>('textAlign', 'left'),
-              bookView: message.bookView,
-              bookViewWidth: config.get<string>('bookViewWidth', '5.5in'),
-              bookViewMargin: config.get<string>('bookViewMargin', '0.5in'),
-            };
-
-            console.log('Extension: Sending settingsUpdate for bookView:', settings);
-            void webviewPanel.webview.postMessage({
-              command: 'settingsUpdate',
-              settings,
-            });
-          }
-          break;
-
-        case 'setBookViewWidth':
-          console.log('Extension: setBookViewWidth handler reached, width:', message.bookViewWidth);
-          if (typeof message.bookViewWidth === 'string') {
-            const config = vscode.workspace.getConfiguration('markdown-docs');
-            await config.update('bookViewWidth', message.bookViewWidth, vscode.ConfigurationTarget.Global);
-
-            // Send updated settings back to webview
-            const settings = {
-              defaultFont: config.get<string>('defaultFont', 'Default'),
-              fontSize: config.get<number>('fontSize', 14),
-              textAlign: config.get<string>('textAlign', 'left'),
-              bookView: config.get<boolean>('bookView', false),
-              bookViewWidth: message.bookViewWidth,
-              bookViewMargin: config.get<string>('bookViewMargin', '0.5in'),
-            };
-
-            console.log('Extension: Sending settingsUpdate for bookViewWidth:', settings);
-            void webviewPanel.webview.postMessage({
-              command: 'settingsUpdate',
-              settings,
-            });
-          }
-          break;
-
-        case 'setBookViewMargin':
-          console.log('Extension: setBookViewMargin handler reached, margin:', message.bookViewMargin);
-          if (typeof message.bookViewMargin === 'string') {
-            const config = vscode.workspace.getConfiguration('markdown-docs');
-            await config.update('bookViewMargin', message.bookViewMargin, vscode.ConfigurationTarget.Global);
-
-            // Send updated settings back to webview
             const settings = {
               defaultFont: config.get<string>('defaultFont', 'Default'),
               fontSize: config.get<number>('fontSize', 14),
               textAlign: config.get<string>('textAlign', 'left'),
               bookView: config.get<boolean>('bookView', false),
               bookViewWidth: config.get<string>('bookViewWidth', '5.5in'),
-              bookViewMargin: message.bookViewMargin,
+              bookViewMargin: config.get<string>('bookViewMargin', '0.5in'),
             };
-
-            console.log('Extension: Sending settingsUpdate for bookViewMargin:', settings);
             void webviewPanel.webview.postMessage({
               command: 'settingsUpdate',
               settings,
             });
+            break;
           }
-          break;
 
-        case 'setUserInteracting': {
-          const fileUri = document.uri.toString();
-          if (message.isInteracting) {
-            userInteractionRegistry.add(fileUri);
-          } else {
-            userInteractionRegistry.delete(fileUri);
+          case 'setFont':
+            if (message.font) {
+              const config = vscode.workspace.getConfiguration('markdown-docs');
+              await config.update('defaultFont', message.font, vscode.ConfigurationTarget.Global);
+            }
+            break;
+
+          case 'addComment':
+          case 'navigateToComment':
+          case 'editComment':
+          case 'deleteComment':
+            this.outputChannel.appendLine(`Comment operation: ${message.command}`);
+            this.outputChannel.appendLine(
+              `Comment data: range=${JSON.stringify(message.range)}, comment="${message.comment ?? ''}", commentId="${message.commentId ?? ''}"`,
+            );
+
+            // Handle comment operations with CommentService and update webview
+            await this.handleCommentOperation(message, document);
+            break;
+          case 'setFontSize':
+            console.log('Extension: setFontSize handler reached, fontSize:', message.fontSize);
+            if (typeof message.fontSize === 'number') {
+              const config = vscode.workspace.getConfiguration('markdown-docs');
+              await config.update('fontSize', message.fontSize, vscode.ConfigurationTarget.Global);
+
+              // Send updated settings back to webview
+              const settings = {
+                defaultFont: config.get<string>('defaultFont', 'Default'),
+                fontSize: message.fontSize,
+                textAlign: config.get<string>('textAlign', 'left'),
+                bookView: config.get<boolean>('bookView', false),
+                bookViewWidth: config.get<string>('bookViewWidth', '5.5in'),
+                bookViewMargin: config.get<string>('bookViewMargin', '0.5in'),
+              };
+
+              console.log('Extension: Sending settingsUpdate for fontSize:', settings);
+              void webviewPanel.webview.postMessage({
+                command: 'settingsUpdate',
+                settings,
+              });
+            }
+            break;
+
+          case 'setTextAlign':
+            console.log('Extension: setTextAlign handler reached, textAlign:', message.textAlign);
+            if (message.textAlign) {
+              const config = vscode.workspace.getConfiguration('markdown-docs');
+              await config.update('textAlign', message.textAlign, vscode.ConfigurationTarget.Global);
+
+              // Send updated settings back to webview
+              const settings = {
+                defaultFont: config.get<string>('defaultFont', 'Default'),
+                fontSize: config.get<number>('fontSize', 14),
+                textAlign: message.textAlign,
+                bookView: config.get<boolean>('bookView', false),
+                bookViewWidth: config.get<string>('bookViewWidth', '5.5in'),
+                bookViewMargin: config.get<string>('bookViewMargin', '0.5in'),
+              };
+
+              console.log('Extension: Sending settingsUpdate for textAlign:', settings);
+              void webviewPanel.webview.postMessage({
+                command: 'settingsUpdate',
+                settings,
+              });
+            }
+            break;
+
+          case 'setBookView':
+            console.log('Extension: setBookView handler reached, bookView:', message.bookView);
+            if (typeof message.bookView === 'boolean') {
+              const config = vscode.workspace.getConfiguration('markdown-docs');
+              await config.update('bookView', message.bookView, vscode.ConfigurationTarget.Global);
+
+              // Send updated settings back to webview
+              const settings = {
+                defaultFont: config.get<string>('defaultFont', 'Default'),
+                fontSize: config.get<number>('fontSize', 14),
+                textAlign: config.get<string>('textAlign', 'left'),
+                bookView: message.bookView,
+                bookViewWidth: config.get<string>('bookViewWidth', '5.5in'),
+                bookViewMargin: config.get<string>('bookViewMargin', '0.5in'),
+              };
+
+              console.log('Extension: Sending settingsUpdate for bookView:', settings);
+              void webviewPanel.webview.postMessage({
+                command: 'settingsUpdate',
+                settings,
+              });
+            }
+            break;
+
+          case 'setBookViewWidth':
+            console.log('Extension: setBookViewWidth handler reached, width:', message.bookViewWidth);
+            if (typeof message.bookViewWidth === 'string') {
+              const config = vscode.workspace.getConfiguration('markdown-docs');
+              await config.update('bookViewWidth', message.bookViewWidth, vscode.ConfigurationTarget.Global);
+
+              // Send updated settings back to webview
+              const settings = {
+                defaultFont: config.get<string>('defaultFont', 'Default'),
+                fontSize: config.get<number>('fontSize', 14),
+                textAlign: config.get<string>('textAlign', 'left'),
+                bookView: config.get<boolean>('bookView', false),
+                bookViewWidth: message.bookViewWidth,
+                bookViewMargin: config.get<string>('bookViewMargin', '0.5in'),
+              };
+
+              console.log('Extension: Sending settingsUpdate for bookViewWidth:', settings);
+              void webviewPanel.webview.postMessage({
+                command: 'settingsUpdate',
+                settings,
+              });
+            }
+            break;
+
+          case 'setBookViewMargin':
+            console.log('Extension: setBookViewMargin handler reached, margin:', message.bookViewMargin);
+            if (typeof message.bookViewMargin === 'string') {
+              const config = vscode.workspace.getConfiguration('markdown-docs');
+              await config.update('bookViewMargin', message.bookViewMargin, vscode.ConfigurationTarget.Global);
+
+              // Send updated settings back to webview
+              const settings = {
+                defaultFont: config.get<string>('defaultFont', 'Default'),
+                fontSize: config.get<number>('fontSize', 14),
+                textAlign: config.get<string>('textAlign', 'left'),
+                bookView: config.get<boolean>('bookView', false),
+                bookViewWidth: config.get<string>('bookViewWidth', '5.5in'),
+                bookViewMargin: message.bookViewMargin,
+              };
+
+              console.log('Extension: Sending settingsUpdate for bookViewMargin:', settings);
+              void webviewPanel.webview.postMessage({
+                command: 'settingsUpdate',
+                settings,
+              });
+            }
+            break;
+
+          case 'setUserInteracting': {
+            const fileUri = document.uri.toString();
+            if (message.isInteracting) {
+              userInteractionRegistry.add(fileUri);
+            } else {
+              userInteractionRegistry.delete(fileUri);
+            }
+            break;
           }
-          break;
         }
+      } catch (error) {
+        this.outputChannel.appendLine(`ERROR in message handler: ${String(error)}`);
+        this.outputChannel.appendLine(`Error stack: ${error instanceof Error ? error.stack : 'No stack'}`);
+        logger.error('Message handler error:', error);
       }
+      this.outputChannel.appendLine(`=== MESSAGE HANDLER END ===`);
     });
   }
 

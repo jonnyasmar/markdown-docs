@@ -1,5 +1,5 @@
 import { RangeSetBuilder } from '@codemirror/state';
-import { Decoration, DecorationSet, EditorView, ViewPlugin, WidgetType } from '@codemirror/view';
+import { Decoration, DecorationSet, EditorView, ViewPlugin, WidgetType, keymap } from '@codemirror/view';
 import {
   AdmonitionDirectiveDescriptor,
   BlockTypeSelect,
@@ -39,8 +39,8 @@ import {
   toolbarPlugin,
 } from '@mdxeditor/editor';
 import '@mdxeditor/editor/style.css';
+import { vscodeKeymap } from '@replit/codemirror-vscode-keymap';
 import { REDO_COMMAND, UNDO_COMMAND } from 'lexical';
-import { customSearchPlugin, CustomSearchInput } from './CustomSearchPlugin';
 import {
   AArrowDown,
   AArrowUp,
@@ -60,6 +60,7 @@ import { logger } from '../utils/logger';
 import { SyncManager, SyncState } from '../utils/syncManager';
 import { escapeDirectiveContent } from '../utils/textNormalization';
 import { CommentModal } from './CommentModal';
+import { CustomSearchInput, customSearchPlugin } from './CustomSearchPlugin';
 import './MDXEditorWrapper.css';
 import { MermaidEditor } from './MermaidEditor';
 import './MermaidEditor.css';
@@ -585,7 +586,6 @@ const useViewModeTracking = (onViewModeChange: (mode: 'rich-text' | 'source' | '
     };
   }, [onViewModeChange]);
 };
-
 
 // Memoized comment item to prevent unnecessary re-renders with many comments
 const CommentItem = React.memo(
@@ -1356,14 +1356,14 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
     // Memory leak prevention: Limit cache size to prevent unbounded growth
     const MAX_CACHE_SIZE = 1000;
-    
+
     // Performance optimization: Pre-compile regex patterns to avoid recreation
     const createPatterns = (commentId: string) => [
       new RegExp(`:comment\\[([^\\]]*)\\]\\{[^}]*(?:id="${commentId}"|#${commentId})[^}]*\\}`),
       new RegExp(`::comment\\[([^\\]]*)\\]\\{[^}]*(?:id="${commentId}"|#${commentId})[^}]*\\}`),
       new RegExp(`:::comment\\{[^}]*(?:id="${commentId}"|#${commentId})[^}]*\\}`),
     ];
-    
+
     // Cache positions of all comment directives for fast sorting
     parsedComments.forEach(comment => {
       // Skip caching if we've hit the limit
@@ -1421,16 +1421,16 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       const cachedPosition = commentPositions.get(commentId);
       let updatedMarkdown = currentMarkdown;
       let found = false;
-      
+
       if (cachedPosition !== undefined) {
         // Fast path: Use cached position to find comment more efficiently
         const beforeComment = currentMarkdown.substring(0, cachedPosition);
         const afterCommentStart = currentMarkdown.substring(cachedPosition);
-        
+
         // Find comment directive end using minimal regex
         const inlineMatch = afterCommentStart.match(/^(::|:)?comment\[([^\]]*)\]\{[^}]*\}/);
         const containerMatch = afterCommentStart.match(/^:::comment\{[^}]*\}[\s\S]*?:::/);
-        
+
         if (inlineMatch) {
           const originalText = inlineMatch[2] || '';
           updatedMarkdown = beforeComment + originalText + afterCommentStart.substring(inlineMatch[0].length);
@@ -1443,7 +1443,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
           found = true;
         }
       }
-      
+
       // Fallback: Original regex patterns if cached position lookup failed
       if (!found) {
         const patterns = [
@@ -1462,25 +1462,25 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
           logger.debug('Pattern matches found:', matches.length);
 
           if (matches.length > 0) {
-          matches.forEach((match, index) => {
-            logger.debug(`Match ${index}:`, match[0]);
-          });
+            matches.forEach((match, index) => {
+              logger.debug(`Match ${index}:`, match[0]);
+            });
 
-          updatedMarkdown = updatedMarkdown.replace(regex, (match, capturedContent) => {
-            // For inline comments, return the captured content (the original text)
-            // For container comments, we need to extract the content between the directives
-            if (match.includes(':::')) {
-              // Container comment - extract content between opening and closing :::
-              const contentMatch = match.match(/:::comment\{[^}]*\}([\s\S]*?):::/);
-              return contentMatch ? contentMatch[1].trim() : '';
-            } else {
-              // Inline comment - return the captured content in brackets
-              return String(capturedContent || '');
-            }
-          });
-          found = true;
-          logger.debug('Successfully replaced comment directive, preserving original content');
-          break;
+            updatedMarkdown = updatedMarkdown.replace(regex, (match, capturedContent) => {
+              // For inline comments, return the captured content (the original text)
+              // For container comments, we need to extract the content between the directives
+              if (match.includes(':::')) {
+                // Container comment - extract content between opening and closing :::
+                const contentMatch = match.match(/:::comment\{[^}]*\}([\s\S]*?):::/);
+                return contentMatch ? contentMatch[1].trim() : '';
+              } else {
+                // Inline comment - return the captured content in brackets
+                return String(capturedContent || '');
+              }
+            });
+            found = true;
+            logger.debug('Successfully replaced comment directive, preserving original content');
+            break;
           }
         }
       }
@@ -1632,7 +1632,14 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         onEditComment={stableHandleEditComment}
       />
     ));
-  }, [parsedComments, commentPositions, focusedCommentId, stableHandleCommentClick, stableHandleDeleteComment, stableHandleEditComment]);
+  }, [
+    parsedComments,
+    commentPositions,
+    focusedCommentId,
+    stableHandleCommentClick,
+    stableHandleDeleteComment,
+    stableHandleEditComment,
+  ]);
 
   // Removed logger.debugs for better performance during typing
 
@@ -1821,7 +1828,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     // Custom widget for unescaping characters - Memory leak fix: Ensure proper disposal
     class UnescapeWidget extends WidgetType {
       private element: HTMLSpanElement | null = null;
-      
+
       constructor(private char: string) {
         super();
       }
@@ -1837,7 +1844,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       eq(other: UnescapeWidget) {
         return other.char === this.char;
       }
-      
+
       // Memory leak fix: Explicit cleanup
       destroy() {
         if (this.element) {
@@ -1894,23 +1901,6 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       { decorations: v => v.decorations },
     );
 
-    // Save shortcut keymap for CodeMirror - allows Cmd+S/Ctrl+S to work in code blocks
-    const saveKeymap = [
-      {
-        key: 'Mod-s',
-        run: () => {
-          // Trigger the global save command by dispatching to the window
-          window.dispatchEvent(new KeyboardEvent('keydown', {
-            key: 's',
-            metaKey: true,
-            ctrlKey: true,
-            bubbles: true
-          }));
-          return true;
-        }
-      }
-    ];
-
     return [
       EditorView.theme({
         '&': {
@@ -1925,32 +1915,14 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         },
       }),
       fixEscapingPlugin,
-      // Add keymap extension for save shortcuts
-      EditorView.domEventHandlers({
-        keydown: (event, view) => {
-          // Handle Cmd+S (Mac) or Ctrl+S (Windows/Linux)
-          if ((event.metaKey || event.ctrlKey) && event.key === 's') {
-            event.preventDefault();
-            event.stopPropagation();
-            
-            // Trigger the save action by calling the global save handler
-            const saveEvent = new KeyboardEvent('keydown', {
-              key: 's',
-              metaKey: event.metaKey,
-              ctrlKey: event.ctrlKey,
-              bubbles: true,
-              cancelable: true
-            });
-            
-            // Dispatch to document for global save handler to catch
-            document.dispatchEvent(saveEvent);
-            return true;
-          }
-          return false;
-        }
-      })
+      // Use VS Code keymap to preserve VS Code shortcuts including Cmd+S/Ctrl+S
+      vscodeKeymap,
     ];
-  }, [editorConfig.wordWrap]);;
+  }, [editorConfig.wordWrap]);
+  // Custom wrapper for CodeMirrorEditor that handles save shortcuts
+  const CodeMirrorEditorWithSave: React.FC<any> = props => {
+    return <CodeMirrorEditor {...props} />;
+  };
 
   // Initialize SyncManager
   useEffect(() => {
@@ -2079,7 +2051,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       const directiveRegex = /(:+)comment(?:\[([^\]]*)\])?\{([^}]*)\}/g;
       const oldCommentMatches = [...markdown.matchAll(directiveRegex)];
       const newCommentMatches = [...processedMarkdown.matchAll(directiveRegex)];
-      
+
       if (newCommentMatches.length < oldCommentMatches.length) {
         logger.debug('Comment deletion detected, parsing immediately');
         try {
@@ -2134,7 +2106,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     const handleVSCodeMessage = (event: MessageEvent) => {
       const { data } = event;
       console.log('Received VS Code message:', data);
-      
+
       if (data.type === 'open-search') {
         logger.debug('Received open-search message, triggering search');
         // Find search button and click it programmatically
@@ -2143,13 +2115,13 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
           (searchButton as HTMLButtonElement).click();
         }
       }
-      
+
       if (data.type === 'init' && data.theme) {
         console.log('Received theme from VS Code init:', data.theme);
         const isDark = data.theme === 'dark';
         setIsDarkTheme(isDark);
       }
-      
+
       if (data.command === 'themeChanged' && data.theme) {
         console.log('Received theme change from VS Code:', data.theme);
         const isDark = data.theme === 'dark';
@@ -2188,47 +2160,11 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     });
   }, []);
 
-  // Handle Ctrl+S / Cmd+S for saving and Ctrl+F / Cmd+F for search
+  // Handle Ctrl+F / Cmd+F for search only - let VS Code handle save natively
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-        e.preventDefault();
-        logger.debug('Save keyboard shortcut pressed');
-
-        // Get the current markdown from the editor
-        let contentToSave = markdown;
-        if (editorRef.current) {
-          const editorContent = editorRef.current.getMarkdown();
-
-          // Convert webview URIs back to relative paths
-          const contentWithRelativePaths = convertWebviewUrisToRelativePaths(editorContent);
-
-          // Apply postprocessing to convert mathematical angle brackets back to regular ones and restore curly braces
-          contentToSave = postprocessAngleBrackets(contentWithRelativePaths);
-          logger.debug('Got content from editor, converted URIs, and postprocessed:', contentToSave.substring(0, 100));
-        }
-
-        if (typeof window !== 'undefined' && window.vscodeApi) {
-          logger.debug('Sending save command with content length:', contentToSave.length);
-
-          // Set flag to prevent editor reload after save
-          justSavedRef.current = true;
-
-          window.vscodeApi.postMessage({
-            command: 'save',
-            content: contentToSave,
-          });
-          // Note: Don't clear dirty state here - wait for save confirmation from extension
-
-          // Notify extension that changes are saved for tab title indicator
-          if (window.vscodeApi) {
-            window.vscodeApi.postMessage({
-              command: 'dirtyStateChanged',
-              isDirty: false,
-            });
-          }
-        }
-      } else if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+      // Only handle search shortcuts, let VS Code handle save naturally
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
         e.preventDefault();
         logger.debug('Search keyboard shortcut pressed, focusing search input');
         // Focus the inline search input
@@ -2239,9 +2175,10 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
+    // Use capture phase to intercept events before CodeMirror gets them
+    document.addEventListener('keydown', handleKeyDown, true);
     return () => {
-      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('keydown', handleKeyDown, true);
     };
   }, [hasUnsavedChanges, markdown, convertWebviewUrisToRelativePaths]);
 
@@ -2665,6 +2602,61 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     }
   }, [pendingComment]);
 
+  // Save interception for Cmd+S/Ctrl+S inside CodeMirror
+  useEffect(() => {
+    const handleSaveKeyboard = (e: KeyboardEvent) => {
+      const isSave = (e.metaKey || e.ctrlKey) && e.key === 's';
+
+      if (isSave) {
+        const target = e.target as HTMLElement;
+        const isInsideCodeMirror = target?.closest('.cm-editor');
+
+        if (isInsideCodeMirror) {
+          console.log('Save keyboard shortcut pressed inside CodeMirror');
+          e.preventDefault();
+          e.stopImmediatePropagation();
+
+          // Set user interacting to prevent editor reload during save
+          if (window.vscodeApi) {
+            window.vscodeApi.postMessage({
+              command: 'setUserInteracting',
+              isInteracting: true,
+            });
+          }
+
+          // Get current content and send to VS Code for saving
+          const currentContent = editorRef.current?.getMarkdown() || '';
+          const contentToSave = postprocessAngleBrackets(currentContent);
+
+          if (window.vscodeApi) {
+            console.log('Saving content to VS Code', contentToSave);
+            window.vscodeApi.postMessage({
+              command: 'save',
+              content: contentToSave,
+            });
+          }
+
+          // Clear user interacting after save completes
+          setTimeout(() => {
+            if (window.vscodeApi) {
+              window.vscodeApi.postMessage({
+                command: 'setUserInteracting',
+                isInteracting: false,
+              });
+            }
+          }, 100);
+        }
+      }
+    };
+
+    // Use capture phase to intercept before CodeMirror gets the event
+    document.addEventListener('keydown', handleSaveKeyboard, true);
+
+    return () => {
+      document.removeEventListener('keydown', handleSaveKeyboard, true);
+    };
+  }, []);
+
   // Function to detect if selected text is within a code block
   const detectCodeBlockSelection = (markdown: string, selectedText: string): boolean => {
     // Look for the selected text in the markdown and check if it's within ``` blocks
@@ -2925,88 +2917,88 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
           {
             priority: 5,
             match: (language, _code) => language === 'javascript',
-            Editor: props => <CodeMirrorEditor {...props} language="js" />,
+            Editor: props => <CodeMirrorEditorWithSave {...props} language="js" />,
           },
           {
             priority: 5,
             match: (language, _code) => language === 'python',
-            Editor: props => <CodeMirrorEditor {...props} language="py" />,
+            Editor: props => <CodeMirrorEditorWithSave {...props} language="py" />,
           },
           {
             priority: 5,
             match: (language, _code) => language === 'typescript',
-            Editor: props => <CodeMirrorEditor {...props} language="ts" />,
+            Editor: props => <CodeMirrorEditorWithSave {...props} language="ts" />,
           },
           {
             priority: 5,
             match: (language, _code) => language === 'markdown',
-            Editor: props => <CodeMirrorEditor {...props} language="md" />,
+            Editor: props => <CodeMirrorEditorWithSave {...props} language="md" />,
           },
           {
             priority: 5,
             match: (language, _code) => language === 'yml',
-            Editor: props => <CodeMirrorEditor {...props} language="yaml" />,
+            Editor: props => <CodeMirrorEditorWithSave {...props} language="yaml" />,
           },
           {
             priority: 5,
             match: (language, _code) => language === 'text',
-            Editor: props => <CodeMirrorEditor {...props} language="txt" />,
+            Editor: props => <CodeMirrorEditorWithSave {...props} language="txt" />,
           },
           {
             priority: 5,
             match: (language, _code) => language === 'shell',
-            Editor: props => <CodeMirrorEditor {...props} language="sh" />,
+            Editor: props => <CodeMirrorEditorWithSave {...props} language="sh" />,
           },
           // Top 10 additional language mappings
           {
             priority: 5,
             match: (language, _code) => language === 'rust',
-            Editor: props => <CodeMirrorEditor {...props} language="rust" />,
+            Editor: props => <CodeMirrorEditorWithSave {...props} language="rust" />,
           },
           {
             priority: 5,
             match: (language, _code) => language === 'go',
-            Editor: props => <CodeMirrorEditor {...props} language="go" />,
+            Editor: props => <CodeMirrorEditorWithSave {...props} language="go" />,
           },
           {
             priority: 5,
             match: (language, _code) => language === 'cpp' || language === 'c++',
-            Editor: props => <CodeMirrorEditor {...props} language="cpp" />,
+            Editor: props => <CodeMirrorEditorWithSave {...props} language="cpp" />,
           },
           {
             priority: 5,
             match: (language, _code) => language === 'c',
-            Editor: props => <CodeMirrorEditor {...props} language="c" />,
+            Editor: props => <CodeMirrorEditorWithSave {...props} language="c" />,
           },
           {
             priority: 5,
             match: (language, _code) => language === 'java',
-            Editor: props => <CodeMirrorEditor {...props} language="java" />,
+            Editor: props => <CodeMirrorEditorWithSave {...props} language="java" />,
           },
           {
             priority: 5,
             match: (language, _code) => language === 'kotlin',
-            Editor: props => <CodeMirrorEditor {...props} language="kotlin" />,
+            Editor: props => <CodeMirrorEditorWithSave {...props} language="kotlin" />,
           },
           {
             priority: 5,
             match: (language, _code) => language === 'swift',
-            Editor: props => <CodeMirrorEditor {...props} language="swift" />,
+            Editor: props => <CodeMirrorEditorWithSave {...props} language="swift" />,
           },
           {
             priority: 5,
             match: (language, _code) => language === 'php',
-            Editor: props => <CodeMirrorEditor {...props} language="php" />,
+            Editor: props => <CodeMirrorEditorWithSave {...props} language="php" />,
           },
           {
             priority: 5,
             match: (language, _code) => language === 'ruby',
-            Editor: props => <CodeMirrorEditor {...props} language="ruby" />,
+            Editor: props => <CodeMirrorEditorWithSave {...props} language="ruby" />,
           },
           {
             priority: 5,
             match: (language, _code) => language === 'dart',
-            Editor: props => <CodeMirrorEditor {...props} language="dart" />,
+            Editor: props => <CodeMirrorEditorWithSave {...props} language="dart" />,
           },
           // Fallback editor for any other unknown languages
           {
