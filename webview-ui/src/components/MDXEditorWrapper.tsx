@@ -49,10 +49,27 @@ import {
 } from 'lucide-react';
 import React, { startTransition, useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 
-import { DirectiveService } from '../../../src/services/directive';
+import { DirectiveService } from '../services/directive';
 import { CommentWithAnchor } from '../types';
+// import { SyncManager, SyncState } from '../utils/syncManager'; // REMOVED: SyncManager causing memory leaks
+import {
+  postBookViewMarginSetting,
+  postBookViewSetting,
+  postBookViewWidthSetting,
+  postContentEdit,
+  postContentSave,
+  postDirtyState,
+  postError,
+  postExternalLink,
+  postFontSetting,
+  postFontSizeSetting,
+  postGetFont,
+  postImageUri,
+  postReady,
+  postTextAlignSetting,
+  postUserInteraction,
+} from '../utils/extensionMessaging';
 import { logger } from '../utils/logger';
-import { SyncManager, SyncState } from '../utils/syncManager';
 import { escapeDirectiveContent } from '../utils/textNormalization';
 import { CommentModal } from './CommentModal';
 import { CustomSearchInput, customSearchPlugin } from './CustomSearchPlugin';
@@ -112,8 +129,6 @@ const ToolbarGroups = React.memo(
 
     return (
       <>
-        {/* Removed UndoRedo - VS Code handles undo/redo via keyboard shortcuts */}
-
         {/* Block Type (text style) - before font selection */}
         {shouldShowGroup('display-font') && (
           <>
@@ -1116,12 +1131,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         }
         // Handle external links
         else if (href.startsWith('http://') || href.startsWith('https://')) {
-          if (typeof window !== 'undefined' && window.vscodeApi) {
-            window.vscodeApi.postMessage({
-              command: 'openExternalLink',
-              url: href,
-            });
-          }
+          postExternalLink(href);
         }
       }
     };
@@ -1140,17 +1150,11 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
   // Load saved font preference from VS Code settings on mount and signal ready
   React.useEffect(() => {
-    if (typeof window !== 'undefined' && window.vscodeApi) {
-      // Signal that webview is ready to receive updates
-      window.vscodeApi.postMessage({
-        command: 'ready',
-      });
+    // Signal that webview is ready to receive updates
+    postReady();
 
-      // Request font settings
-      window.vscodeApi.postMessage({
-        command: 'getFont',
-      });
-    }
+    // Request font settings
+    postGetFont();
   }, []);
 
   // Handle font changes and save to VS Code settings
@@ -1164,12 +1168,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       setSelectedFont(fontName);
 
       // Save to VS Code settings
-      if (typeof window !== 'undefined' && window.vscodeApi) {
-        window.vscodeApi.postMessage({
-          command: 'setFont',
-          font: fontName,
-        });
-      }
+      postFontSetting(fontName);
     },
     [selectedFont],
   );
@@ -1186,35 +1185,20 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   const handleFontSizeChange = useCallback((delta: number) => {
     const newSize = Math.max(8, Math.min(48, currentFontSizeRef.current + delta));
     // Save to VS Code settings
-    if (typeof window !== 'undefined' && window.vscodeApi) {
-      window.vscodeApi.postMessage({
-        command: 'setFontSize',
-        fontSize: newSize,
-      });
-    }
+    postFontSizeSetting(newSize);
   }, []);
 
   // Handle text alignment changes
   const handleTextAlignChange = useCallback((align: string) => {
     // Save to VS Code settings
-    if (typeof window !== 'undefined' && window.vscodeApi) {
-      window.vscodeApi.postMessage({
-        command: 'setTextAlign',
-        textAlign: align,
-      });
-    }
+    postTextAlignSetting(align);
   }, []);
 
   // Handle Book View toggle
   const handleBookViewToggle = useCallback(() => {
     const newBookView = !bookView;
     // Save to VS Code settings
-    if (typeof window !== 'undefined' && window.vscodeApi) {
-      window.vscodeApi.postMessage({
-        command: 'setBookView',
-        bookView: newBookView,
-      });
-    }
+    postBookViewSetting(newBookView);
   }, [bookView]);
 
   // Debounced handlers for book view inputs to prevent cursor jumping
@@ -1229,12 +1213,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       // Debounce the VSCode config update
       clearTimeout(bookViewWidthTimeoutRef.current);
       bookViewWidthTimeoutRef.current = setTimeout(() => {
-        if (typeof window !== 'undefined' && window.vscodeApi) {
-          window.vscodeApi.postMessage({
-            command: 'setBookViewWidth',
-            bookViewWidth: `${value}in`,
-          });
-        }
+        postBookViewWidthSetting(`${value}in`);
       }, 500);
     },
     [localBookViewWidth],
@@ -1251,12 +1230,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       // Debounce the VSCode config update
       clearTimeout(bookViewMarginTimeoutRef.current);
       bookViewMarginTimeoutRef.current = setTimeout(() => {
-        if (typeof window !== 'undefined' && window.vscodeApi) {
-          window.vscodeApi.postMessage({
-            command: 'setBookViewMargin',
-            bookViewMargin: `${value}in`,
-          });
-        }
+        postBookViewMarginSetting(`${value}in`);
       }, 500);
     },
     [localBookViewMargin],
@@ -1677,24 +1651,22 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     stableHandleEditComment,
   ]);
 
-  // Removed logger.debugs for better performance during typing
+  const parseCommentTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
-  // Parse comments with debouncing to improve typing performance
   React.useEffect(() => {
-    if (!markdown) {
+    if (!liveMarkdown && !markdown) {
       setParsedComments([]);
       return;
     }
 
-    // COMPLETELY skip comment parsing during typing for maximum performance
-    if (isTyping) {
-      return;
+    if (parseCommentTimeoutRef.current) {
+      clearTimeout(parseCommentTimeoutRef.current);
     }
 
     // Heavy debounce - only after user completely stops typing for 800ms
-    const timeoutId = setTimeout(() => {
+    parseCommentTimeoutRef.current = setTimeout(() => {
       try {
-        const comments = DirectiveService.parseCommentDirectives(markdown);
+        const comments = DirectiveService.parseCommentDirectives(editorRef.current?.getMarkdown() ?? '');
         const commentsWithAnchor: CommentWithAnchor[] = comments.map(comment => ({
           ...comment,
           anchoredText: comment.anchoredText ?? 'Selected text',
@@ -1708,8 +1680,8 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       }
     }, 800); // Heavy debounce - only after complete typing pause
 
-    return () => clearTimeout(timeoutId);
-  }, [markdown, isTyping]);
+    return () => clearTimeout(parseCommentTimeoutRef.current);
+  }, [liveMarkdown, markdown]);
 
   // Cleanup timeouts on unmount - Enhanced memory leak fix
   React.useEffect(() => {
@@ -1740,22 +1712,19 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   }, []);
 
   // Track if we just saved to prevent unnecessary reloads
-  const justSavedRef = useRef(false);
+  // REMOVED: justSavedRef echo prevention - consolidated to extension level
 
   // Timeout ref for debouncing dirty state notifications
   const dirtyStateTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
+  // REMOVED: const [syncState, setSyncState] = useState<SyncState>(SyncState.IDLE); - SyncState no longer needed
+
   // Handle external updates ONLY when they come from VS Code (not from user typing)
   React.useEffect(() => {
-    // Skip updates immediately after saving to prevent scroll jumping
-    if (justSavedRef.current) {
-      justSavedRef.current = false;
-      logger.debug('Skipping editor update - just saved');
-      return;
-    }
+    // REMOVED: justSavedRef check - extension-level echo prevention handles this
 
     // Only process if this is a genuine external update (not from user typing)
-    if (editorRef.current && markdown !== undefined && syncManagerRef.current) {
+    if (editorRef.current && markdown !== undefined) {
       // Get current editor content to compare
       const currentContent = editorRef.current.getMarkdown();
 
@@ -1764,15 +1733,13 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         return;
       }
 
-      // Only treat as external if SyncManager isn't currently sending
-      if (syncState !== SyncState.SENDING_TO_VSCODE) {
-        logger.debug('External update detected, using SyncManager');
-        syncManagerRef.current.handleExternalUpdate(markdown);
-      } else {
-        logger.debug('Ignoring React state change during sync operation');
-      }
+      // Apply external update directly
+      logger.debug('External update detected, applying to editor');
+      editorRef.current.setMarkdown(markdown);
+
+      // REMOVED: justSavedRef.current = true; - echo prevention handled at extension level
     }
-  }, [markdown, syncState]);
+  }, [markdown]);
 
   // Focus editor on initial load
   useEffect(() => {
@@ -1841,10 +1808,9 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     }
   }, [markdown]);
 
-  // Comprehensive sync state management with SyncManager
+  // Track unsaved changes state
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [syncState, setSyncState] = useState<SyncState>(SyncState.IDLE);
-  const syncManagerRef = useRef<SyncManager | null>(null);
+  // REMOVED: const syncManagerRef = useRef<SyncManager | null>(null); - SyncManager no longer used
   const hasAppliedInitialEscapingRef = useRef(false);
 
   // Sync editorConfig prop with local state
@@ -1867,33 +1833,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     return <CodeMirrorEditor {...props} />;
   };
 
-  // Initialize SyncManager
-  useEffect(() => {
-    if (typeof window !== 'undefined' && window.vscodeApi && !syncManagerRef.current) {
-      const syncManager = new SyncManager(window.vscodeApi);
-
-      // Set up state change monitoring
-      syncManager.onStateChangeCallback(state => {
-        setSyncState(state);
-      });
-
-      // Set up external content updates
-      syncManager.onContentUpdateCallback(content => {
-        logger.debug('SyncManager triggered external content update');
-        if (editorRef.current) {
-          editorRef.current.setMarkdown(content);
-        }
-      });
-
-      syncManagerRef.current = syncManager;
-
-      // Cleanup on unmount
-      return () => {
-        syncManager.dispose();
-        syncManagerRef.current = null;
-      };
-    }
-  }, []);
+  // REMOVED: SyncManager initialization - replaced with direct postMessage calls
 
   // Function to handle modifier key tracking (defined outside useEffect)
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
@@ -1904,10 +1844,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
     // Set interaction flag when Ctrl or Cmd key is pressed
     if (event.ctrlKey || event.metaKey) {
-      window.vscodeApi.postMessage({
-        command: 'setUserInteracting',
-        isInteracting: true,
-      });
+      postUserInteraction(true);
     }
   }, []);
 
@@ -1919,10 +1856,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
     // Clear interaction flag when Ctrl or Cmd key is released
     if (event.key === 'Control' || event.key === 'Meta') {
-      window.vscodeApi.postMessage({
-        command: 'setUserInteracting',
-        isInteracting: false,
-      });
+      postUserInteraction(false);
     }
   }, []);
 
@@ -1941,15 +1875,9 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
   const handleMarkdownChange = useCallback(
     (newMarkdown: string) => {
-      // Skip if SyncManager is handling external updates
-      if (
-        syncState === SyncState.RECEIVING_FROM_VSCODE ||
-        syncState === SyncState.APPLYING_EXTERNAL ||
-        syncState === SyncState.BLOCKED
-      ) {
-        logger.debug('SyncManager: Ignoring change during external operation');
-        return;
-      }
+      console.log('MARKDOWNCHANGE');
+
+      // REMOVED: SyncManager external update checks - no longer needed with direct messaging
 
       // On first edit, apply escaping to the editor content invisibly (but only in rich-text mode)
       if (!hasAppliedInitialEscapingRef.current && editorRef.current && currentViewModeRef.current === 'rich-text') {
@@ -1988,28 +1916,6 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         // Update UI state for immediate feedback
         setHasUnsavedChanges(hasChanges);
       });
-
-      // COMMENT FIX: Detect if comment directives were deleted and parse immediately
-      // Use same regex pattern as DirectiveService to accurately count comment directives
-      const directiveRegex = /(:+)comment(?:\[([^\]]*)\])?\{([^}]*)\}/g;
-      const oldCommentMatches = [...markdown.matchAll(directiveRegex)];
-      const newCommentMatches = [...processedMarkdown.matchAll(directiveRegex)];
-
-      if (newCommentMatches.length < oldCommentMatches.length) {
-        logger.debug('Comment deletion detected, parsing immediately');
-        try {
-          const comments = DirectiveService.parseCommentDirectives(processedMarkdown);
-          const commentsWithAnchor: CommentWithAnchor[] = comments.map(comment => ({
-            ...comment,
-            anchoredText: comment.anchoredText ?? 'Selected text',
-            endPosition: 0,
-          }));
-          setParsedComments(commentsWithAnchor);
-        } catch (error) {
-          logger.error('Error in immediate comment parsing after deletion:', error);
-        }
-      }
-
       // Clear and reset typing timeout
       clearTimeout(typingTimeoutRef.current);
       typingTimeoutRef.current = setTimeout(() => setIsTyping(false), 300);
@@ -2020,28 +1926,13 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       // Notify parent of dirty state
       onDirtyStateChange?.(hasChanges);
 
-      // Use SyncManager for reliable, batched syncing to VS Code
-      if (syncManagerRef.current) {
-        syncManagerRef.current.sendContentToVSCode(processedMarkdown);
-      } else {
-        // Fallback to direct messaging if SyncManager is not available
-        if (typeof window !== 'undefined' && window.vscodeApi) {
-          window.vscodeApi.postMessage({
-            command: 'edit',
-            content: processedMarkdown,
-          });
-        }
-      }
+      // Send content to VS Code using consolidated messaging utility
+      postContentEdit(processedMarkdown);
 
       // Send dirty state notification
-      if (window.vscodeApi) {
-        window.vscodeApi.postMessage({
-          command: 'dirtyStateChanged',
-          isDirty: true,
-        });
-      }
+      postDirtyState(true);
     },
-    [markdown, onDirtyStateChange, syncState], // REMOVED setLiveMarkdown from deps - state setters should be stable
+    [markdown, onDirtyStateChange], // State setters should be stable
   );
 
   // Handle VS Code messages including theme changes
@@ -2401,13 +2292,9 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       if (isInCodeBlock) {
         // Code blocks can't be reliably commented - show error
         logger.debug('Detected code block content, showing error message');
-        if (window.vscodeApi) {
-          window.vscodeApi.postMessage({
-            command: 'error',
-            content:
-              'Sorry, code blocks cannot be commented on directly. If you have ideas how to make this work, please let us know on our GitHub repo!',
-          });
-        }
+        postError(
+          'Sorry, code blocks cannot be commented on directly. If you have ideas how to make this work, please let us know on our GitHub repo!',
+        );
         return;
       } else if (isMultiParagraph) {
         // Multi-paragraph selections use container directive
@@ -2421,13 +2308,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     } catch (error) {
       logger.error('Error in comment submission:', error);
       // Show error instead of falling back to sidebar
-      if (window.vscodeApi) {
-        window.vscodeApi.postMessage({
-          command: 'error',
-          content:
-            'Failed to add comment. Please try selecting different text or report this issue on our GitHub repo.',
-        });
-      }
+      postError('Failed to add comment. Please try selecting different text or report this issue on our GitHub repo.');
     }
 
     // Close modal
@@ -2516,12 +2397,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         }
 
         // Notify extension about changes
-        if (window.vscodeApi) {
-          window.vscodeApi.postMessage({
-            command: 'dirtyStateChanged',
-            isDirty: true,
-          });
-        }
+        postDirtyState(true);
       } else {
         logger.error('No editor ref available in handleCommentInserted');
       }
@@ -2560,33 +2436,18 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
           e.stopImmediatePropagation();
 
           // Set user interacting to prevent editor reload during save
-          if (window.vscodeApi) {
-            window.vscodeApi.postMessage({
-              command: 'setUserInteracting',
-              isInteracting: true,
-            });
-          }
+          postUserInteraction(true);
 
           // Get current content and send to VS Code for saving
           const currentContent = editorRef.current?.getMarkdown() ?? '';
           const contentToSave = postprocessAngleBrackets(currentContent);
 
-          if (window.vscodeApi) {
-            console.log('Saving content to VS Code', contentToSave);
-            window.vscodeApi.postMessage({
-              command: 'save',
-              content: contentToSave,
-            });
-          }
+          console.log('Saving content to VS Code', contentToSave);
+          postContentSave(contentToSave);
 
           // Clear user interacting after save completes
           setTimeout(() => {
-            if (window.vscodeApi) {
-              window.vscodeApi.postMessage({
-                command: 'setUserInteracting',
-                isInteracting: false,
-              });
-            }
+            postUserInteraction(false);
           }, 100);
         }
       }
@@ -2742,11 +2603,8 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
             const reader = new FileReader();
             reader.onload = e => {
               const data = e.target?.result;
-              if (data && window.vscodeApi) {
-                window.vscodeApi.postMessage({
-                  command: 'getImageUri',
-                  data,
-                });
+              if (data) {
+                postImageUri(data);
 
                 const handleUri = (event: any) => {
                   if (event.data.command === 'imageUri') {
@@ -2797,7 +2655,6 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
             bookViewMargin={bookViewMargin}
             currentViewMode={currentViewMode}
             onViewModeChange={handleViewModeChange}
-            searchInputRef={searchInputRef}
             fontSize={fontSize}
             handleFontSizeChange={handleFontSizeChange}
             textAlign={textAlign}

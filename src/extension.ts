@@ -7,9 +7,6 @@ import { logger } from './utils/logger';
 interface WebviewMessage {
   command: string;
   content?: string;
-  payload?: {
-    content?: string;
-  };
   range?: {
     start: number;
     end: number;
@@ -201,13 +198,9 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
             break;
 
           case 'edit': {
-            // Handle both SyncManager format and direct format
-            const content = message.content ?? message.payload?.content;
+            // Handle direct format only (SyncManager format removed)
+            const content = message.content;
             this.outputChannel.appendLine(`Edit message received, content length: ${content?.length ?? 0}`);
-            this.outputChannel.appendLine(
-              `Message format - content: ${String(message.content !== undefined)}, ` +
-                `payload.content: ${String(message.payload?.content !== undefined)}`,
-            );
 
             if (content) {
               const editContent = postprocessAngleBrackets(content);
@@ -429,7 +422,7 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
   private async handleCommentOperation(message: WebviewMessage, document: vscode.TextDocument): Promise<void> {
     try {
       // Update document content if provided - webview handles comment processing internally via directives
-      const commentContent = message.content ?? message.payload?.content;
+      const commentContent = message.content;
       if (commentContent) {
         const processedContent = postprocessAngleBrackets(commentContent);
         this.outputChannel.appendLine(`Updating document with comment content length: ${processedContent.length}`);

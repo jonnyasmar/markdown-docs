@@ -1,7 +1,7 @@
 /**
  * Service for parsing and managing MDX directives in markdown content
  */
-import { DocsComment } from '../common/types';
+import { DocsComment } from '../types';
 
 export interface DirectiveComment {
   id: string;
