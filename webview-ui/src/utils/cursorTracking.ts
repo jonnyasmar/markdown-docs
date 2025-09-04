@@ -48,7 +48,7 @@ export const getCursorPositionFromSelection = (): number => {
     console.log('Selection range:', { startContainer: range.startContainer, startOffset: range.startOffset });
 
     // Find the main MDX editor container (not individual paragraphs)
-    let editableElement = range.startContainer;
+    let editableElement: Node | null = range.startContainer;
     while (editableElement && editableElement.nodeType !== Node.ELEMENT_NODE) {
       editableElement = editableElement.parentNode;
     }
@@ -69,7 +69,7 @@ export const getCursorPositionFromSelection = (): number => {
       return 0;
     }
 
-    console.log('Found main editor container:', editableElement.className);
+    console.log('Found main editor container:', (editableElement as Element).className);
 
     // Create range from start of editable to cursor
     const preCaretRange = document.createRange();

@@ -63,9 +63,12 @@ export type ViewMode = 'preview' | 'edit' | 'split';
 export interface MermaidEditorProps {
   code: string;
   language: string;
-  setCode: (code: string) => void;
-  focusEmitter?: any;
-  parentEditor?: any;
+  setCode?: (code: string) => void;
+  focusEmitter?: unknown;
+  parentEditor?: unknown;
+  isDarkTheme?: boolean;
+  meta?: string;
+  nodeKey?: string;
 }
 
 export interface ErrorBoundaryState {
@@ -89,10 +92,15 @@ export type FontFamily =
   | 'Montserrat'
   | 'Source Sans Pro';
 
-// Global window interface extension
+// Global interface extensions
 declare global {
   interface Window {
     vscodeApi?: VSCodeAPI;
     vscodeApiAcquired?: boolean;
+  }
+
+  // CSS Custom Highlight API types - augment existing CSS interface
+  interface CSS {
+    highlights?: Map<string, unknown>;
   }
 }

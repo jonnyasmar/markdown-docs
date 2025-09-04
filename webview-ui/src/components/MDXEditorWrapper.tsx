@@ -347,11 +347,11 @@ const DiffViewWrapper = React.memo(
     children: React.ReactNode;
     shouldShow?: boolean;
     currentViewMode?: 'rich-text' | 'source' | 'diff';
-  }) => {
+  }): React.ReactElement => {
     return shouldShow || currentViewMode !== 'rich-text' ? (
       <DiffSourceToggleWrapper options={['rich-text', 'source']}>{children}</DiffSourceToggleWrapper>
     ) : (
-      children
+      <>{children}</>
     );
   },
 );
@@ -382,7 +382,7 @@ const ToolbarWithCommentButton = React.memo(
     bookViewMargin: string;
     currentViewMode: 'rich-text' | 'source' | 'diff';
     onViewModeChange: (mode: 'rich-text' | 'source' | 'diff') => void;
-    searchInputRef: React.RefObject<HTMLInputElement>;
+    searchInputRef: React.RefObject<HTMLInputElement | null>;
     fontSize: number;
     handleFontSizeChange: (delta: number) => void;
     textAlign: string;
@@ -688,7 +688,7 @@ const commentInsertionPlugin = realmPlugin<{
         // Use MDX Editor's native insertDirective$ signal - this is the key!
         const directiveConfig = {
           name: 'comment',
-          type: pendingComment.strategy === 'container' ? 'containerDirective' : 'textDirective',
+          type: (pendingComment.strategy === 'container' ? 'containerDirective' : 'textDirective') as 'containerDirective' | 'textDirective' | 'leafDirective',
           children:
             pendingComment.strategy === 'container'
               ? [{ type: 'paragraph', children: [{ type: 'text', value: pendingComment.selectedText }] }]
@@ -712,7 +712,7 @@ const commentInsertionPlugin = realmPlugin<{
         }
       } catch (error) {
         logger.error('Error inserting comment directive via insertDirective$:', error);
-        logger.error('Error details:', error.stack);
+        logger.error('Error details:', error instanceof Error ? error.stack : String(error));
       }
     }
   },
@@ -922,7 +922,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     strategy: 'inline' | 'container';
   } | null>(null);
   const [selectedFont, setSelectedFont] = useState(defaultFont);
-  const [editingComment, setEditingComment] = useState<any>(null);
+  const [editingComment, setEditingComment] = useState<CommentWithAnchor | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [focusedCommentId, setFocusedCommentId] = useState<string | null>(null);
 
@@ -1109,7 +1109,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
   // Handle link clicks in the editor
   useEffect(() => {
-    const handleLinkClick = (event: MouseEvent) => {
+    const handleLinkClick = (event: Event) => {
       const target = event.target as HTMLElement;
 
       // Check if clicked element is a link
@@ -1122,7 +1122,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
           return;
         }
 
-        event.preventDefault();
+        (event as MouseEvent).preventDefault();
 
         // Handle internal anchor links (e.g., #heading)
         if (href.startsWith('#')) {
@@ -2664,6 +2664,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
             localBookViewMargin={localBookViewMargin}
             handleBookViewWidthChange={handleBookViewWidthChange}
             handleBookViewMarginChange={handleBookViewMarginChange}
+            searchInputRef={searchInputRef}
           />
         ),
       }),
@@ -2676,7 +2677,12 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
           {
             priority: 10,
             match: (language, _code) => language === 'mermaid',
-            Editor: props => <MermaidEditor {...props} isDarkTheme={isDarkTheme} />,
+            Editor: props => (
+              <MermaidEditor
+                {...props}
+                isDarkTheme={isDarkTheme}
+              />
+            ),
           },
           // Specific mappings for common aliases
           {
@@ -2805,11 +2811,6 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
           dart: 'Dart',
         },
         // Add better syntax theme configuration
-        autocompletion: true,
-        branchPrediction: false,
-        codeFolding: true,
-        // Use VS Code editor configuration for word wrap behavior in code blocks
-        codeBlockEditorExtensions: createCodeMirrorExtensions,
       }),
     ],
     [

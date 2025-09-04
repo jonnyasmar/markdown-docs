@@ -7,10 +7,12 @@ import { logger } from '../utils/logger';
 interface MermaidEditorProps {
   code: string;
   language: string;
-  setCode: (code: string) => void;
-  focusEmitter: any;
-  parentEditor: any;
+  setCode?: (code: string) => void;
+  focusEmitter?: unknown;
+  parentEditor?: unknown;
   isDarkTheme?: boolean;
+  meta?: string;
+  nodeKey?: string;
 }
 
 type ViewMode = 'preview' | 'edit' | 'split';
@@ -21,6 +23,8 @@ export const MermaidEditor: React.FC<MermaidEditorProps> = ({
   focusEmitter,
   parentEditor,
   isDarkTheme = false,
+  meta,
+  nodeKey,
   ...props
 }) => {
   const [viewMode, setViewMode] = useState<ViewMode>('preview');
@@ -144,13 +148,13 @@ export const MermaidEditor: React.FC<MermaidEditorProps> = ({
       if (mermaid.mermaidAPI) {
         mermaid.mermaidAPI.reset();
       }
-      if (mermaid.reset) {
-        mermaid.reset();
+      if ((mermaid as any).reset) {
+        (mermaid as any).reset();
       }
-      // @ts-ignore - Clear diagram registry completely
-      if (mermaid.getDiagramRegistry) {
-        const registry = mermaid.getDiagramRegistry();
-        registry.clear();
+      // Clear diagram registry completely
+      if ((mermaid as any).getDiagramRegistry) {
+        const registry = (mermaid as any).getDiagramRegistry();
+        (registry as any).clear();
       }
       // @ts-ignore - Clear any cached configurations
       delete mermaid.defaultConfig;
@@ -300,10 +304,9 @@ export const MermaidEditor: React.FC<MermaidEditorProps> = ({
       <CodeMirrorEditor
         code={code}
         language="mermaid"
-        setCode={setCode}
-        focusEmitter={focusEmitter}
-        parentEditor={parentEditor}
-        {...props}
+        meta={meta || ''}
+        nodeKey={nodeKey || ''}
+        focusEmitter={focusEmitter as any}
       />
     </div>
   );

@@ -1,9 +1,18 @@
 import { realmPlugin } from '@mdxeditor/editor';
 import React, { useCallback } from 'react';
 
+// CSS Custom Highlight API - use type assertions for now
+type CustomCSS = typeof CSS & {
+  highlights?: Map<string, unknown>;
+};
+
+declare const CustomHighlight: {
+  new (...ranges: Range[]): unknown;
+};
+
 // Custom search plugin that only scrolls on Enter key presses
 export interface CustomSearchPluginParams {
-  searchInputRef?: React.RefObject<HTMLInputElement>;
+  searchInputRef?: React.RefObject<HTMLInputElement | null>;
 }
 
 interface SearchMatch {
@@ -137,9 +146,10 @@ export const customSearchPlugin = realmPlugin<CustomSearchPluginParams>({
     // Highlight all matches using CSS Highlights API
     const highlightMatches = (matches: SearchMatch[], currentIndex = -1) => {
       // Clear existing highlights
-      if (CSS.highlights) {
-        CSS.highlights.delete('mdx-search');
-        CSS.highlights.delete('mdx-focus-search');
+      const customCSS = CSS as CustomCSS;
+      if (customCSS.highlights) {
+        customCSS.highlights.delete('mdx-search');
+        customCSS.highlights.delete('mdx-focus-search');
       }
 
       if (matches.length === 0) {
@@ -153,14 +163,14 @@ export const customSearchPlugin = realmPlugin<CustomSearchPluginParams>({
         // Highlight all matches
         const allRanges = matches.map(match => match.range);
         if (allRanges.length > 0) {
-          const searchHighlight = new Highlight(...allRanges);
-          CSS.highlights?.set('mdx-search', searchHighlight);
+          const searchHighlight = new (window as any).Highlight(...allRanges);
+          customCSS.highlights?.set('mdx-search', searchHighlight);
         }
 
         // Highlight current match
         if (currentIndex >= 0 && currentIndex < matches.length) {
-          const focusHighlight = new Highlight(matches[currentIndex].range);
-          CSS.highlights?.set('mdx-focus-search', focusHighlight);
+          const focusHighlight = new (window as any).Highlight(matches[currentIndex].range);
+          customCSS.highlights?.set('mdx-focus-search', focusHighlight);
         }
       } finally {
         // Restore scrolling after a brief delay
@@ -202,9 +212,10 @@ export const customSearchPlugin = realmPlugin<CustomSearchPluginParams>({
 
     // Clear all highlights
     const clearHighlights = () => {
-      if (CSS.highlights) {
-        CSS.highlights.delete('mdx-search');
-        CSS.highlights.delete('mdx-focus-search');
+      const customCSS = CSS as CustomCSS;
+      if (customCSS.highlights) {
+        customCSS.highlights.delete('mdx-search');
+        customCSS.highlights.delete('mdx-focus-search');
       }
       searchState.isHighlighted = false;
     };
