@@ -1202,31 +1202,49 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   }, [bookView]);
 
   // Debounced handlers for book view inputs to prevent cursor jumping
-  const handleBookViewWidthChange = useCallback((value: string) => {
-    setLocalBookViewWidth(value);
-    clearTimeout(bookViewWidthTimeoutRef.current);
-    bookViewWidthTimeoutRef.current = setTimeout(() => {
-      if (typeof window !== 'undefined' && window.vscodeApi) {
-        window.vscodeApi.postMessage({
-          command: 'setBookViewWidth',
-          bookViewWidth: value + 'in',
-        });
-      }
-    }, 500);
-  }, []);
+  const handleBookViewWidthChange = useCallback(
+    (value: string) => {
+      console.log('handleBookViewWidthChange called with:', value);
+      console.log('Current localBookViewWidth:', localBookViewWidth);
 
-  const handleBookViewMarginChange = useCallback((value: string) => {
-    setLocalBookViewMargin(value);
-    clearTimeout(bookViewMarginTimeoutRef.current);
-    bookViewMarginTimeoutRef.current = setTimeout(() => {
-      if (typeof window !== 'undefined' && window.vscodeApi) {
-        window.vscodeApi.postMessage({
-          command: 'setBookViewMargin',
-          bookViewMargin: value + 'in',
-        });
-      }
-    }, 500);
-  }, []);
+      // Update local state immediately for responsive UI
+      setLocalBookViewWidth(value);
+
+      // Debounce the VSCode config update
+      clearTimeout(bookViewWidthTimeoutRef.current);
+      bookViewWidthTimeoutRef.current = setTimeout(() => {
+        if (typeof window !== 'undefined' && window.vscodeApi) {
+          window.vscodeApi.postMessage({
+            command: 'setBookViewWidth',
+            bookViewWidth: value + 'in',
+          });
+        }
+      }, 500);
+    },
+    [localBookViewWidth],
+  );
+
+  const handleBookViewMarginChange = useCallback(
+    (value: string) => {
+      console.log('handleBookViewMarginChange called with:', value);
+      console.log('Current localBookViewMargin:', localBookViewMargin);
+
+      // Update local state immediately for responsive UI
+      setLocalBookViewMargin(value);
+
+      // Debounce the VSCode config update
+      clearTimeout(bookViewMarginTimeoutRef.current);
+      bookViewMarginTimeoutRef.current = setTimeout(() => {
+        if (typeof window !== 'undefined' && window.vscodeApi) {
+          window.vscodeApi.postMessage({
+            command: 'setBookViewMargin',
+            bookViewMargin: value + 'in',
+          });
+        }
+      }, 500);
+    },
+    [localBookViewMargin],
+  );
 
   // Apply dynamic styles to the editor content
   useEffect(() => {
@@ -1915,8 +1933,8 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         },
       }),
       fixEscapingPlugin,
-      // Use VS Code keymap to preserve VS Code shortcuts including Cmd+S/Ctrl+S
-      vscodeKeymap,
+      // Spread vscodeKeymap array to avoid nested arrays causing extension set errors
+      ...vscodeKeymap,
     ];
   }, [editorConfig.wordWrap]);
   // Custom wrapper for CodeMirrorEditor that handles save shortcuts
@@ -3060,6 +3078,8 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       focusedCommentId, // RESTORED: Required for comment directive highlighting
       setFocusedCommentId, // RESTORED: Required for comment directive interaction
       pendingComment, // RESTORED: Required for comment insertion plugin to work
+      localBookViewWidth, // RESTORED: Required for toolbar book view width display
+      localBookViewMargin, // RESTORED: Required for toolbar book view margin display
     ],
   );
 
