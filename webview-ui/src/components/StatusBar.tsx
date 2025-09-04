@@ -29,7 +29,9 @@ const StatusBar: React.FC<StatusBarProps> = ({ content, selectedText, viewMode, 
       )}
 
       <div className="status-section">
-        <span className="status-item">Ln {stats.cursorPosition.line}, Col {stats.cursorPosition.column}</span>
+        <span className="status-item">
+          Ln {stats.cursorPosition.line}, Col {stats.cursorPosition.column}
+        </span>
         <span className="status-item mode">
           {viewMode === 'rich-text'
             ? 'Rich Text'

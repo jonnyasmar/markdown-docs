@@ -1,6 +1,5 @@
 import { realmPlugin } from '@mdxeditor/editor';
-import type { Realm } from '@mdxeditor/editor';
-import React from 'react';
+import React, { useCallback } from 'react';
 
 // Custom search plugin that only scrolls on Enter key presses
 export interface CustomSearchPluginParams {
@@ -19,8 +18,17 @@ interface SearchState {
   isHighlighted: boolean;
 }
 
+interface SearchAPI {
+  search: (term: string, shouldScroll: boolean) => void;
+  next: () => void;
+  previous: () => void;
+  clear: () => void;
+  getMatchCount: () => number;
+  getCurrentIndex: () => number;
+}
+
 export const customSearchPlugin = realmPlugin<CustomSearchPluginParams>({
-  init: (realm, params) => {
+  init: () => {
     let searchState: SearchState = {
       searchTerm: '',
       matches: [],
@@ -29,26 +37,26 @@ export const customSearchPlugin = realmPlugin<CustomSearchPluginParams>({
     };
 
     // Store original scrollIntoView to restore later
+    // eslint-disable-next-line @typescript-eslint/unbound-method
     const originalScrollIntoView = Element.prototype.scrollIntoView;
-    let scrollingDisabled = false;
 
     // Override scrollIntoView to control when scrolling happens
     const preventScrollIntoView = () => {
-      scrollingDisabled = true;
       Element.prototype.scrollIntoView = function () {
         // Do nothing - prevent automatic scrolling
       };
     };
 
     const restoreScrollIntoView = () => {
-      scrollingDisabled = false;
       Element.prototype.scrollIntoView = originalScrollIntoView;
     };
 
     // Create text index from editor content
     const createTextIndex = (): { text: string; ranges: Range[] } => {
       const editorContainer = document.querySelector('.mdxeditor-root-contenteditable');
-      if (!editorContainer) return { text: '', ranges: [] };
+      if (!editorContainer) {
+        return { text: '', ranges: [] };
+      }
 
       const ranges: Range[] = [];
       let text = '';
@@ -57,7 +65,9 @@ export const customSearchPlugin = realmPlugin<CustomSearchPluginParams>({
         acceptNode: node => {
           // Skip nodes in toolbar, buttons, etc.
           const parent = node.parentElement;
-          if (!parent) return NodeFilter.FILTER_REJECT;
+          if (!parent) {
+            return NodeFilter.FILTER_REJECT;
+          }
 
           if (
             parent.closest('.mdxeditor-toolbar') ||
@@ -73,7 +83,7 @@ export const customSearchPlugin = realmPlugin<CustomSearchPluginParams>({
 
       let textNode: Node | null;
       while ((textNode = walker.nextNode())) {
-        const nodeText = textNode.textContent || '';
+        const nodeText = textNode.textContent ?? '';
         if (nodeText.trim()) {
           const range = document.createRange();
           range.selectNodeContents(textNode);
@@ -87,15 +97,15 @@ export const customSearchPlugin = realmPlugin<CustomSearchPluginParams>({
 
     // Find all matches for search term
     const findMatches = (searchTerm: string): SearchMatch[] => {
-      if (!searchTerm.trim()) return [];
+      if (!searchTerm.trim()) {
+        return [];
+      }
 
-      const { text, ranges } = createTextIndex();
+      const { ranges } = createTextIndex();
       const matches: SearchMatch[] = [];
 
       try {
         const regex = new RegExp(searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-        let match;
-        let textOffset = 0;
 
         for (const range of ranges) {
           const nodeText = range.toString();
@@ -116,8 +126,6 @@ export const customSearchPlugin = realmPlugin<CustomSearchPluginParams>({
               });
             }
           }
-
-          textOffset += nodeText.length;
         }
       } catch (error) {
         console.warn('Search regex error:', error);
@@ -127,14 +135,16 @@ export const customSearchPlugin = realmPlugin<CustomSearchPluginParams>({
     };
 
     // Highlight all matches using CSS Highlights API
-    const highlightMatches = (matches: SearchMatch[], currentIndex: number = -1) => {
+    const highlightMatches = (matches: SearchMatch[], currentIndex = -1) => {
       // Clear existing highlights
       if (CSS.highlights) {
         CSS.highlights.delete('mdx-search');
         CSS.highlights.delete('mdx-focus-search');
       }
 
-      if (matches.length === 0) return;
+      if (matches.length === 0) {
+        return;
+      }
 
       // Prevent scrolling while highlighting
       preventScrollIntoView();
@@ -165,7 +175,9 @@ export const customSearchPlugin = realmPlugin<CustomSearchPluginParams>({
       try {
         const range = match.range;
         const rects = range.getClientRects();
-        if (rects.length === 0) return;
+        if (rects.length === 0) {
+          return;
+        }
 
         const targetRect = rects[0];
         const editorContainer = document.querySelector('.mdxeditor-root-contenteditable');
@@ -198,8 +210,8 @@ export const customSearchPlugin = realmPlugin<CustomSearchPluginParams>({
     };
 
     // Public search API
-    const searchAPI = {
-      search: (term: string, shouldScroll: boolean = false) => {
+    const searchAPI: SearchAPI = {
+      search: (term: string, shouldScroll = false) => {
         searchState.searchTerm = term;
         searchState.matches = findMatches(term);
         searchState.currentMatchIndex = searchState.matches.length > 0 ? 0 : -1;
@@ -218,7 +230,9 @@ export const customSearchPlugin = realmPlugin<CustomSearchPluginParams>({
       },
 
       next: () => {
-        if (searchState.matches.length === 0) return;
+        if (searchState.matches.length === 0) {
+          return;
+        }
 
         searchState.currentMatchIndex = (searchState.currentMatchIndex + 1) % searchState.matches.length;
         highlightMatches(searchState.matches, searchState.currentMatchIndex);
@@ -226,7 +240,9 @@ export const customSearchPlugin = realmPlugin<CustomSearchPluginParams>({
       },
 
       previous: () => {
-        if (searchState.matches.length === 0) return;
+        if (searchState.matches.length === 0) {
+          return;
+        }
 
         searchState.currentMatchIndex =
           searchState.currentMatchIndex <= 0 ? searchState.matches.length - 1 : searchState.currentMatchIndex - 1;
@@ -249,6 +265,7 @@ export const customSearchPlugin = realmPlugin<CustomSearchPluginParams>({
     };
 
     // Expose search API globally for the input component to access
+    // eslint-disable-next-line
     (window as any).customSearchAPI = searchAPI;
 
     // Add keyboard shortcut listener for Cmd+F / Ctrl+F
@@ -297,10 +314,10 @@ export const CustomSearchInput: React.FC = () => {
   const [matchInfo, setMatchInfo] = React.useState<{ count: number; current: number }>({ count: 0, current: 0 });
 
   // Get search API from realm
-  const getSearchAPI = () => {
-    // This will be set up when the plugin is integrated with MDXEditor
+  const getSearchAPI: () => SearchAPI = useCallback(() => {
+    // eslint-disable-next-line
     return (window as any).customSearchAPI;
-  };
+  }, []);
 
   // Debounced search that doesn't scroll
   const debouncedSearch = React.useCallback(() => {
@@ -321,7 +338,7 @@ export const CustomSearchInput: React.FC = () => {
         });
       }
     }, 150);
-  }, []);
+  }, [getSearchAPI]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     e.stopPropagation();
@@ -332,7 +349,9 @@ export const CustomSearchInput: React.FC = () => {
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     const searchAPI = getSearchAPI();
-    if (!searchAPI) return;
+    if (!searchAPI) {
+      return;
+    }
 
     if (e.key === 'Enter') {
       e.preventDefault();

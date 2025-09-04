@@ -1,15 +1,8 @@
 // Enhanced type definitions for Markdown Docs extension
+import { DocsComment } from '../../src/common/types';
 
-export interface CommentWithAnchor {
-  id: string;
-  content: string;
-  range: {
-    start: number;
-    end: number;
-  };
+export interface CommentWithAnchor extends DocsComment {
   anchor?: string;
-  timestamp?: number;
-  author?: string;
   anchoredText?: string;
   startPosition?: number;
   endPosition?: number;
@@ -40,6 +33,7 @@ export interface WebviewMessage {
   bookViewWidth?: string;
   bookViewMargin?: string;
   isInteracting?: boolean;
+  url?: string;
 }
 
 export interface VSCodeAPI {

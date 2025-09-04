@@ -71,7 +71,6 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
           break;
         case 'openExternalLink':
           void vscode.env.openExternal(vscode.Uri.parse(e.url as string));
-          return;
       }
     });
 

@@ -418,6 +418,7 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
         }
       } catch (error) {
         this.outputChannel.appendLine(`ERROR in message handler: ${String(error)}`);
+        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
         this.outputChannel.appendLine(`Error stack: ${error instanceof Error ? error.stack : 'No stack'}`);
         logger.error('Message handler error:', error);
       }

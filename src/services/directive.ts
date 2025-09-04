@@ -1,7 +1,7 @@
 /**
  * Service for parsing and managing MDX directives in markdown content
  */
-import { Comment } from '../common/types';
+import { DocsComment } from '../common/types';
 
 export interface DirectiveComment {
   id: string;
@@ -13,7 +13,7 @@ export class DirectiveService {
   /**
    * Parse comment directives from markdown content
    */
-  static parseCommentDirectives(markdown: string): Comment[] {
+  static parseCommentDirectives(markdown: string): DocsComment[] {
     const comments: Comment[] = [];
 
     // Regex to match comment directives:

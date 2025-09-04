@@ -2,7 +2,7 @@
  * Represents a single comment attached to a text selection in a markdown document.
  * Used with inline directive-based comment system.
  */
-export interface Comment {
+export interface DocsComment {
   /** Unique identifier for the comment */
   id: string;
   /** Author of the comment */

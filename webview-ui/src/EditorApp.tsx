@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { MDXEditorWrapper } from './components/MDXEditorWrapper';
-import { CommentWithAnchor, FontFamily, VSCodeAPI } from './types';
+import { CommentWithAnchor, FontFamily, VSCodeAPI, WebviewMessage } from './types';
 import { logger } from './utils/logger';
 
 // Get VS Code API synchronously with proper typing and validation
@@ -31,7 +31,7 @@ interface EditorAppProps {
   };
 }
 
-function EditorApp({initialSettings}: EditorAppProps) {
+function EditorApp({ initialSettings }: EditorAppProps) {
   const [markdown, setMarkdown] = useState('');
   const [comments, setComments] = useState<CommentWithAnchor[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -40,8 +40,8 @@ function EditorApp({initialSettings}: EditorAppProps) {
   const [fontSize, setFontSize] = useState(initialSettings.fontSize);
   const [textAlign, setTextAlign] = useState(initialSettings.textAlign);
   const [bookView, setBookView] = useState(initialSettings.bookView);
-  const [bookViewWidth, setBookViewWidth] = useState(initialSettings.bookViewWidth || '5.5in');
-  const [bookViewMargin, setBookViewMargin] = useState(initialSettings.bookViewMargin || '0.5in');
+  const [bookViewWidth, setBookViewWidth] = useState(initialSettings.bookViewWidth ?? '5.5in');
+  const [bookViewMargin, setBookViewMargin] = useState(initialSettings.bookViewMargin ?? '0.5in');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [editorConfig, setEditorConfig] = useState<{ wordWrap: string }>({ wordWrap: 'off' });
 
@@ -107,20 +107,32 @@ function EditorApp({initialSettings}: EditorAppProps) {
           case 'settingsUpdate':
             console.log('EditorApp: Received settingsUpdate message:', message);
             if (message.settings) {
-              const { 
-                defaultFont, 
-                fontSize: newFontSize, 
-                textAlign: newTextAlign, 
+              const {
+                defaultFont,
+                fontSize: newFontSize,
+                textAlign: newTextAlign,
                 bookView: newBookView,
                 bookViewWidth: newBookViewWidth,
-                bookViewMargin: newBookViewMargin 
+                bookViewMargin: newBookViewMargin,
               } = message.settings;
-              if (defaultFont) setDefaultFont(defaultFont);
-              if (typeof newFontSize === 'number') setFontSize(newFontSize);
-              if (newTextAlign) setTextAlign(newTextAlign);
-              if (typeof newBookView === 'boolean') setBookView(newBookView);
-              if (newBookViewWidth) setBookViewWidth(newBookViewWidth);
-              if (newBookViewMargin) setBookViewMargin(newBookViewMargin);
+              if (defaultFont) {
+                setDefaultFont(defaultFont);
+              }
+              if (typeof newFontSize === 'number') {
+                setFontSize(newFontSize);
+              }
+              if (newTextAlign) {
+                setTextAlign(newTextAlign);
+              }
+              if (typeof newBookView === 'boolean') {
+                setBookView(newBookView);
+              }
+              if (newBookViewWidth) {
+                setBookViewWidth(newBookViewWidth);
+              }
+              if (newBookViewMargin) {
+                setBookViewMargin(newBookViewMargin);
+              }
             }
             break;
           default:
@@ -160,7 +172,7 @@ function EditorApp({initialSettings}: EditorAppProps) {
       setError(err instanceof Error ? err.message : 'Unknown error');
       setIsLoading(false);
     }
-  }, []);
+  }, [vscode]);
 
   const handleMarkdownChange = (newMarkdown: string) => {
     setMarkdown(newMarkdown);
@@ -202,23 +214,26 @@ function EditorApp({initialSettings}: EditorAppProps) {
   };
 
   // Handle font messages
-  const handleFontMessage = (message: any) => {
-    if (vscode) {
-      switch (message.command) {
-        case 'getFont':
-          vscode.postMessage({
-            command: 'getFont',
-          });
-          break;
-        case 'setFont':
-          vscode.postMessage({
-            command: 'setFont',
-            font: message.font,
-          });
-          break;
+  const handleFontMessage = useCallback(
+    (message: WebviewMessage) => {
+      if (vscode) {
+        switch (message.command) {
+          case 'getFont':
+            vscode.postMessage({
+              command: 'getFont',
+            });
+            break;
+          case 'setFont':
+            vscode.postMessage({
+              command: 'setFont',
+              font: message.font,
+            });
+            break;
+        }
       }
-    }
-  };
+    },
+    [vscode],
+  );
 
   // Set up font message listener
   useEffect(() => {
@@ -231,7 +246,7 @@ function EditorApp({initialSettings}: EditorAppProps) {
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, []);
+  }, [handleFontMessage]);
 
   // Handle unsaved changes warning on close - send state to extension
   useEffect(() => {

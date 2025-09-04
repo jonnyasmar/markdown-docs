@@ -19,7 +19,6 @@ import {
   Separator,
   codeBlockPlugin,
   codeMirrorPlugin,
-  createRootEditorSubscription$,
   diffSourcePlugin,
   directivesPlugin,
   frontmatterPlugin,
@@ -37,7 +36,6 @@ import {
   toolbarPlugin,
 } from '@mdxeditor/editor';
 import '@mdxeditor/editor/style.css';
-import { REDO_COMMAND, UNDO_COMMAND } from 'lexical';
 import {
   AArrowDown,
   AArrowUp,
@@ -81,8 +79,6 @@ const ToolbarGroups = React.memo(
     textAlign,
     handleTextAlignChange,
     bookView,
-    bookViewWidth,
-    bookViewMargin,
     handleBookViewToggle,
     localBookViewWidth,
     localBookViewMargin,
@@ -100,8 +96,6 @@ const ToolbarGroups = React.memo(
     textAlign?: string;
     handleTextAlignChange?: (align: string) => void;
     bookView?: boolean;
-    bookViewWidth?: string;
-    bookViewMargin?: string;
     localBookViewWidth?: string;
     localBookViewMargin?: string;
     handleBookViewToggle: () => void;
@@ -173,7 +167,7 @@ const ToolbarGroups = React.memo(
               <button
                 className="custom-button _toolbarToggleItem_1e2ox_208"
                 title="Reset Font Size"
-                onClick={() => handleFontSizeChange && handleFontSizeChange(14 - (fontSize || 14))}
+                onClick={() => handleFontSizeChange?.(14 - (fontSize ?? 14))}
               >
                 <Undo size={16} />
               </button>
@@ -353,7 +347,6 @@ const ToolbarWithCommentButton = React.memo(
     selectedFont,
     handleFontChange,
     availableFonts,
-    searchInputRef,
     currentViewMode,
     fontSize,
     handleFontSizeChange,
@@ -365,7 +358,26 @@ const ToolbarWithCommentButton = React.memo(
     localBookViewMargin,
     handleBookViewWidthChange,
     handleBookViewMarginChange,
-  }: any) => {
+  }: {
+    selectedFont: string;
+    handleFontChange: (font: string) => void;
+    availableFonts: string[];
+    bookView: boolean;
+    bookViewWidth: string;
+    bookViewMargin: string;
+    currentViewMode: 'rich-text' | 'source' | 'diff';
+    onViewModeChange: (mode: 'rich-text' | 'source' | 'diff') => void;
+    searchInputRef: React.RefObject<HTMLInputElement>;
+    fontSize: number;
+    handleFontSizeChange: (delta: number) => void;
+    textAlign: string;
+    handleTextAlignChange: (align: string) => void;
+    handleBookViewToggle: () => void;
+    localBookViewWidth: string;
+    localBookViewMargin: string;
+    handleBookViewWidthChange: (width: string) => void;
+    handleBookViewMarginChange: (margin: string) => void;
+  }) => {
     const [isOverflowOpen, setIsOverflowOpen] = useState(false);
     const [hiddenGroups, setHiddenGroups] = useState<string[]>([]);
     const overflowTriggerRef = useRef<HTMLButtonElement>(null);
@@ -455,7 +467,7 @@ const ToolbarWithCommentButton = React.memo(
       updateResponsiveState();
 
       return () => resizeObserver.disconnect();
-    }, []); // PERFORMANCE FIX: Remove updateResponsiveState dependency to prevent observer recreation
+    }, [updateResponsiveState]);
 
     return (
       <div ref={toolbarRef} className="responsive-toolbar">
@@ -922,8 +934,8 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   // Performance optimization: Track typing state to prevent expensive operations during typing
   const [isTyping, setIsTyping] = useState(false);
   const [,] = useTransition();
-  const typingTimeoutRef = useRef<NodeJS.Timeout>();
-  const deferredMessageTimeoutRef = useRef<NodeJS.Timeout>();
+  const typingTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const deferredMessageTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   // Theme detection - detect VS Code theme
   const [isDarkTheme, setIsDarkTheme] = useState<boolean>(true); // Default to dark
@@ -936,8 +948,8 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       // Parse RGB values to determine if theme is dark
       const isDark = bgColor.includes('#')
         ? parseInt(bgColor.slice(1, 3), 16) < 128
-        : bgColor.includes('rgb') && bgColor.match(/\d+/)?.[0] && parseInt(bgColor.match(/\d+/)?.[0] || '0') < 128;
-      setIsDarkTheme(isDark);
+        : bgColor.includes('rgb') && bgColor.match(/\d+/)?.[0] && parseInt(bgColor.match(/\d+/)?.[0] ?? '0') < 128;
+      setIsDarkTheme(isDark as boolean);
     };
 
     detectTheme();
@@ -1050,7 +1062,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
     for (let i = 0; i < headings.length; i++) {
       const heading = headings[i];
-      const headingText = heading.textContent?.trim() || '';
+      const headingText = heading.textContent?.trim() ?? '';
       const baseId = headingText
         .toLowerCase()
         .replace(/[^\w\s-]/g, '')
@@ -1142,22 +1154,25 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   }, []);
 
   // Handle font changes and save to VS Code settings
-  const handleFontChange = useCallback((fontName: string) => {
-    logger.debug('Font changed to:', fontName);
-    logger.debug('Current selected font:', selectedFont);
-    const fontClassName = fontName.toLowerCase().replace(/\s+/g, '-');
-    logger.debug('Font class name will be:', `font-${fontClassName}`);
+  const handleFontChange = useCallback(
+    (fontName: string) => {
+      logger.debug('Font changed to:', fontName);
+      logger.debug('Current selected font:', selectedFont);
+      const fontClassName = fontName.toLowerCase().replace(/\s+/g, '-');
+      logger.debug('Font class name will be:', `font-${fontClassName}`);
 
-    setSelectedFont(fontName);
+      setSelectedFont(fontName);
 
-    // Save to VS Code settings
-    if (typeof window !== 'undefined' && window.vscodeApi) {
-      window.vscodeApi.postMessage({
-        command: 'setFont',
-        font: fontName,
-      });
-    }
-  }, []); // PERFORMANCE FIX: Stable callback to prevent plugin recreation
+      // Save to VS Code settings
+      if (typeof window !== 'undefined' && window.vscodeApi) {
+        window.vscodeApi.postMessage({
+          command: 'setFont',
+          font: fontName,
+        });
+      }
+    },
+    [selectedFont],
+  );
 
   // Keep track of current fontSize for increment/decrement operations
   const currentFontSizeRef = useRef(fontSize);
@@ -1402,7 +1417,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     });
 
     return positions;
-  }, [parsedComments]); // PERFORMANCE FIX: Only depend on parsedComments - position sorting can lag during typing
+  }, [markdown, parsedComments]);
 
   // Comment action handlers - must be defined before sortedCommentItems useMemo
   const handleEditComment = useCallback(
@@ -1430,7 +1445,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       logger.debug('Current parsed comments count:', parsedComments.length);
 
       // PERFORMANCE FIX: Get current markdown from editor ref instead of stale prop
-      const currentMarkdown = editorRef.current?.getMarkdown() || markdown;
+      const currentMarkdown = editorRef.current?.getMarkdown() ?? markdown;
       if (!currentMarkdown) {
         logger.error('No markdown content to delete comment from');
         return;
@@ -1531,85 +1546,87 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       }
       logger.debug('=== DELETE COMMENT DEBUG END ===');
     },
-    [parsedComments, onMarkdownChange], // PERFORMANCE FIX: Removed markdown dep - use ref for current content
+    [markdown, parsedComments, commentPositions, onMarkdownChange],
   );
 
-  const handleCommentClick = useCallback((commentId: string) => {
-    logger.debug('=== SIDEBAR COMMENT CLICK DEBUG ===');
-    logger.debug('Clicked on comment in sidebar:', commentId);
+  const handleCommentClick = useCallback(
+    (commentId: string) => {
+      logger.debug('=== SIDEBAR COMMENT CLICK DEBUG ===');
+      logger.debug('Clicked on comment in sidebar:', commentId);
 
-    // Set focus state for this comment
-    setFocusedCommentId(commentId);
-    logger.debug('Editor ref exists:', !!editorRef.current);
+      // Set focus state for this comment
+      setFocusedCommentId(commentId);
+      logger.debug('Editor ref exists:', !!editorRef.current);
 
-    // Call external navigation handler if provided
-    if (onNavigateToComment) {
-      onNavigateToComment(commentId);
-    }
-
-    // Get editor root element from ref if available
-    let editorRootElement = null;
-    if (editorRef.current) {
-      // Try to access the editor's internal DOM structure
-      const editorInstance = editorRef.current as any;
-      logger.debug('Editor instance methods:', Object.getOwnPropertyNames(editorInstance));
-
-      // Look for common editor properties that might give us the root
-      if (editorInstance._rootElement) {
-        editorRootElement = editorInstance._rootElement;
-      } else if (editorInstance.rootElement) {
-        editorRootElement = editorInstance.rootElement;
-      } else if (editorInstance.getEditorState) {
-        logger.debug('Editor has getEditorState method');
+      // Call external navigation handler if provided
+      if (onNavigateToComment) {
+        onNavigateToComment(commentId);
       }
-    }
 
-    logger.debug('Editor root element from ref:', editorRootElement);
+      // Get editor root element from ref if available
+      let editorRootElement = null;
+      if (editorRef.current) {
+        // Try to access the editor's internal DOM structure
+        const editorInstance = editorRef.current as any;
+        logger.debug('Editor instance methods:', Object.getOwnPropertyNames(editorInstance));
 
-    // Find comment directive element in the editor - try multiple selectors
-    const containerElement = containerRef.current ?? document;
-    let commentElement = containerElement.querySelector(`[data-comment-id="${commentId}"]`) as HTMLElement;
-
-    // Fallback selectors if the first doesn't work
-    if (!commentElement) {
-      commentElement = containerElement.querySelector(`[data-directive-key*="${commentId}"]`) as HTMLElement;
-    }
-    if (!commentElement) {
-      commentElement = containerElement.querySelector(`.comment-highlight[title*="${commentId}"]`) as HTMLElement;
-    }
-
-    logger.debug('Found comment element:', commentElement, 'with selector for ID:', commentId);
-
-    if (commentElement) {
-      logger.debug('Scrolling to comment element and highlighting it');
-
-      // Use nearest scroll behavior to minimize view jumping
-      commentElement.scrollIntoView({
-        behavior: 'smooth',
-        block: 'nearest', // This will minimize scrolling if element is already visible
-        inline: 'nearest',
-      });
-
-      // Add highlight class for visual feedback
-      // First, force a reflow to ensure the scroll completes
-      commentElement.offsetHeight;
-
-      // Add the highlight class immediately
-      commentElement.classList.add('editor-highlighted');
-
-      // Remove highlight after animation completes
-      setTimeout(() => {
-        if (commentElement.classList.contains('editor-highlighted')) {
-          commentElement.classList.remove('editor-highlighted');
+        // Look for common editor properties that might give us the root
+        if (editorInstance._rootElement) {
+          editorRootElement = editorInstance._rootElement;
+        } else if (editorInstance.rootElement) {
+          editorRootElement = editorInstance.rootElement;
+        } else if (editorInstance.getEditorState) {
+          logger.debug('Editor has getEditorState method');
         }
-      }, 2000);
-    }
-  }, []);
+      }
 
-  // PERFORMANCE CRITICAL: Memoized comment handlers to prevent recreation on every keystroke
-  const stableHandleEditComment = useCallback(handleEditComment, [parsedComments]);
-  const stableHandleDeleteComment = useCallback(handleDeleteComment, [parsedComments, onMarkdownChange]);
-  const stableHandleCommentClick = useCallback(handleCommentClick, []);
+      logger.debug('Editor root element from ref:', editorRootElement);
+
+      // Find comment directive element in the editor - try multiple selectors
+      const containerElement = containerRef.current ?? document;
+      let commentElement = containerElement.querySelector(`[data-comment-id="${commentId}"]`) as HTMLElement;
+
+      // Fallback selectors if the first doesn't work
+      if (!commentElement) {
+        commentElement = containerElement.querySelector(`[data-directive-key*="${commentId}"]`) as HTMLElement;
+      }
+      if (!commentElement) {
+        commentElement = containerElement.querySelector(`.comment-highlight[title*="${commentId}"]`) as HTMLElement;
+      }
+
+      logger.debug('Found comment element:', commentElement, 'with selector for ID:', commentId);
+
+      if (commentElement) {
+        logger.debug('Scrolling to comment element and highlighting it');
+
+        // Use nearest scroll behavior to minimize view jumping
+        commentElement.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest', // This will minimize scrolling if element is already visible
+          inline: 'nearest',
+        });
+
+        // Add highlight class for visual feedback
+        // First, force a reflow to ensure the scroll completes
+        commentElement.offsetHeight;
+
+        // Add the highlight class immediately
+        commentElement.classList.add('editor-highlighted');
+
+        // Remove highlight after animation completes
+        setTimeout(() => {
+          if (commentElement.classList.contains('editor-highlighted')) {
+            commentElement.classList.remove('editor-highlighted');
+          }
+        }, 2000);
+      }
+    },
+    [onNavigateToComment],
+  );
+
+  const stableHandleEditComment = useCallback(handleEditComment, [handleEditComment]);
+  const stableHandleDeleteComment = useCallback(handleDeleteComment, [handleDeleteComment]);
+  const stableHandleCommentClick = useCallback(handleCommentClick, [handleCommentClick]);
 
   // Memoized sorted comments using cached positions - MASSIVE performance improvement
   const sortedCommentItems = useMemo(() => {
@@ -1726,7 +1743,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   const justSavedRef = useRef(false);
 
   // Timeout ref for debouncing dirty state notifications
-  const dirtyStateTimeoutRef = useRef<NodeJS.Timeout>();
+  const dirtyStateTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   // Handle external updates ONLY when they come from VS Code (not from user typing)
   React.useEffect(() => {
@@ -1822,7 +1839,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
       return () => clearTimeout(timer);
     }
-  }, [editorRef.current]);
+  }, [markdown]);
 
   // Comprehensive sync state management with SyncManager
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -2024,7 +2041,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         });
       }
     },
-    [markdown, syncState], // REMOVED setLiveMarkdown from deps - state setters should be stable
+    [markdown, onDirtyStateChange, syncState], // REMOVED setLiveMarkdown from deps - state setters should be stable
   );
 
   // Handle VS Code messages including theme changes
@@ -2509,7 +2526,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         logger.error('No editor ref available in handleCommentInserted');
       }
     }, 200); // Increased delay to ensure MDX Editor has processed the directive
-  }, []); // PERFORMANCE FIX: Stable callback to prevent plugin recreation
+  }, [onMarkdownChange, pendingComment]); // PERFORMANCE FIX: Stable callback to prevent plugin recreation
 
   // Effect to watch for pending comments and trigger plugin
   React.useEffect(() => {
@@ -2551,7 +2568,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
           }
 
           // Get current content and send to VS Code for saving
-          const currentContent = editorRef.current?.getMarkdown() || '';
+          const currentContent = editorRef.current?.getMarkdown() ?? '';
           const contentToSave = postprocessAngleBrackets(currentContent);
 
           if (window.vscodeApi) {
@@ -2699,41 +2716,6 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     setEditingComment(null);
   };
 
-  // Function to render content as book pages
-  const renderBookPages = () => {
-    const content = markdown || '';
-    const paragraphs = content.split('\n\n');
-    const pages: string[] = [];
-    let currentPage: string[] = [];
-    let currentHeight = 0;
-    const maxHeight = 35; // Approximate lines per page for 7.5" content area
-
-    paragraphs.forEach(paragraph => {
-      const estimatedLines = Math.max(1, Math.ceil(paragraph.length / 80)); // Rough estimate
-      if (currentHeight + estimatedLines > maxHeight && currentPage.length > 0) {
-        pages.push(currentPage.join('\n\n'));
-        currentPage = [paragraph];
-        currentHeight = estimatedLines;
-      } else {
-        currentPage.push(paragraph);
-        currentHeight += estimatedLines;
-      }
-    });
-
-    if (currentPage.length > 0) {
-      pages.push(currentPage.join('\n\n'));
-    }
-
-    return pages.map((pageContent, index) => (
-      <div key={index} className="book-page">
-        <div className="book-page-content">
-          <div dangerouslySetInnerHTML={{ __html: pageContent.replace(/\n/g, '<br/>') }} />
-        </div>
-        <div className="book-page-number">{index + 1}</div>
-      </div>
-    ));
-  };
-
   // Define plugins array with useMemo BEFORE the return statement to follow React hooks rules
   const plugins = useMemo(
     () => [
@@ -2760,7 +2742,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
             const reader = new FileReader();
             reader.onload = e => {
               const data = e.target?.result;
-              if (data) {
+              if (data && window.vscodeApi) {
                 window.vscodeApi.postMessage({
                   command: 'getImageUri',
                   data,

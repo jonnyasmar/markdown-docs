@@ -46,7 +46,7 @@ export const useEditorStatus = (
     const readingTime = Math.ceil(wordCount / 200);
 
     setStats({ wordCount, charCount, readingTime });
-  }, []); // CRITICAL: Remove content dep to prevent constant recreation
+  }, [content, editorRef]); // CRITICAL: Remove content dep to prevent constant recreation
 
   // Initialize cursor tracker
   React.useEffect(() => {
@@ -81,6 +81,6 @@ export const useEditorStatus = (
     wordCount: stats.wordCount,
     charCount: stats.charCount,
     readingTime: stats.readingTime,
-    selectionLength: selectedText?.length || 0,
+    selectionLength: selectedText?.length ?? 0,
   };
 };

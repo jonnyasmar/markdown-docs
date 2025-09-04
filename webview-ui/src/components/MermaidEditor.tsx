@@ -31,7 +31,6 @@ export const MermaidEditor: React.FC<MermaidEditorProps> = ({
   const [isResizing, setIsResizing] = useState(false);
   const mermaidRef = useRef<HTMLDivElement>(null);
   const splitContainerRef = useRef<HTMLDivElement>(null);
-  const diagramId = useRef(`mermaid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
 
   // SVG sanitization function to prevent XSS
   const sanitizeSVG = useCallback((svg: string): string => {
@@ -139,33 +138,6 @@ export const MermaidEditor: React.FC<MermaidEditorProps> = ({
   useEffect(() => {
     console.log('Mermaid: Initializing with isDarkTheme =', isDarkTheme);
 
-    // Use mermaid's built-in themes with darkMode setting for proper color derivation
-    const themeConfig = isDarkTheme
-      ? {
-          // Dark theme - let mermaid derive most colors automatically
-          primaryColor: '#3182ce', // Blue primary
-          primaryTextColor: '#ffffff', // White text
-          primaryBorderColor: '#2b77cb', // Darker blue border
-          lineColor: '#a0aec0', // Light gray lines
-          secondaryColor: '#805ad5', // Purple secondary
-          tertiaryColor: '#38a169', // Green tertiary
-          background: '#1a202c', // Dark background
-          mainBkg: '#2d3748', // Main background
-          textColor: '#ffffff', // White text
-        }
-      : {
-          // Light theme - let mermaid derive most colors automatically
-          primaryColor: '#3182ce', // Blue primary
-          primaryTextColor: '#1a202c', // Dark text
-          primaryBorderColor: '#2b77cb', // Darker blue border
-          lineColor: '#4a5568', // Dark gray lines
-          secondaryColor: '#805ad5', // Purple secondary
-          tertiaryColor: '#38a169', // Green tertiary
-          background: '#ffffff', // White background
-          mainBkg: '#f7fafc', // Light gray background
-          textColor: '#1a202c', // Dark text
-        };
-
     // Completely destroy and recreate mermaid instance
     try {
       // @ts-ignore - Force clear all internal state
@@ -209,12 +181,12 @@ export const MermaidEditor: React.FC<MermaidEditorProps> = ({
         renderMermaid();
       }, 200); // Longer timeout for complete reset
     }
-  }, [isDarkTheme, renderMermaid]);
+  }, [code, isDarkTheme, renderMermaid]);
 
   // Debounced rendering for performance optimization
   // Memory leak fix: Store timeout ref for proper cleanup
-  const timeoutRef = useRef<NodeJS.Timeout | undefined>();
-  
+  const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+
   const debouncedRenderMermaid = useMemo(() => {
     return () => {
       if (timeoutRef.current) {
@@ -225,7 +197,7 @@ export const MermaidEditor: React.FC<MermaidEditorProps> = ({
       }, 300); // 300ms debounce
     };
   }, [renderMermaid]);
-  
+
   // Cleanup timeout on unmount
   useEffect(() => {
     return () => {

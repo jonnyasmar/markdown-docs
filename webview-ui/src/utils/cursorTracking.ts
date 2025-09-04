@@ -46,20 +46,24 @@ export const getCursorPositionFromSelection = (): number => {
 
     const range = selection.getRangeAt(0);
     console.log('Selection range:', { startContainer: range.startContainer, startOffset: range.startOffset });
-    
+
     // Find the main MDX editor container (not individual paragraphs)
     let editableElement = range.startContainer;
     while (editableElement && editableElement.nodeType !== Node.ELEMENT_NODE) {
       editableElement = editableElement.parentNode;
     }
-    
+
     // Look for the main editor container class, not just any contenteditable
-    while (editableElement && 
-           !((editableElement as Element).classList?.contains('mdxeditor-root-contenteditable') ||
-             (editableElement as Element).classList?.contains('mdxeditor'))) {
+    while (
+      editableElement &&
+      !(
+        (editableElement as Element).classList?.contains('mdxeditor-root-contenteditable') ||
+        (editableElement as Element).classList?.contains('mdxeditor')
+      )
+    ) {
       editableElement = editableElement.parentNode;
     }
-    
+
     if (!editableElement) {
       console.log('No main editor container found');
       return 0;
@@ -71,10 +75,10 @@ export const getCursorPositionFromSelection = (): number => {
     const preCaretRange = document.createRange();
     preCaretRange.selectNodeContents(editableElement);
     preCaretRange.setEnd(range.startContainer, range.startOffset);
-    
+
     const offset = preCaretRange.toString().length;
     console.log('Calculated offset:', offset, 'from text:', preCaretRange.toString().substring(0, 50));
-    
+
     return offset;
   } catch (error) {
     console.log('Cursor position error:', error);

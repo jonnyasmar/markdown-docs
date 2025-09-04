@@ -15,7 +15,9 @@ interface TableOfContentsProps {
 
 const TableOfContents: React.FC<TableOfContentsProps> = ({ content, onHeadingClick }) => {
   const tocItems = React.useMemo(() => {
-    if (!content) return [];
+    if (!content) {
+      return [];
+    }
 
     const headingRegex = /^(#{1,6})\s+(.+)$/gm;
     const items: TOCItem[] = [];
@@ -25,8 +27,11 @@ const TableOfContents: React.FC<TableOfContentsProps> = ({ content, onHeadingCli
     while ((match = headingRegex.exec(content)) !== null) {
       const level = match[1].length;
       const text = match[2].trim();
-      const baseId = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
-      
+      const baseId = text
+        .toLowerCase()
+        .replace(/[^\w\s-]/g, '')
+        .replace(/\s+/g, '-');
+
       // Handle duplicate IDs by adding suffix
       let id = baseId;
       if (idCounts[baseId]) {
@@ -35,7 +40,7 @@ const TableOfContents: React.FC<TableOfContentsProps> = ({ content, onHeadingCli
       } else {
         idCounts[baseId] = 1;
       }
-      
+
       items.push({ id, text, level });
     }
 

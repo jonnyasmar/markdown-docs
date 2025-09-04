@@ -324,15 +324,15 @@ export class SyncManager {
     if (typeof window !== 'undefined') {
       window.removeEventListener('message', this.messageListener);
     }
-    
+
     if (this.batchTimeout) {
       clearTimeout(this.batchTimeout);
       this.batchTimeout = null;
     }
-    
+
     this.pendingMessages.clear();
     this.setState(SyncState.IDLE);
-    
+
     // Clear callbacks to prevent reference retention
     this.onStateChange = undefined;
     this.onContentUpdate = undefined;
