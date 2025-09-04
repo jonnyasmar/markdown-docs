@@ -117,11 +117,7 @@ export const postprocessCurlyBraces = (markdown: string): string => {
 // Additional function to unescape any underscores that got escaped by MDX
 export const unescapeUnderscoresInCurlyBraces = (markdown: string): string => {
   // Find and fix any escaped underscores inside {{ }} patterns
-  return markdown.replace(/\{\{([^}]*)\}\}/g, (match, content) => {
-    // Remove backslash escaping from underscores within curly braces
-    const unescapedContent = content.replace(/\\_/g, '_');
-    return `{{${String(unescapedContent)}}}`;
-  });
+  return markdown.replace(/\\_/g, '_');
 };
 
 // Display function to show clean underscores in editor while maintaining placeholders internally
