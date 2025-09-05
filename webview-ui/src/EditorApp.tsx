@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 
-import { ErrorBoundary } from './components/ErrorBoundary';
 import { MDXEditorWrapper } from './components/MDXEditorWrapper';
+import { ErrorBoundary } from './components/ui/common/ErrorBoundary';
 import { CommentWithAnchor, FontFamily, VSCodeAPI, WebviewMessage } from './types';
 import { logger } from './utils/logger';
 

@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { CursorPosition, CursorTracker } from '../utils/cursorTracking';
+import { CursorPosition, CursorTracker } from '../../utils/cursorTracking';
 
 interface EditorRef {
   getMarkdown?: () => string;

@@ -71,14 +71,14 @@ import {
 } from '../utils/extensionMessaging';
 import { logger } from '../utils/logger';
 import { escapeDirectiveContent } from '../utils/textNormalization';
-import { CommentModal } from './CommentModal';
-import { CustomSearchInput, customSearchPlugin } from './CustomSearchPlugin';
 import './MDXEditorWrapper.css';
-import { MermaidEditor } from './MermaidEditor';
-import './MermaidEditor.css';
-import { postprocessAngleBrackets, preprocessAngleBrackets } from './SimplifiedAngleBracketPlugin';
-import StatusBar from './StatusBar';
-import TableOfContents from './TableOfContents';
+import { MermaidEditor } from './editor/MermaidEditor';
+import './editor/MermaidEditor.css';
+import { CustomSearchInput, customSearchPlugin } from './plugins/CustomSearchPlugin';
+import { postprocessAngleBrackets, preprocessAngleBrackets } from './plugins/SimplifiedAngleBracketPlugin';
+import { CommentModal } from './ui/comments/CommentModal';
+import TableOfContents from './ui/navigation/TableOfContents';
+import StatusBar from './ui/status/StatusBar';
 
 // No longer using portal - overflow menu is within toolbar context
 

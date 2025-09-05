@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 
 import './App.css';
-import { CommentList } from './components/CommentList';
+import { CommentList } from './components/ui/comments/CommentList';
 import { CommentWithAnchor, VSCodeAPI, WebviewMessage } from './types';
 import { logger } from './utils/logger';
 

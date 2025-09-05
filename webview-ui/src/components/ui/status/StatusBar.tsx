@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { useEditorStatus } from '../hooks/useEditorStatus';
+import { useEditorStatus } from '../../../hooks/editor/useEditorStatus';
 import './StatusBar.css';
 
 interface StatusBarProps {

@@ -2,7 +2,7 @@ import { CodeMirrorEditor } from '@mdxeditor/editor';
 import mermaid from 'mermaid';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { logger } from '../utils/logger';
+import { logger } from '../../utils/logger';
 
 interface MermaidEditorProps {
   code: string;
