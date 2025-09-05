@@ -64,11 +64,11 @@ function EditorApp({ initialSettings }: EditorAppProps) {
 
       // Listen for messages from the extension
       const handleMessage = (event: MessageEvent) => {
-        const message = event.data;
+        const message = event.data as WebviewMessage;
 
         switch (message.command) {
           case 'update':
-            setMarkdown(message.content || '');
+            setMarkdown(message.content ?? '');
             if (message.editorConfig) {
               setEditorConfig(message.editorConfig);
             }
@@ -76,7 +76,7 @@ function EditorApp({ initialSettings }: EditorAppProps) {
             clearTimeout(loadingTimeout);
             break;
           case 'updateComments':
-            setComments(message.comments || []);
+            setComments(message.comments ?? []);
             break;
           case 'fontUpdate':
             if (message.font) {
@@ -84,7 +84,8 @@ function EditorApp({ initialSettings }: EditorAppProps) {
             }
             break;
           case 'requestSave': {
-            // Trigger save via keyboard shortcut simulation // Extension is requesting save due to close with unsaved changes
+            // Trigger save via keyboard shortcut simulation
+            // Extension is requesting save due to close with unsaved changes
             const saveEvent = new KeyboardEvent('keydown', {
               key: 's',
               ctrlKey: !navigator.platform.includes('Mac'),
@@ -107,6 +108,7 @@ function EditorApp({ initialSettings }: EditorAppProps) {
           case 'settingsUpdate':
             console.log('EditorApp: Received settingsUpdate message:', message);
             if (message.settings) {
+              const settings = message.settings;
               const {
                 defaultFont,
                 fontSize: newFontSize,
@@ -114,7 +116,7 @@ function EditorApp({ initialSettings }: EditorAppProps) {
                 bookView: newBookView,
                 bookViewWidth: newBookViewWidth,
                 bookViewMargin: newBookViewMargin,
-              } = message.settings;
+              } = settings;
               if (defaultFont) {
                 setDefaultFont(defaultFont);
               }
@@ -238,7 +240,7 @@ function EditorApp({ initialSettings }: EditorAppProps) {
   // Set up font message listener
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      const message = event.data;
+      const message = event.data as WebviewMessage;
       if (message.command === 'getFont' || message.command === 'setFont') {
         handleFontMessage(message);
       }

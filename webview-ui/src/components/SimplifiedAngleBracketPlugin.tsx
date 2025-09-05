@@ -67,7 +67,7 @@ export const preprocessAngleBrackets = (markdown: string): string => {
 export const preprocessCurlyBraces = (markdown: string): string => {
   // Replace underscores only inside {{ }} patterns with a placeholder
   // This prevents MDX from treating them as italic markdown syntax
-  return markdown.replace(/\{\{([^}]*)\}\}/g, (match, content) => {
+  return markdown.replace(/\{\{([^}]*)\}\}/g, (match, content: string) => {
     // Skip if already processed (contains placeholder)
     if (content.includes('＿')) {
       return match;
@@ -107,7 +107,7 @@ export const postprocessAngleBrackets = (markdown: string): string => {
 // Postprocessing function to restore underscores in curly brace patterns
 export const postprocessCurlyBraces = (markdown: string): string => {
   // Restore underscores that were protected as placeholders
-  return markdown.replace(/\{\{([^}]*)\}\}/g, (match, content) => {
+  return markdown.replace(/\{\{([^}]*)\}\}/g, (match, content: string) => {
     // Replace placeholders back to underscores
     const restoredContent = content.replace(/＿/g, '_');
     return `{{${String(restoredContent)}}}`;
@@ -123,7 +123,7 @@ export const unescapeUnderscoresInCurlyBraces = (markdown: string): string => {
 // Display function to show clean underscores in editor while maintaining placeholders internally
 export const displayCurlyBraces = (markdown: string): string => {
   // Convert placeholders back to underscores for display only
-  return markdown.replace(/\{\{([^}]*)\}\}/g, (match, content) => {
+  return markdown.replace(/\{\{([^}]*)\}\}/g, (match, content: string) => {
     const displayContent = content.replace(/＿/g, '_');
     return `{{${String(displayContent)}}}`;
   });

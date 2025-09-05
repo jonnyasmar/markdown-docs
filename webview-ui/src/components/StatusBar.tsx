@@ -8,11 +8,16 @@ interface StatusBarProps {
   selectedText?: string;
   viewMode: string;
   isTyping?: boolean;
-  editorRef?: React.RefObject<any>;
+  editorRef?: React.RefObject<unknown>;
 }
 
 const StatusBar: React.FC<StatusBarProps> = ({ content, selectedText, viewMode, isTyping, editorRef }) => {
-  const stats = useEditorStatus(content, selectedText, isTyping, editorRef);
+  const stats = useEditorStatus(
+    content,
+    selectedText,
+    isTyping,
+    editorRef as React.RefObject<{ getMarkdown?: () => string }>,
+  );
 
   return (
     <div className="status-bar">

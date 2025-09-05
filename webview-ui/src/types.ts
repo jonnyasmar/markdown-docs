@@ -34,14 +34,14 @@ export interface WebviewMessage {
   };
   comment?: string;
   commentId?: string;
-  font?: string;
+  font?: FontFamily;
   error?: string;
   stack?: string;
   componentStack?: string;
   type?: string;
   message?: string;
   isDirty?: boolean;
-  data?: any;
+  data?: unknown;
   hasUnsavedChanges?: boolean;
   fontSize?: number;
   textAlign?: string;
@@ -50,12 +50,14 @@ export interface WebviewMessage {
   bookViewMargin?: string;
   isInteracting?: boolean;
   url?: string;
+  settings?: EditorSettings;
+  editorConfig?: { wordWrap: string };
 }
 
 export interface VSCodeAPI {
   postMessage(message: WebviewMessage): void;
-  getState(): any;
-  setState(state: any): void;
+  getState(): unknown;
+  setState(state: unknown): void;
 }
 
 export type ViewMode = 'preview' | 'edit' | 'split';
@@ -91,6 +93,15 @@ export type FontFamily =
   | 'Lato'
   | 'Montserrat'
   | 'Source Sans Pro';
+
+export interface EditorSettings {
+  defaultFont?: FontFamily;
+  fontSize?: number;
+  textAlign?: string;
+  bookView?: boolean;
+  bookViewWidth?: string;
+  bookViewMargin?: string;
+}
 
 // Global interface extensions
 declare global {

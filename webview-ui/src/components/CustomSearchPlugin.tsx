@@ -6,9 +6,12 @@ type CustomCSS = typeof CSS & {
   highlights?: Map<string, unknown>;
 };
 
-declare const CustomHighlight: {
-  new (...ranges: Range[]): unknown;
-};
+// Define proper types for CSS Highlights API
+interface WindowWithHighlight extends Window {
+  Highlight: {
+    new (...ranges: Range[]): unknown;
+  };
+}
 
 // Custom search plugin that only scrolls on Enter key presses
 export interface CustomSearchPluginParams {
@@ -163,13 +166,13 @@ export const customSearchPlugin = realmPlugin<CustomSearchPluginParams>({
         // Highlight all matches
         const allRanges = matches.map(match => match.range);
         if (allRanges.length > 0) {
-          const searchHighlight = new (window as any).Highlight(...allRanges);
+          const searchHighlight = new (window as unknown as WindowWithHighlight).Highlight(...allRanges);
           customCSS.highlights?.set('mdx-search', searchHighlight);
         }
 
         // Highlight current match
         if (currentIndex >= 0 && currentIndex < matches.length) {
-          const focusHighlight = new (window as any).Highlight(matches[currentIndex].range);
+          const focusHighlight = new (window as unknown as WindowWithHighlight).Highlight(matches[currentIndex].range);
           customCSS.highlights?.set('mdx-focus-search', focusHighlight);
         }
       } finally {

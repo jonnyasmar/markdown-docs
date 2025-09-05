@@ -2,14 +2,14 @@ import React, { useEffect, useState } from 'react';
 
 import './App.css';
 import { CommentList } from './components/CommentList';
-import { CommentWithAnchor, WebviewMessage } from './types';
+import { CommentWithAnchor, VSCodeAPI, WebviewMessage } from './types';
 import { logger } from './utils/logger';
 
 // VS Code API for webview - use pre-acquired API
 // (Window type is already declared in types.ts)
 
 // Use ONLY the pre-acquired VS Code API from HTML template
-let vscode: any;
+let vscode: VSCodeAPI | undefined;
 if (typeof window !== 'undefined' && window.vscodeApi) {
   vscode = window.vscodeApi;
   // Debug: VS Code API availability
@@ -39,7 +39,7 @@ function App() {
     window.addEventListener('message', handleMessage);
 
     // Request initial data
-    vscode.postMessage({ type: 'requestComments' });
+    vscode?.postMessage({ command: 'requestComments' });
 
     return () => {
       window.removeEventListener('message', handleMessage);
@@ -47,22 +47,22 @@ function App() {
   }, []);
 
   const handleNavigateToComment = (commentId: string) => {
-    vscode.postMessage({
-      type: 'navigateToComment',
+    vscode?.postMessage({
+      command: 'navigateToComment',
       commentId,
     });
   };
 
   const handleEditComment = (commentId: string) => {
-    vscode.postMessage({
-      type: 'editComment',
+    vscode?.postMessage({
+      command: 'editComment',
       commentId,
     });
   };
 
   const handleDeleteComment = (commentId: string) => {
-    vscode.postMessage({
-      type: 'deleteComment',
+    vscode?.postMessage({
+      command: 'deleteComment',
       commentId,
     });
   };

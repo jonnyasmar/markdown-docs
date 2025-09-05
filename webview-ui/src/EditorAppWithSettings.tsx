@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 
 import EditorApp from './EditorApp';
-import { FontFamily, VSCodeAPI } from './types';
+import { FontFamily, VSCodeAPI, WebviewMessage } from './types';
 import { logger } from './utils/logger';
 
 // Get VS Code API synchronously with proper typing and validation
@@ -44,18 +44,19 @@ function EditorAppWithSettings() {
 
     // Listen for settings response
     const handleMessage = (event: MessageEvent) => {
-      const message = event.data;
+      const message = event.data as WebviewMessage;
       console.log('EditorAppWithSettings: Received message:', message.command);
 
       if (message.command === 'settingsUpdate' && message.settings) {
         console.log('EditorAppWithSettings: Loading initial settings:', message.settings);
+        const msgSettings = message.settings;
         setSettings({
-          defaultFont: message.settings.defaultFont || 'Default',
-          fontSize: message.settings.fontSize || 14,
-          textAlign: message.settings.textAlign || 'left',
-          bookView: message.settings.bookView || false,
-          bookViewWidth: message.settings.bookViewWidth || '5.5in',
-          bookViewMargin: message.settings.bookViewMargin || '0.5in',
+          defaultFont: msgSettings.defaultFont ?? 'Default',
+          fontSize: msgSettings.fontSize ?? 14,
+          textAlign: msgSettings.textAlign ?? 'left',
+          bookView: msgSettings.bookView ?? false,
+          bookViewWidth: msgSettings.bookViewWidth ?? '5.5in',
+          bookViewMargin: msgSettings.bookViewMargin ?? '0.5in',
         });
       }
     };

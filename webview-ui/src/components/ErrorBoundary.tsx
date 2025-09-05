@@ -34,7 +34,7 @@ export class ErrorBoundary extends Component<Props, State> {
           command: 'error',
           content: `Component error: ${error.message}`,
           stack: error.stack,
-          componentStack: errorInfo.componentStack || '',
+          componentStack: errorInfo.componentStack ?? '',
         });
       } catch (telemetryError) {
         logger.error('Failed to send error telemetry:', telemetryError);

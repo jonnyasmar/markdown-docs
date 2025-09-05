@@ -280,7 +280,7 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
             await this.handleCommentOperation(message, document);
             break;
           case 'setFontSize':
-            console.log('Extension: setFontSize handler reached, fontSize:', message.fontSize);
+            logger.debug('setFontSize handler reached, fontSize:', message.fontSize);
             if (typeof message.fontSize === 'number') {
               const config = vscode.workspace.getConfiguration('markdown-docs');
               await config.update('fontSize', message.fontSize, vscode.ConfigurationTarget.Global);
@@ -295,7 +295,7 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
                 bookViewMargin: config.get<string>('bookViewMargin', '0.5in'),
               };
 
-              console.log('Extension: Sending settingsUpdate for fontSize:', settings);
+              logger.debug('Sending settingsUpdate for fontSize:', settings);
               void webviewPanel.webview.postMessage({
                 command: 'settingsUpdate',
                 settings,
@@ -304,7 +304,7 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
             break;
 
           case 'setTextAlign':
-            console.log('Extension: setTextAlign handler reached, textAlign:', message.textAlign);
+            logger.debug('setTextAlign handler reached, textAlign:', message.textAlign);
             if (message.textAlign) {
               const config = vscode.workspace.getConfiguration('markdown-docs');
               await config.update('textAlign', message.textAlign, vscode.ConfigurationTarget.Global);
@@ -319,7 +319,7 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
                 bookViewMargin: config.get<string>('bookViewMargin', '0.5in'),
               };
 
-              console.log('Extension: Sending settingsUpdate for textAlign:', settings);
+              logger.debug('Sending settingsUpdate for textAlign:', settings);
               void webviewPanel.webview.postMessage({
                 command: 'settingsUpdate',
                 settings,
@@ -328,7 +328,7 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
             break;
 
           case 'setBookView':
-            console.log('Extension: setBookView handler reached, bookView:', message.bookView);
+            logger.debug('setBookView handler reached, bookView:', message.bookView);
             if (typeof message.bookView === 'boolean') {
               const config = vscode.workspace.getConfiguration('markdown-docs');
               await config.update('bookView', message.bookView, vscode.ConfigurationTarget.Global);
@@ -343,7 +343,7 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
                 bookViewMargin: config.get<string>('bookViewMargin', '0.5in'),
               };
 
-              console.log('Extension: Sending settingsUpdate for bookView:', settings);
+              logger.debug('Sending settingsUpdate for bookView:', settings);
               void webviewPanel.webview.postMessage({
                 command: 'settingsUpdate',
                 settings,
@@ -352,7 +352,7 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
             break;
 
           case 'setBookViewWidth':
-            console.log('Extension: setBookViewWidth handler reached, width:', message.bookViewWidth);
+            logger.debug('setBookViewWidth handler reached, width:', message.bookViewWidth);
             if (typeof message.bookViewWidth === 'string') {
               const config = vscode.workspace.getConfiguration('markdown-docs');
               await config.update('bookViewWidth', message.bookViewWidth, vscode.ConfigurationTarget.Global);
@@ -367,7 +367,7 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
                 bookViewMargin: config.get<string>('bookViewMargin', '0.5in'),
               };
 
-              console.log('Extension: Sending settingsUpdate for bookViewWidth:', settings);
+              logger.debug('Sending settingsUpdate for bookViewWidth:', settings);
               void webviewPanel.webview.postMessage({
                 command: 'settingsUpdate',
                 settings,
@@ -376,7 +376,7 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
             break;
 
           case 'setBookViewMargin':
-            console.log('Extension: setBookViewMargin handler reached, margin:', message.bookViewMargin);
+            logger.debug('setBookViewMargin handler reached, margin:', message.bookViewMargin);
             if (typeof message.bookViewMargin === 'string') {
               const config = vscode.workspace.getConfiguration('markdown-docs');
               await config.update('bookViewMargin', message.bookViewMargin, vscode.ConfigurationTarget.Global);
@@ -391,7 +391,7 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
                 bookViewMargin: message.bookViewMargin,
               };
 
-              console.log('Extension: Sending settingsUpdate for bookViewMargin:', settings);
+              logger.debug('Sending settingsUpdate for bookViewMargin:', settings);
               void webviewPanel.webview.postMessage({
                 command: 'settingsUpdate',
                 settings,

@@ -2,7 +2,7 @@
  * Centralized utility for posting messages to VS Code extension
  * Consolidates all webview-to-extension communication patterns
  */
-import { WebviewMessage } from '../types';
+import { FontFamily, WebviewMessage } from '../types';
 import { logger } from './logger';
 
 /**
@@ -66,7 +66,7 @@ export const postExternalLink = (url: string): void => {
   });
 };
 
-export const postFontSetting = (font: string): void => {
+export const postFontSetting = (font: FontFamily): void => {
   postToExtension({
     command: 'setFont',
     font,

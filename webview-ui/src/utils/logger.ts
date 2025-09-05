@@ -4,24 +4,25 @@
 const PREFIX = '[Markdown Docs]';
 
 export const logger = {
-  log: (message: string, ...args: any[]) => {
+  log: (message: string, ...args: unknown[]) => {
     console.log(`${PREFIX} ${message}`, ...args);
   },
 
-  error: (message: string, ...args: any[]) => {
+  error: (message: string, ...args: unknown[]) => {
     console.error(`${PREFIX} ERROR: ${message}`, ...args);
   },
 
-  warn: (message: string, ...args: any[]) => {
+  warn: (message: string, ...args: unknown[]) => {
     console.warn(`${PREFIX} WARN: ${message}`, ...args);
   },
 
-  debug: (message: string, ...args: any[]) => {
+  debug: (message: string, ...args: unknown[]) => {
     // Always log debug in webview (can be filtered in dev tools)
+    // eslint-disable-next-line no-console
     console.debug(`${PREFIX} DEBUG: ${message}`, ...args);
   },
 
-  info: (message: string, ...args: any[]) => {
+  info: (message: string, ...args: unknown[]) => {
     console.info(`${PREFIX} INFO: ${message}`, ...args);
   },
 };

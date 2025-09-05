@@ -2,6 +2,10 @@ import React from 'react';
 
 import { CursorPosition, CursorTracker } from '../utils/cursorTracking';
 
+interface EditorRef {
+  getMarkdown?: () => string;
+}
+
 interface EditorStatus {
   cursorPosition: CursorPosition;
   wordCount: number;
@@ -18,7 +22,7 @@ export const useEditorStatus = (
   content: string,
   selectedText?: string,
   isTyping?: boolean,
-  editorRef?: React.RefObject<any>,
+  editorRef?: React.RefObject<EditorRef>,
 ): EditorStatus => {
   const [cursorPosition, setCursorPosition] = React.useState<CursorPosition>({ line: 1, column: 1 });
   const [stats, setStats] = React.useState({ wordCount: 0, charCount: 0, readingTime: 0 });
@@ -29,7 +33,7 @@ export const useEditorStatus = (
 
   // PERFORMANCE FIX: Stable stats calculation to prevent constant recreation
   const calculateStats = React.useCallback(() => {
-    const markdownContent = editorRef?.current?.getMarkdown() || content;
+    const markdownContent = editorRef?.current?.getMarkdown?.() ?? content;
 
     if (!markdownContent) {
       setStats({ wordCount: 0, charCount: 0, readingTime: 0 });
@@ -37,13 +41,14 @@ export const useEditorStatus = (
     }
 
     // Update cursor position with current content
-    cursorTrackerRef.current?.updatePosition(markdownContent);
+    cursorTrackerRef.current?.updatePosition(String(markdownContent));
 
-    const charCount = markdownContent.length;
+    const charCount = String(markdownContent).length;
     // PERFORMANCE FIX: More efficient word counting - avoid filter()
-    const words = markdownContent.trim().split(/\s+/);
-    const wordCount = words.length === 1 && words[0] === '' ? 0 : words.length;
-    const readingTime = Math.ceil(wordCount / 200);
+    const words = String(markdownContent).trim().split(/\s+/);
+    const wordCount =
+      Array.isArray(words) && words.length === 1 && words[0] === '' ? 0 : Array.isArray(words) ? words.length : 0;
+    const readingTime = Math.ceil(Number(wordCount) / 200);
 
     setStats({ wordCount, charCount, readingTime });
   }, [content, editorRef]); // CRITICAL: Remove content dep to prevent constant recreation
