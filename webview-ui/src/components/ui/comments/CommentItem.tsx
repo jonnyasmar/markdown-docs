@@ -1,44 +1,38 @@
+import { CommentWithAnchor } from '@/types';
 import React from 'react';
 
-import { CommentWithAnchor } from '../types';
 import './CommentItem.css';
 
 interface CommentItemProps {
   comment: CommentWithAnchor;
-  onNavigate: (commentId: string) => void;
-  onEdit: (commentId: string) => void;
-  onDelete: (commentId: string) => void;
+  isFocused: boolean;
+  onCommentClick: (id: string) => void;
+  onDeleteComment: (id: string) => void;
+  onEditComment: (id: string) => void;
 }
 
-export function CommentItem({ comment, onNavigate, onEdit, onDelete }: CommentItemProps) {
-  const formatDate = (timestamp: string) => {
-    return new Date(timestamp).toLocaleString();
-  };
-
-  return (
-    <div className="comment-item">
-      <div className="comment-header">
-        <span className="comment-author">{comment.author}</span>
-        <span className="comment-date">{formatDate(comment.timestamp)}</span>
-      </div>
-
+export const CommentItem = React.memo(
+  ({ comment, isFocused, onCommentClick, onDeleteComment, onEditComment }: CommentItemProps) => (
+    <div
+      className={`comment-item ${isFocused ? 'focused' : ''}`}
+      data-comment-id={comment.id}
+      onClick={() => onCommentClick(comment.id)}
+      style={{ cursor: 'pointer' }}
+    >
       <div className="comment-content">{comment.content}</div>
-
-      <div className="comment-anchor">
-        <strong>Anchored text:</strong> "{comment.anchoredText}"
-      </div>
-
-      <div className="comment-actions" style={{ textAlign: 'right' }}>
-        <button className="btn btn-danger" onClick={() => onDelete(comment.id)} title="Delete comment">
+      <div className="comment-anchor">On: "{comment.anchoredText?.substring(0, 50) ?? 'Selected text'}..."</div>
+      <div className="comment-actions">
+        <button
+          onClick={() => onDeleteComment(comment.id)}
+          className="comment-action-btn delete"
+          title="Delete this comment"
+        >
           Delete
         </button>
-        <button className="btn btn-secondary" onClick={() => onEdit(comment.id)} title="Edit comment">
+        <button onClick={() => onEditComment(comment.id)} className="comment-action-btn" title="Edit this comment">
           Edit
-        </button>
-        <button className="btn btn-primary" onClick={() => onNavigate(comment.id)} title="Go to comment in editor">
-          Go to
         </button>
       </div>
     </div>
-  );
-}
+  ),
+);

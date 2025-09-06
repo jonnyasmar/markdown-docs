@@ -1,3 +1,4 @@
+import { CommentItem } from '@/components/ui/comments/CommentItem';
 import { useViewModeTracking } from '@/hooks/useViewModeTracking';
 import {
   AdmonitionDirectiveDescriptor,
@@ -55,45 +56,6 @@ import { postprocessAngleBrackets, preprocessAngleBrackets } from './plugins/Sim
 import { CommentModal } from './ui/comments/CommentModal';
 import TableOfContents from './ui/navigation/TableOfContents';
 import StatusBar from './ui/status/StatusBar';
-
-// Memoized comment item to prevent unnecessary re-renders with many comments
-const CommentItem = React.memo(
-  ({
-    comment,
-    isFocused,
-    onCommentClick,
-    onDeleteComment,
-    onEditComment,
-  }: {
-    comment: CommentWithAnchor;
-    isFocused: boolean;
-    onCommentClick: (id: string) => void;
-    onDeleteComment: (id: string) => void;
-    onEditComment: (id: string) => void;
-  }) => (
-    <div
-      className={`comment-item ${isFocused ? 'focused' : ''}`}
-      data-comment-id={comment.id}
-      onClick={() => onCommentClick(comment.id)}
-      style={{ cursor: 'pointer' }}
-    >
-      <div className="comment-content">{comment.content}</div>
-      <div className="comment-anchor">On: "{comment.anchoredText?.substring(0, 50) ?? 'Selected text'}..."</div>
-      <div className="comment-actions">
-        <button
-          onClick={() => onDeleteComment(comment.id)}
-          className="comment-action-btn delete"
-          title="Delete this comment"
-        >
-          Delete
-        </button>
-        <button onClick={() => onEditComment(comment.id)} className="comment-action-btn" title="Edit this comment">
-          Edit
-        </button>
-      </div>
-    </div>
-  ),
-);
 
 // Create a custom plugin for comment insertion that uses native insertDirective$
 const commentInsertionPlugin = realmPlugin<{
@@ -874,7 +836,6 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     return positions;
   }, [markdown, parsedComments]);
 
-  // Comment action handlers - must be defined before sortedCommentItems useMemo
   const handleEditComment = useCallback(
     (commentId: string) => {
       logger.debug('Edit comment locally:', commentId);
