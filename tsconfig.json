@@ -1,24 +1,19 @@
 {
-	"compilerOptions": {
-		"module": "commonjs",
-		"target": "ES2020",
-		"outDir": "out",
-		"lib": [
-			"ES2020",
-			"DOM"
-		],
-		"sourceMap": true,
-		"rootDir": "src",
-		"strict": true,
-		"skipLibCheck": true
-	},
-	"include": ["src/**/*"],
-	"exclude": [
-		"webview-ui",
-		"dist",
-		"src/test",
-		"editor",
-		"node_modules",
-		"**/*.d.ts"
-	]
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "ES2020",
+    "outDir": "out",
+    "lib": ["ES2020", "DOM"],
+    "sourceMap": true,
+    "rootDir": "src",
+    "strict": true,
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@webview/*": ["./webview-ui/src/*"]
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["webview-ui", "dist", "src/test", "editor", "node_modules", "**/*.d.ts"]
 }

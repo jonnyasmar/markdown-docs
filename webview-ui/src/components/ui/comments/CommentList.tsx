@@ -1,6 +1,6 @@
+import { CommentWithAnchor } from '@/types';
 import React from 'react';
 
-import { CommentWithAnchor } from '../types';
 import { CommentItem } from './CommentItem';
 import './CommentList.css';
 
