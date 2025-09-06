@@ -61,7 +61,7 @@ import StatusBar from './ui/status/StatusBar';
 
 // View mode tracking using DOM observation since viewMode$ might not be available
 const useViewModeTracking = (onViewModeChange: (mode: 'rich-text' | 'source' | 'diff') => void) => {
-  React.useEffect(() => {
+  useEffect(() => {
     let lastViewMode: 'rich-text' | 'source' | 'diff' = 'rich-text';
 
     const checkViewMode = () => {
@@ -680,12 +680,12 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   }, [handleHeadingNavigation]);
 
   // Update selected font when defaultFont prop changes
-  React.useEffect(() => {
+  useEffect(() => {
     setSelectedFont(defaultFont);
   }, [defaultFont]);
 
   // Load saved font preference from VS Code settings on mount and signal ready
-  React.useEffect(() => {
+  useEffect(() => {
     // Signal that webview is ready to receive updates
     postReady();
 
@@ -850,7 +850,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   // We're not intercepting them anymore since VS Code is the single source of truth
 
   // Apply font styles to dropdown options
-  /* React.useEffect(() => {
+  /* useEffect(() => {
     const styleDropdownOptions = () => {
       // Wait for dropdown to be rendered
       setTimeout(() => {
@@ -1198,7 +1198,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
   const parseCommentTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!liveMarkdown && !markdown) {
       setParsedComments([]);
       return;
@@ -1229,7 +1229,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   }, [liveMarkdown, markdown]);
 
   // Cleanup timeouts on unmount - Enhanced memory leak fix
-  React.useEffect(() => {
+  useEffect(() => {
     return () => {
       // Clear all timeout refs to prevent memory leaks
       if (dirtyStateTimeoutRef.current) {
@@ -1265,7 +1265,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   // REMOVED: const [syncState, setSyncState] = useState<SyncState>(SyncState.IDLE); - SyncState no longer needed
 
   // Handle external updates ONLY when they come from VS Code (not from user typing)
-  React.useEffect(() => {
+  useEffect(() => {
     // REMOVED: justSavedRef check - extension-level echo prevention handles this
 
     // Only process if this is a genuine external update (not from user typing)
@@ -1483,7 +1483,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   );
 
   // Handle VS Code messages including theme changes
-  React.useEffect(() => {
+  useEffect(() => {
     const handleVSCodeMessage = (event: MessageEvent) => {
       // VS Code extension message events use any type for data
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -1553,7 +1553,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   }, []);
 
   // Handle Ctrl+F / Cmd+F for search only - let VS Code handle save natively
-  React.useEffect(() => {
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Only handle search shortcuts, let VS Code handle save naturally
       if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
@@ -1575,7 +1575,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   }, [hasUnsavedChanges, markdown, convertWebviewUrisToRelativePaths]);
 
   // Text selection handling for floating comment button
-  React.useEffect(() => {
+  useEffect(() => {
     const handleSelectionChange = () => {
       // Don't update selection if comment modal is open - lock the selection
       if (showCommentModal || showEditModal) {
@@ -1681,7 +1681,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   }, [showCommentModal, showEditModal, currentViewMode]);
 
   // Handle clicks on highlighted text to highlight corresponding comment
-  React.useEffect(() => {
+  useEffect(() => {
     const handleDocumentClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
 
@@ -1769,7 +1769,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   }, [showCommentSidebar, setShowCommentSidebar]);
 
   // Sidebar resizing logic
-  React.useEffect(() => {
+  useEffect(() => {
     let isResizing = false;
 
     const handleMouseDown = (e: MouseEvent) => {
@@ -1808,7 +1808,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   }, []);
 
   // Cleanup on unmount
-  React.useEffect(() => {
+  useEffect(() => {
     return () => {
       // Cleanup handled by component unmounting - sync manager disposes itself
     };
@@ -1963,7 +1963,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   }, [onMarkdownChange, pendingComment]); // PERFORMANCE FIX: Stable callback to prevent plugin recreation
 
   // Effect to watch for pending comments and trigger plugin
-  React.useEffect(() => {
+  useEffect(() => {
     if (pendingComment) {
       logger.debug('Triggering plugin comment insertion via cell update');
       // Directly publish to the plugin's cell - the plugin will handle it
