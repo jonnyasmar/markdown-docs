@@ -29,7 +29,11 @@ const extensionConfig = {
   },
   resolve: {
     // support reading TypeScript and JavaScript files
-    extensions: ['.ts', '.js']
+    extensions: ['.ts', '.js'],
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+      '@webview': path.resolve(__dirname, './webview-ui/src')
+    }
   },
   module: {
     rules: [

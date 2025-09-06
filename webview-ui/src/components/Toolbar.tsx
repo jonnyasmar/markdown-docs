@@ -1,6 +1,6 @@
 import { DiffViewWrapper } from '@/components/DiffViewWrapper';
 import { ToolbarGroups } from '@/components/ToolbarGroups';
-import { CustomSearchInput } from '@/components/plugins/CustomSearchPlugin';
+import { CustomSearchInput } from '@/components/plugins/customSearchPlugin';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 
 export const Toolbar = memo(

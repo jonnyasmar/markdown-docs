@@ -1,3 +1,5 @@
+import { Toolbar } from '@/components/Toolbar';
+import { commentInsertionPlugin } from '@/components/plugins/commentInsertionPlugin';
 import { CommentItem } from '@/components/ui/comments/CommentItem';
 import { useViewModeTracking } from '@/hooks/useViewModeTracking';
 import {
@@ -13,18 +15,17 @@ import {
   frontmatterPlugin,
   headingsPlugin,
   imagePlugin,
-  insertDirective$,
   linkDialogPlugin,
   linkPlugin,
   listsPlugin,
   markdownShortcutPlugin,
   quotePlugin,
-  realmPlugin,
   tablePlugin,
   thematicBreakPlugin,
   toolbarPlugin,
 } from '@mdxeditor/editor';
 import '@mdxeditor/editor/style.css';
+import { List } from 'lucide-react';
 import React, { startTransition, useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 
 import { DirectiveService } from '../services/directive';
@@ -51,85 +52,11 @@ import { escapeDirectiveContent } from '../utils/textNormalization';
 import './MDXEditorWrapper.css';
 import { MermaidEditor } from './editor/MermaidEditor';
 import './editor/MermaidEditor.css';
-import { customSearchPlugin } from './plugins/CustomSearchPlugin';
 import { postprocessAngleBrackets, preprocessAngleBrackets } from './plugins/SimplifiedAngleBracketPlugin';
+import { customSearchPlugin } from './plugins/customSearchPlugin';
 import { CommentModal } from './ui/comments/CommentModal';
 import TableOfContents from './ui/navigation/TableOfContents';
 import StatusBar from './ui/status/StatusBar';
-
-// Create a custom plugin for comment insertion that uses native insertDirective$
-const commentInsertionPlugin = realmPlugin<{
-  pendingComment?: {
-    comment: string;
-    commentId: string;
-    selectedText: string;
-    strategy: 'inline' | 'container';
-  } | null;
-  onInsertComment?: (comment: {
-    comment: string;
-    commentId: string;
-    selectedText: string;
-    strategy: 'inline' | 'container';
-  }) => void;
-}>({
-  init(_realm, _params) {
-    logger.debug('Comment insertion plugin initialized with native insertDirective$ support');
-  },
-
-  update(realm, params) {
-    // React to pending comment updates and insert directives using native MDX Editor signals
-    if (params?.pendingComment) {
-      const pendingComment = params.pendingComment;
-      logger.debug('=== PLUGIN UPDATE CALLED ===');
-      logger.debug('Plugin received comment to insert using native insertDirective$:', pendingComment);
-
-      // PERFORMANCE FIX: Prevent duplicate insertions by checking if comment already exists
-      // Use a flag to track if we've already inserted this comment
-      // Pending comment object lacks proper TypeScript definitions for tracking flags
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
-      if ((pendingComment as any)._alreadyInserted) {
-        logger.debug('Comment already processed, skipping insertion to prevent duplicates');
-        return;
-      }
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
-      (pendingComment as any)._alreadyInserted = true;
-
-      try {
-        // Use MDX Editor's native insertDirective$ signal - this is the key!
-        const directiveConfig = {
-          name: 'comment',
-          type: (pendingComment.strategy === 'container' ? 'containerDirective' : 'textDirective') as
-            | 'containerDirective'
-            | 'textDirective'
-            | 'leafDirective',
-          children:
-            pendingComment.strategy === 'container'
-              ? [{ type: 'paragraph', children: [{ type: 'text', value: pendingComment.selectedText }] }]
-              : [{ type: 'text', value: pendingComment.selectedText }],
-          attributes: {
-            id: pendingComment.commentId,
-            text: escapeDirectiveContent(pendingComment.comment, pendingComment.strategy === 'container'),
-          },
-        };
-        logger.debug('Directive config to insert:', directiveConfig);
-        realm.pub(insertDirective$, directiveConfig);
-
-        logger.debug('Comment directive inserted successfully via native insertDirective$');
-
-        // Call completion callback if provided
-        if (params?.onInsertComment) {
-          logger.debug('Calling onInsertComment callback');
-          params.onInsertComment(pendingComment);
-        } else {
-          logger.warn('No onInsertComment callback provided');
-        }
-      } catch (error) {
-        logger.error('Error inserting comment directive via insertDirective$:', error);
-        logger.error('Error details:', error instanceof Error ? error.stack : String(error));
-      }
-    }
-  },
-});
 
 // Comment directive configuration supporting all directive types
 const createCommentDirectiveDescriptor = (

@@ -25,6 +25,10 @@ const webviewConfig = {
   resolve: {
     // support reading TypeScript and JavaScript files, plus JSX
     extensions: ['.tsx', '.ts', '.jsx', '.js'],
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+      '@extension': path.resolve(__dirname, '../src')
+    },
     fallback: {
       // Provide polyfills for Node.js modules used in browser
       "process": require.resolve("process/browser.js"),
