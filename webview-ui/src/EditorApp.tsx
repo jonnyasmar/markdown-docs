@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { MDXEditorWrapper } from './components/MDXEditorWrapper';
-import { ErrorBoundary } from './components/ui/common/ErrorBoundary';
-import { CommentWithAnchor, FontFamily, VSCodeAPI, WebviewMessage } from './types';
+import { FontFamily, VSCodeAPI, WebviewMessage } from './types';
 import { logger } from './utils/logger';
 
 // Get VS Code API synchronously with proper typing and validation
@@ -33,7 +33,6 @@ interface EditorAppProps {
 
 function EditorApp({ initialSettings }: EditorAppProps) {
   const [markdown, setMarkdown] = useState('');
-  const [comments, setComments] = useState<CommentWithAnchor[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [defaultFont, setDefaultFont] = useState<FontFamily>(initialSettings.defaultFont);
@@ -74,9 +73,6 @@ function EditorApp({ initialSettings }: EditorAppProps) {
             }
             setIsLoading(false);
             clearTimeout(loadingTimeout);
-            break;
-          case 'updateComments':
-            setComments(message.comments ?? []);
             break;
           case 'fontUpdate':
             if (message.font) {
@@ -295,7 +291,6 @@ function EditorApp({ initialSettings }: EditorAppProps) {
       <MDXEditorWrapper
         markdown={markdown}
         onMarkdownChange={handleMarkdownChange}
-        comments={comments}
         onNavigateToComment={handleNavigateToComment}
         onEditComment={handleEditComment}
         onDeleteComment={handleDeleteComment}

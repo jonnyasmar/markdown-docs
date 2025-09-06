@@ -1,6 +1,6 @@
+import { useEditorStatus } from '@/hooks/editor/useEditorStatus';
 import React from 'react';
 
-import { useEditorStatus } from '../../../hooks/editor/useEditorStatus';
 import './StatusBar.css';
 
 interface StatusBarProps {
@@ -11,7 +11,7 @@ interface StatusBarProps {
   editorRef?: React.RefObject<unknown>;
 }
 
-const StatusBar: React.FC<StatusBarProps> = ({ content, selectedText, viewMode, isTyping, editorRef }) => {
+export const StatusBar: React.FC<StatusBarProps> = ({ content, selectedText, viewMode, isTyping, editorRef }) => {
   const stats = useEditorStatus(
     content,
     selectedText,
@@ -50,5 +50,3 @@ const StatusBar: React.FC<StatusBarProps> = ({ content, selectedText, viewMode, 
     </div>
   );
 };
-
-export default StatusBar;

@@ -1,10 +1,14 @@
+import { CommentItem } from '@/components/CommentItem';
+import { CommentModal } from '@/components/CommentModal';
 import { CommentsSidebar } from '@/components/CommentsSidebar';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { FloatingCommentButton } from '@/components/FloatingCommentButton';
+import { MermaidEditor } from '@/components/MermaidEditor';
+import { StatusBar } from '@/components/StatusBar';
+import { TableOfContents } from '@/components/TableOfContents';
 import { Toolbar } from '@/components/Toolbar';
 import { commentInsertionPlugin } from '@/components/plugins/commentInsertionPlugin';
-import { CommentItem } from '@/components/ui/comments/CommentItem';
-import { ErrorBoundary } from '@/components/ui/common/ErrorBoundary';
-import { TableOfContents } from '@/components/ui/navigation/TableOfContents';
+import { postprocessAngleBrackets, preprocessAngleBrackets } from '@/components/plugins/escapeCharPlugin';
 import { useViewModeTracking } from '@/hooks/useViewModeTracking';
 import { createCommentDirectiveDescriptor, genericDirectiveDescriptor } from '@/utils/createCommentDirectiveDescriptor';
 import {
@@ -54,12 +58,8 @@ import {
 import { logger } from '../utils/logger';
 import { escapeDirectiveContent } from '../utils/textNormalization';
 import './MDXEditorWrapper.css';
-import { MermaidEditor } from './editor/MermaidEditor';
-import './editor/MermaidEditor.css';
-import { postprocessAngleBrackets, preprocessAngleBrackets } from './plugins/SimplifiedAngleBracketPlugin';
+import './MermaidEditor.css';
 import { customSearchPlugin } from './plugins/customSearchPlugin';
-import { CommentModal } from './ui/comments/CommentModal';
-import StatusBar from './ui/status/StatusBar';
 
 interface EditorConfig {
   wordWrap: string; // 'off' | 'on' | 'wordWrapColumn' | 'bounded'
