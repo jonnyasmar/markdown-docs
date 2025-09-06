@@ -11,9 +11,16 @@ interface TOCItem {
 interface TableOfContentsProps {
   content: string;
   onHeadingClick: (headingId: string) => void;
+  sidebarWidth: number;
+  setShowTOCSidebar: (show: boolean) => void;
 }
 
-const TableOfContents: React.FC<TableOfContentsProps> = ({ content, onHeadingClick }) => {
+export const TableOfContents: React.FC<TableOfContentsProps> = ({
+  content,
+  onHeadingClick,
+  sidebarWidth,
+  setShowTOCSidebar,
+}) => {
   const tocItems = React.useMemo(() => {
     if (!content) {
       return [];
@@ -47,8 +54,10 @@ const TableOfContents: React.FC<TableOfContentsProps> = ({ content, onHeadingCli
     return items;
   }, [content]);
 
+  let Body = null;
+
   if (tocItems.length === 0) {
-    return (
+    Body = (
       <div className="toc-container">
         <div className="toc-header">Table of Contents</div>
         <div className="toc-empty">No headings found</div>
@@ -56,7 +65,7 @@ const TableOfContents: React.FC<TableOfContentsProps> = ({ content, onHeadingCli
     );
   }
 
-  return (
+  Body = (
     <div className="toc-container">
       <div className="toc-header">Table of Contents</div>
       <nav className="toc-nav">
@@ -73,6 +82,17 @@ const TableOfContents: React.FC<TableOfContentsProps> = ({ content, onHeadingCli
       </nav>
     </div>
   );
-};
 
-export default TableOfContents;
+  return (
+    <div className="toc-sidebar" style={{ width: `${sidebarWidth}px` }}>
+      <div className="sidebar-resize-handle"></div>
+      <div className="toc-header-wrapper">
+        <h3>Table of Contents</h3>
+        <button onClick={() => setShowTOCSidebar(false)} className="sidebar-close" title="Hide Table of Contents">
+          ✕
+        </button>
+      </div>
+      {Body}
+    </div>
+  );
+};
