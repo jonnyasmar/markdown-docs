@@ -16,7 +16,6 @@ export const postToExtension = (message: WebviewMessage): void => {
   }
 
   try {
-    logger.debug('Posting to extension:', message.command, message);
     window.vscodeApi.postMessage(message);
   } catch (error) {
     logger.error('Failed to post message to extension:', error, 'Message:', message);
