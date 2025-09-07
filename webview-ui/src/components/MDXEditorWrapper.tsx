@@ -66,10 +66,12 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   const preSourceContentRef = useRef<string | null>(null);
   const currentViewModeRef = useRef<'rich-text' | 'source' | 'diff'>('rich-text');
   const typingTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const sendEditTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const deferredMessageTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const parseCommentTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const hasAppliedInitialEscapingRef = useRef(false);
   const dirtyStateTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const selectionRafRef = useRef<number | null>(null);
 
   const [selectedFont, setSelectedFont] = useState(defaultFont);
   const [showCommentSidebar, setShowCommentSidebar] = useState(false);
@@ -528,9 +530,17 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         clearTimeout(typingTimeoutRef.current);
         typingTimeoutRef.current = undefined;
       }
+      if (sendEditTimeoutRef.current) {
+        clearTimeout(sendEditTimeoutRef.current);
+        sendEditTimeoutRef.current = undefined;
+      }
       if (deferredMessageTimeoutRef.current) {
         clearTimeout(deferredMessageTimeoutRef.current);
         deferredMessageTimeoutRef.current = undefined;
+      }
+      if (selectionRafRef.current) {
+        cancelAnimationFrame(selectionRafRef.current);
+        selectionRafRef.current = null;
       }
     };
   }, []);
@@ -691,8 +701,13 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       // Mark that user has interacted with editor to prevent auto-focus
       hasInitiallyFocusedRef.current = true;
 
-      // Send content to VS Code using consolidated messaging utility
-      postContentEdit(processedMarkdown);
+      // Debounce sending content to VS Code to reduce churn
+      if (sendEditTimeoutRef.current) {
+        clearTimeout(sendEditTimeoutRef.current);
+      }
+      sendEditTimeoutRef.current = setTimeout(() => {
+        postContentEdit(processedMarkdown);
+      }, 200);
     },
     [markdown], // State setters should be stable
   );
@@ -705,25 +720,41 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
     // Don't show floating button in source or diff view
     if (currentViewMode !== 'rich-text') {
-      setShowFloatingButton(false);
+      if (showFloatingButton) setShowFloatingButton(false);
       return;
     }
 
     const selection = window.getSelection();
-    if (selection?.toString().trim() && containerRef.current) {
+    const selected = selection?.toString().trim() ?? '';
+
+    // Fast bail-out for caret-only/no selection to avoid layout work
+    if (!selected) {
+      if (showFloatingButton) setShowFloatingButton(false);
+      if (!showCommentModal && !showEditModal && selectedText) {
+        setSelectedText('');
+      }
+      return;
+    }
+
+    // Throttle heavy DOM work to the next animation frame
+    if (selectionRafRef.current !== null) {
+      return;
+    }
+    selectionRafRef.current = requestAnimationFrame(() => {
+      selectionRafRef.current = null;
+      if (!containerRef.current) return;
+      if (!selection || selection.rangeCount === 0) return;
       const range = selection.getRangeAt(0);
 
       // Check if the selection is within the editor content area, not in search input or other UI elements
       const startContainer = range.startContainer;
       const endContainer = range.endContainer;
 
-      // Find if selection is within editor content
       const isWithinEditor = (node: Node): boolean => {
         let current: Node | null = node;
         while (current) {
           if (current.nodeType === Node.ELEMENT_NODE) {
             const element = current as Element;
-            // Check if it's within the MDX editor content area
             if (
               element.classList.contains('mdx-content') ||
               element.classList.contains('mdx-editor-content') ||
@@ -733,7 +764,6 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
             ) {
               return true;
             }
-            // Exclude search input and other UI elements
             if (
               element.classList.contains('inline-search-input') ||
               element.closest('.inline-search-container') ||
@@ -748,10 +778,9 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         return false;
       };
 
-      // Only show comment button if selection is within editor content
       if (!isWithinEditor(startContainer) || !isWithinEditor(endContainer)) {
-        setShowFloatingButton(false);
-        if (!showCommentModal && !showEditModal) {
+        if (showFloatingButton) setShowFloatingButton(false);
+        if (!showCommentModal && !showEditModal && selectedText) {
           setSelectedText('');
         }
         return;
@@ -760,10 +789,9 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       const rect = range.getBoundingClientRect();
       const containerRect = containerRef.current.getBoundingClientRect();
 
-      const selectedTextContent = selection.toString().trim();
-
-      // Position button on the right edge of the editor content area
-      const editorContentRect = containerRef.current.querySelector('.mdx-editor-content')?.getBoundingClientRect();
+      const editorContentRect = containerRef.current
+        .querySelector('.mdx-editor-content')
+        ?.getBoundingClientRect();
       const rightEdgeX = editorContentRect
         ? editorContentRect.right - containerRect.left - 50
         : containerRect.width - 60;
@@ -772,16 +800,10 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         x: rightEdgeX,
         y: rect.top - containerRect.top + rect.height / 2 - 20,
       });
-      setSelectedText(selectedTextContent);
-      setShowFloatingButton(true);
-    } else {
-      setShowFloatingButton(false);
-      // Don't clear selectedText immediately - keep it for the modal
-      if (!showCommentModal && !showEditModal) {
-        setSelectedText('');
-      }
-    }
-  }, [currentViewMode, showCommentModal, showEditModal]);
+      setSelectedText(selected);
+      if (!showFloatingButton) setShowFloatingButton(true);
+    });
+  }, [currentViewMode, showCommentModal, showEditModal, showFloatingButton, selectedText]);
 
   // Text selection handling for floating comment button
   useEffect(() => {
