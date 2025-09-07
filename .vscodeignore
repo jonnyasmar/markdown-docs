@@ -39,3 +39,5 @@ CHANGELOG.md
 .bmad-core/**
 .claude/**
 .serena/**
+
+editor/**
