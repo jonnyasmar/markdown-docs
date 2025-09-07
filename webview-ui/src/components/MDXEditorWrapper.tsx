@@ -262,56 +262,6 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     postGetFont();
   }, []);
 
-  // Apply dynamic styles to the editor content
-  useEffect(() => {
-    const applyDynamicStyles = () => {
-      const editorContent = document.querySelector('.mdx-content[contenteditable="true"]') as HTMLElement;
-      if (!editorContent) {
-        return;
-      }
-
-      // Apply font size (affects base font size, headings will scale proportionally)
-      editorContent.style.fontSize = `${fontSize}px`;
-
-      // Ensure paragraphs inherit the font size properly
-      const paragraphs = editorContent.querySelectorAll('p');
-      paragraphs.forEach(p => {
-        (p as HTMLElement).style.fontSize = 'inherit';
-      });
-
-      // Apply text alignment
-      editorContent.style.textAlign = textAlign;
-
-      // Apply Book View styles
-      if (bookView) {
-        editorContent.style.maxWidth = bookViewWidth || '5.5in';
-        editorContent.style.paddingLeft = bookViewMargin || '0.5in';
-        editorContent.style.paddingRight = bookViewMargin || '0.5in';
-        editorContent.style.margin = '0 auto';
-      } else {
-        editorContent.style.maxWidth = '';
-        editorContent.style.paddingLeft = '';
-        editorContent.style.paddingRight = '';
-        editorContent.style.margin = '';
-      }
-    };
-
-    // Apply styles immediately
-    applyDynamicStyles();
-
-    // Set up observer to reapply styles when editor content changes
-    const observer = new MutationObserver(() => {
-      applyDynamicStyles();
-    });
-
-    // Watch for changes to the document body (when editor content is added/removed)
-    observer.observe(document.body, { childList: true, subtree: true });
-
-    return () => {
-      observer.disconnect();
-    };
-  }, [fontSize, textAlign, bookView, bookViewWidth, bookViewMargin]);
-
   // PERFORMANCE CRITICAL: Comment position cache - ONLY recalculate when comments change
   // NOT when markdown changes (which happens on every keystroke)
   const commentPositions = useMemo(() => {

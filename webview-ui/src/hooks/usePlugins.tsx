@@ -117,12 +117,42 @@ export const usePlugins = ({
   setSelectedFont,
 }: UsePluginsProps) => {
   const currentFontSizeRef = useRef(fontSize);
-  const bookViewWidthTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
-  const bookViewMarginTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   // Local state for book view inputs to prevent cursor jumping (numbers only, default to 'in' units)
   const [localBookViewWidth, setLocalBookViewWidth] = useState<string>((bookViewWidth || '5.5in').replace('in', ''));
   const [localBookViewMargin, setLocalBookViewMargin] = useState<string>((bookViewMargin || '0.5in').replace('in', ''));
+
+  useEffect(() => {
+    const editorContent = document.querySelector('.mdx-content[contenteditable="true"]') as HTMLElement;
+    if (!editorContent) {
+      return;
+    }
+
+    // Apply font size (affects base font size, headings will scale proportionally)
+    editorContent.style.fontSize = `${fontSize}px`;
+
+    // Ensure paragraphs inherit the font size properly
+    const paragraphs = editorContent.querySelectorAll('p');
+    paragraphs.forEach(p => {
+      (p as HTMLElement).style.fontSize = 'inherit';
+    });
+
+    // Apply text alignment
+    editorContent.style.textAlign = textAlign;
+
+    // Apply Book View styles
+    if (bookView) {
+      editorContent.style.maxWidth = bookViewWidth || '5.5in';
+      editorContent.style.paddingLeft = bookViewMargin || '0.5in';
+      editorContent.style.paddingRight = bookViewMargin || '0.5in';
+      editorContent.style.margin = '0 auto';
+    } else {
+      editorContent.style.maxWidth = '';
+      editorContent.style.paddingLeft = '';
+      editorContent.style.paddingRight = '';
+      editorContent.style.margin = '';
+    }
+  }, [fontSize, textAlign, bookView, bookViewWidth, bookViewMargin]);
 
   // Handle font changes and save to VS Code settings
   const handleFontChange = useCallback(
@@ -136,6 +166,7 @@ export const usePlugins = ({
   // Handle font size changes
   const handleFontSizeChange = useCallback((delta: number) => {
     const newSize = Math.max(8, Math.min(48, currentFontSizeRef.current + delta));
+    currentFontSizeRef.current = newSize;
     // Save to VS Code settings
     postFontSizeSetting(newSize);
   }, []);
@@ -161,12 +192,7 @@ export const usePlugins = ({
 
       // Update local state immediately for responsive UI
       setLocalBookViewWidth(value);
-
-      // Debounce the VSCode config update
-      clearTimeout(bookViewWidthTimeoutRef.current);
-      bookViewWidthTimeoutRef.current = setTimeout(() => {
-        postBookViewWidthSetting(`${value}in`);
-      }, 500);
+      postBookViewWidthSetting(`${value}in`);
     },
     [localBookViewWidth],
   );
@@ -178,12 +204,7 @@ export const usePlugins = ({
 
       // Update local state immediately for responsive UI
       setLocalBookViewMargin(value);
-
-      // Debounce the VSCode config update
-      clearTimeout(bookViewMarginTimeoutRef.current);
-      bookViewMarginTimeoutRef.current = setTimeout(() => {
-        postBookViewMarginSetting(`${value}in`);
-      }, 500);
+      postBookViewMarginSetting(`${value}in`);
     },
     [localBookViewMargin],
   );
