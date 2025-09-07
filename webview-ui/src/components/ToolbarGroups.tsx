@@ -1,3 +1,4 @@
+import { FontFamily } from '@/types';
 import {
   BlockTypeSelect,
   BoldItalicUnderlineToggles,
@@ -35,7 +36,7 @@ export const ToolbarGroups = memo(
     handleBookViewMarginChange,
   }: {
     selectedFont: string;
-    handleFontChange: (font: string) => void;
+    handleFontChange: (font: FontFamily) => void;
     availableFonts: string[];
     isOverflow?: boolean;
     hiddenGroups?: string[];
@@ -79,7 +80,7 @@ export const ToolbarGroups = memo(
             <div className={`${groupClass} ${isOverflow ? 'overflow-group overflow-font-style' : 'font-style-group'}`}>
               <Select
                 value={selectedFont}
-                onChange={handleFontChange}
+                onChange={val => handleFontChange(val as FontFamily)}
                 triggerTitle="Select Font"
                 placeholder="Font"
                 items={availableFonts.map((font: string) => ({

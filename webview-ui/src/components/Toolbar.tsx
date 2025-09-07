@@ -1,6 +1,7 @@
 import { DiffViewWrapper } from '@/components/DiffViewWrapper';
 import { ToolbarGroups } from '@/components/ToolbarGroups';
 import { CustomSearchInput } from '@/components/plugins/customSearchPlugin';
+import { FontFamily } from '@/types';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 
 export const Toolbar = memo(
@@ -21,14 +22,13 @@ export const Toolbar = memo(
     handleBookViewMarginChange,
   }: {
     selectedFont: string;
-    handleFontChange: (font: string) => void;
+    handleFontChange: (font: FontFamily) => void;
     availableFonts: string[];
     bookView: boolean;
     bookViewWidth: string;
     bookViewMargin: string;
     currentViewMode: 'rich-text' | 'source' | 'diff';
     onViewModeChange: (mode: 'rich-text' | 'source' | 'diff') => void;
-    searchInputRef: React.RefObject<HTMLInputElement | null>;
     fontSize: number;
     handleFontSizeChange: (delta: number) => void;
     textAlign: string;

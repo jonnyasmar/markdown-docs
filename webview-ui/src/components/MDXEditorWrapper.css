@@ -1592,6 +1592,7 @@ mark.highlighted {
 body {
   overscroll-behavior: contain !important;
   overflow-anchor: none !important;
+  padding: 0;
 }
 
 /* Allow scrolling but prevent bubbling */

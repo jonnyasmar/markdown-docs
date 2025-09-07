@@ -3,35 +3,12 @@ import { CommentModal } from '@/components/CommentModal';
 import { CommentsSidebar } from '@/components/CommentsSidebar';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { FloatingCommentButton } from '@/components/FloatingCommentButton';
-import { MermaidEditor } from '@/components/MermaidEditor';
 import { StatusBar } from '@/components/StatusBar';
 import { TableOfContents } from '@/components/TableOfContents';
-import { Toolbar } from '@/components/Toolbar';
-import { commentInsertionPlugin } from '@/components/plugins/commentInsertionPlugin';
 import { postprocessAngleBrackets, preprocessAngleBrackets } from '@/components/plugins/escapeCharPlugin';
+import { usePlugins } from '@/hooks/usePlugins';
 import { useViewModeTracking } from '@/hooks/useViewModeTracking';
-import { createCommentDirectiveDescriptor, genericDirectiveDescriptor } from '@/utils/createCommentDirectiveDescriptor';
-import {
-  AdmonitionDirectiveDescriptor,
-  CodeMirrorEditor,
-  MDXEditor,
-  type MDXEditorMethods,
-  codeBlockPlugin,
-  codeMirrorPlugin,
-  diffSourcePlugin,
-  directivesPlugin,
-  frontmatterPlugin,
-  headingsPlugin,
-  imagePlugin,
-  linkDialogPlugin,
-  linkPlugin,
-  listsPlugin,
-  markdownShortcutPlugin,
-  quotePlugin,
-  tablePlugin,
-  thematicBreakPlugin,
-  toolbarPlugin,
-} from '@mdxeditor/editor';
+import { MDXEditor, type MDXEditorMethods } from '@mdxeditor/editor';
 import '@mdxeditor/editor/style.css';
 import { TableOfContents as TableOfContentsIcon } from 'lucide-react';
 import React, { startTransition, useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
@@ -39,27 +16,19 @@ import React, { startTransition, useCallback, useEffect, useMemo, useRef, useSta
 import { DirectiveService } from '../services/directive';
 import { CommentWithAnchor, FontFamily } from '../types';
 import {
-  postBookViewMarginSetting,
-  postBookViewSetting,
-  postBookViewWidthSetting,
   postContentEdit,
   postContentSave,
   postDirtyState,
   postError,
   postExternalLink,
-  postFontSetting,
-  postFontSizeSetting,
   postGetFont,
-  postImageUri,
   postReady,
-  postTextAlignSetting,
   postUserInteraction,
 } from '../utils/extensionMessaging';
 import { logger } from '../utils/logger';
 import { escapeDirectiveContent } from '../utils/textNormalization';
 import './MDXEditorWrapper.css';
 import './MermaidEditor.css';
-import { customSearchPlugin } from './plugins/customSearchPlugin';
 
 interface EditorConfig {
   wordWrap: string; // 'off' | 'on' | 'wordWrapColumn' | 'bounded'
@@ -71,7 +40,7 @@ interface MDXEditorWrapperProps {
   onNavigateToComment?: (commentId: string) => void;
   onEditComment?: (commentId: string) => void;
   onDeleteComment?: (commentId: string) => void;
-  defaultFont?: string;
+  defaultFont?: FontFamily;
   fontSize?: number;
   textAlign?: string;
   bookView?: boolean;
@@ -93,7 +62,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   bookViewMargin = '0.5in',
   onDirtyStateChange,
 }) => {
-  // UI state
+  const [selectedFont, setSelectedFont] = useState(defaultFont);
   const [showCommentSidebar, setShowCommentSidebar] = useState(false);
   const [showTOCSidebar, setShowTOCSidebar] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(240);
@@ -110,14 +79,9 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     selectedText: string;
     strategy: 'inline' | 'container';
   } | null>(null);
-  const [selectedFont, setSelectedFont] = useState(defaultFont);
   const [editingComment, setEditingComment] = useState<CommentWithAnchor | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [focusedCommentId, setFocusedCommentId] = useState<string | null>(null);
-
-  // Local state for book view inputs to prevent cursor jumping (numbers only, default to 'in' units)
-  const [localBookViewWidth, setLocalBookViewWidth] = useState<string>((bookViewWidth || '5.5in').replace('in', ''));
-  const [localBookViewMargin, setLocalBookViewMargin] = useState<string>((bookViewMargin || '0.5in').replace('in', ''));
 
   // View mode tracking for hiding comments in source/diff view
   const [currentViewMode, setCurrentViewMode] = useState<'rich-text' | 'source' | 'diff'>('rich-text');
@@ -130,10 +94,6 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   useEffect(() => {
     setLiveMarkdown(markdown);
   }, [markdown]);
-
-  // Refs for debouncing book view input changes
-  const bookViewWidthTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
-  const bookViewMarginTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   // Performance optimization: Track typing state to prevent expensive operations during typing
   const [isTyping, setIsTyping] = useState(false);
@@ -164,15 +124,6 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
     return () => observer.disconnect();
   }, []);
-
-  // Sync local book view state with props when they change externally
-  useEffect(() => {
-    setLocalBookViewWidth((bookViewWidth || '5.5in').replace('in', ''));
-  }, [bookViewWidth]);
-
-  useEffect(() => {
-    setLocalBookViewMargin((bookViewMargin || '0.5in').replace('in', ''));
-  }, [bookViewMargin]);
 
   // Store the content before entering source mode for proper restoration
   const preSourceContentRef = useRef<string | null>(null);
@@ -319,85 +270,11 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     }
   }, [handleHeadingNavigation]);
 
-  // Update selected font when defaultFont prop changes
-  useEffect(() => {
-    setSelectedFont(defaultFont);
-  }, [defaultFont]);
-
   // Load saved font preference from VS Code settings on mount and signal ready
   useEffect(() => {
     postReady();
     postGetFont();
   }, []);
-
-  // Handle font changes and save to VS Code settings
-  const handleFontChange = useCallback((fontName: string) => {
-    setSelectedFont(fontName);
-    postFontSetting(fontName as FontFamily);
-  }, []);
-
-  // Keep track of current fontSize for increment/decrement operations
-  const currentFontSizeRef = useRef(fontSize);
-
-  // Update ref when prop changes
-  useEffect(() => {
-    currentFontSizeRef.current = fontSize;
-  }, [fontSize]);
-
-  // Handle font size changes
-  const handleFontSizeChange = useCallback((delta: number) => {
-    const newSize = Math.max(8, Math.min(48, currentFontSizeRef.current + delta));
-    // Save to VS Code settings
-    postFontSizeSetting(newSize);
-  }, []);
-
-  // Handle text alignment changes
-  const handleTextAlignChange = useCallback((align: string) => {
-    // Save to VS Code settings
-    postTextAlignSetting(align);
-  }, []);
-
-  // Handle Book View toggle
-  const handleBookViewToggle = useCallback(() => {
-    const newBookView = !bookView;
-    // Save to VS Code settings
-    postBookViewSetting(newBookView);
-  }, [bookView]);
-
-  // Debounced handlers for book view inputs to prevent cursor jumping
-  const handleBookViewWidthChange = useCallback(
-    (value: string) => {
-      console.log('handleBookViewWidthChange called with:', value);
-      console.log('Current localBookViewWidth:', localBookViewWidth);
-
-      // Update local state immediately for responsive UI
-      setLocalBookViewWidth(value);
-
-      // Debounce the VSCode config update
-      clearTimeout(bookViewWidthTimeoutRef.current);
-      bookViewWidthTimeoutRef.current = setTimeout(() => {
-        postBookViewWidthSetting(`${value}in`);
-      }, 500);
-    },
-    [localBookViewWidth],
-  );
-
-  const handleBookViewMarginChange = useCallback(
-    (value: string) => {
-      console.log('handleBookViewMarginChange called with:', value);
-      console.log('Current localBookViewMargin:', localBookViewMargin);
-
-      // Update local state immediately for responsive UI
-      setLocalBookViewMargin(value);
-
-      // Debounce the VSCode config update
-      clearTimeout(bookViewMarginTimeoutRef.current);
-      bookViewMarginTimeoutRef.current = setTimeout(() => {
-        postBookViewMarginSetting(`${value}in`);
-      }, 500);
-    },
-    [localBookViewMargin],
-  );
 
   // Apply dynamic styles to the editor content
   useEffect(() => {
@@ -449,25 +326,6 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     };
   }, [fontSize, textAlign, bookView, bookViewWidth, bookViewMargin]);
 
-  // Available fonts with their CSS font-family values
-  const fontFamilyMap = {
-    Default:
-      'var(--vscode-editor-font-family, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif)',
-    Arial: 'Arial, sans-serif',
-    'Times New Roman': '"Times New Roman", Times, serif',
-    Roboto: 'Roboto, Arial, sans-serif',
-    Georgia: 'Georgia, serif',
-    Calibri: 'Calibri, Arial, sans-serif',
-    Garamond: 'Garamond, serif',
-    'Book Antiqua': '"Book Antiqua", serif',
-    'Courier New': '"Courier New", "Monaco", "Menlo", monospace',
-    'Open Sans': '"Open Sans", Arial, sans-serif',
-    Lato: '"Lato", Arial, sans-serif',
-    Montserrat: '"Montserrat", Arial, sans-serif',
-    'Source Sans Pro': '"Source Sans Pro", Arial, sans-serif',
-  };
-
-  const availableFonts = Object.keys(fontFamilyMap);
   const editorRef = useRef<MDXEditorMethods>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -759,15 +617,6 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         clearTimeout(deferredMessageTimeoutRef.current);
         deferredMessageTimeoutRef.current = undefined;
       }
-      // Clear book view timeouts as well
-      if (bookViewWidthTimeoutRef.current) {
-        clearTimeout(bookViewWidthTimeoutRef.current);
-        bookViewWidthTimeoutRef.current = undefined;
-      }
-      if (bookViewMarginTimeoutRef.current) {
-        clearTimeout(bookViewMarginTimeoutRef.current);
-        bookViewMarginTimeoutRef.current = undefined;
-      }
     };
   }, []);
 
@@ -870,23 +719,6 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   // REMOVED: const syncManagerRef = useRef<SyncManager | null>(null); - SyncManager no longer used
   const hasAppliedInitialEscapingRef = useRef(false);
-
-  // Generate simple CodeMirror extensions without direct CodeMirror imports
-  // This avoids multiple CodeMirror instance conflicts
-  const createCodeMirrorExtensions = useMemo(() => {
-    // Return empty array to avoid instanceof conflicts
-    // Word wrap and other styling is handled via CSS
-    // VS Code keymap is handled by MDXEditor internally
-    return [];
-  }, []);
-  // Custom wrapper for CodeMirrorEditor that handles save shortcuts
-  // CodeMirror editor component props lack specific TypeScript definitions
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const CodeMirrorEditorWithSave: React.FC<any> = props => {
-    return <CodeMirrorEditor {...props} />;
-  };
-
-  // REMOVED: SyncManager initialization - replaced with direct postMessage calls
 
   // Function to handle modifier key tracking (defined outside useEffect)
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
@@ -1370,56 +1202,6 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     setPendingComment(commentData);
   };
 
-  // Callback for when comment insertion is complete
-  const handleCommentInserted = useCallback(() => {
-    setPendingComment(null);
-
-    // Force immediate comment parsing by temporarily clearing isTyping
-    setIsTyping(false);
-
-    // Wait for MDX Editor to update its internal state, then get the markdown
-    setTimeout(() => {
-      if (editorRef.current) {
-        const updatedMarkdown = editorRef.current.getMarkdown();
-        onMarkdownChange(updatedMarkdown);
-
-        // Force comment parsing immediately to show new comment in sidebar
-        try {
-          const comments = DirectiveService.parseCommentDirectives(updatedMarkdown);
-          const commentsWithAnchor: CommentWithAnchor[] = comments.map(comment => ({
-            ...comment,
-            anchoredText: comment.anchoredText ?? 'Selected text',
-            startPosition: 0,
-            endPosition: 0,
-          }));
-          setParsedComments(commentsWithAnchor);
-        } catch (error) {
-          logger.error('Error in forced comment parsing:', error);
-        }
-
-        // Notify extension about changes
-        postDirtyState(true);
-      } else {
-        logger.error('No editor ref available in handleCommentInserted');
-      }
-    }, 200); // Increased delay to ensure MDX Editor has processed the directive
-  }, [onMarkdownChange]); // PERFORMANCE FIX: Stable callback to prevent plugin recreation
-
-  // Effect to watch for pending comments and trigger plugin
-  useEffect(() => {
-    if (pendingComment) {
-      // Directly publish to the plugin's cell - the plugin will handle it
-      // This simulates what would happen if we published from within the MDX Editor context
-      try {
-        // We can't directly access the realm from here, but the plugin subscription will handle it
-        // For now, we'll use a workaround to communicate with the plugin
-      } catch (error) {
-        logger.error('Error triggering plugin comment insertion:', error);
-        setPendingComment(null);
-      }
-    }
-  }, [pendingComment]);
-
   // Save interception for Cmd+S/Ctrl+S inside CodeMirror
   useEffect(() => {
     const handleSaveKeyboard = (e: KeyboardEvent) => {
@@ -1553,266 +1335,27 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     setEditingComment(null);
   };
 
-  // Define plugins array with useMemo BEFORE the return statement to follow React hooks rules
-  const plugins = useMemo(
-    () => [
-      // Core editing plugins
-      headingsPlugin(),
-      quotePlugin(),
-      listsPlugin(),
-      linkPlugin(),
-      linkDialogPlugin(),
-      tablePlugin(),
-      thematicBreakPlugin(),
-      markdownShortcutPlugin(),
-      customSearchPlugin({}),
-      frontmatterPlugin(),
-      diffSourcePlugin({
-        // Use VS Code editor configuration for word wrap behavior
-        diffMarkdown: '',
-        codeMirrorExtensions: createCodeMirrorExtensions,
-      }),
-      // Use default MDXEditor history behavior - our fix is to avoid setMarkdown() calls
-      imagePlugin({
-        imageUploadHandler: async (image: File) => {
-          return new Promise(resolve => {
-            const reader = new FileReader();
-            reader.onload = e => {
-              const data = e.target?.result;
-              if (data) {
-                postImageUri(data);
-
-                // VS Code extension message events use any type for data
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const handleUri = (event: any) => {
-                  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-                  if (event.data.command === 'imageUri') {
-                    window.removeEventListener('message', handleUri);
-                    // eslint-disable-next-line max-len
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
-                    resolve(event.data.uri);
-                  }
-                };
-
-                window.addEventListener('message', handleUri);
-              }
-            };
-            reader.readAsDataURL(image);
-          });
-        },
-        imageAutocompleteSuggestions: ['media/', './media/', '../media/'],
-      }),
-
-      // Custom comment insertion plugin using native insertDirective$
-      commentInsertionPlugin({
-        pendingComment,
-        onInsertComment: _commentData => {
-          handleCommentInserted();
-        },
-      }),
-
-      // Removed angle bracket plugin for better performance
-
-      directivesPlugin({
-        directiveDescriptors: [
-          AdmonitionDirectiveDescriptor,
-          createCommentDirectiveDescriptor(focusedCommentId, setFocusedCommentId),
-          genericDirectiveDescriptor,
-        ],
-        // Disable escaping of unknown text directives
-        escapeUnknownTextDirectives: false,
-      }),
-
-      // Toolbar with our custom comment button and responsive design
-      toolbarPlugin({
-        toolbarContents: () => (
-          <Toolbar
-            selectedFont={selectedFont}
-            handleFontChange={handleFontChange}
-            availableFonts={availableFonts}
-            bookView={bookView}
-            bookViewWidth={bookViewWidth}
-            bookViewMargin={bookViewMargin}
-            currentViewMode={currentViewMode}
-            onViewModeChange={handleViewModeChange}
-            fontSize={fontSize}
-            handleFontSizeChange={handleFontSizeChange}
-            textAlign={textAlign}
-            handleTextAlignChange={handleTextAlignChange}
-            handleBookViewToggle={handleBookViewToggle}
-            localBookViewWidth={localBookViewWidth}
-            localBookViewMargin={localBookViewMargin}
-            handleBookViewWidthChange={handleBookViewWidthChange}
-            handleBookViewMarginChange={handleBookViewMarginChange}
-            searchInputRef={searchInputRef}
-          />
-        ),
-      }),
-
-      // Enhanced code block plugin with Mermaid support
-      codeBlockPlugin({
-        defaultCodeBlockLanguage: 'js',
-        codeBlockEditorDescriptors: [
-          // Mermaid diagram editor - highest priority
-          {
-            priority: 10,
-            match: (language, _code) => language === 'mermaid',
-            Editor: props => <MermaidEditor {...props} isDarkTheme={isDarkTheme} />,
-          },
-          // Specific mappings for common aliases
-          {
-            priority: 5,
-            match: (language, _code) => language === 'javascript',
-            Editor: props => <CodeMirrorEditorWithSave {...props} language="js" />,
-          },
-          {
-            priority: 5,
-            match: (language, _code) => language === 'python',
-            Editor: props => <CodeMirrorEditorWithSave {...props} language="py" />,
-          },
-          {
-            priority: 5,
-            match: (language, _code) => language === 'typescript',
-            Editor: props => <CodeMirrorEditorWithSave {...props} language="ts" />,
-          },
-          {
-            priority: 5,
-            match: (language, _code) => language === 'markdown',
-            Editor: props => <CodeMirrorEditorWithSave {...props} language="md" />,
-          },
-          {
-            priority: 5,
-            match: (language, _code) => language === 'yml',
-            Editor: props => <CodeMirrorEditorWithSave {...props} language="yaml" />,
-          },
-          {
-            priority: 5,
-            match: (language, _code) => language === 'text',
-            Editor: props => <CodeMirrorEditorWithSave {...props} language="txt" />,
-          },
-          {
-            priority: 5,
-            match: (language, _code) => language === 'shell',
-            Editor: props => <CodeMirrorEditorWithSave {...props} language="sh" />,
-          },
-          // Top 10 additional language mappings
-          {
-            priority: 5,
-            match: (language, _code) => language === 'rust',
-            Editor: props => <CodeMirrorEditorWithSave {...props} language="rust" />,
-          },
-          {
-            priority: 5,
-            match: (language, _code) => language === 'go',
-            Editor: props => <CodeMirrorEditorWithSave {...props} language="go" />,
-          },
-          {
-            priority: 5,
-            match: (language, _code) => language === 'cpp' || language === 'c++',
-            Editor: props => <CodeMirrorEditorWithSave {...props} language="cpp" />,
-          },
-          {
-            priority: 5,
-            match: (language, _code) => language === 'c',
-            Editor: props => <CodeMirrorEditorWithSave {...props} language="c" />,
-          },
-          {
-            priority: 5,
-            match: (language, _code) => language === 'java',
-            Editor: props => <CodeMirrorEditorWithSave {...props} language="java" />,
-          },
-          {
-            priority: 5,
-            match: (language, _code) => language === 'kotlin',
-            Editor: props => <CodeMirrorEditorWithSave {...props} language="kotlin" />,
-          },
-          {
-            priority: 5,
-            match: (language, _code) => language === 'swift',
-            Editor: props => <CodeMirrorEditorWithSave {...props} language="swift" />,
-          },
-          {
-            priority: 5,
-            match: (language, _code) => language === 'php',
-            Editor: props => <CodeMirrorEditorWithSave {...props} language="php" />,
-          },
-          {
-            priority: 5,
-            match: (language, _code) => language === 'ruby',
-            Editor: props => <CodeMirrorEditorWithSave {...props} language="ruby" />,
-          },
-          {
-            priority: 5,
-            match: (language, _code) => language === 'dart',
-            Editor: props => <CodeMirrorEditorWithSave {...props} language="dart" />,
-          },
-          // Fallback editor for any other unknown languages
-          {
-            priority: -10,
-            match: _ => true,
-            Editor: CodeMirrorEditor,
-          },
-        ],
-      }),
-      codeMirrorPlugin({
-        codeBlockLanguages: {
-          js: 'JavaScript',
-          css: 'CSS',
-          txt: 'Text',
-          md: 'Markdown',
-          ts: 'TypeScript',
-          html: 'HTML',
-          json: 'JSON',
-          yaml: 'YAML',
-          ini: 'INI',
-          toml: 'TOML',
-          xml: 'XML',
-          csv: 'CSV',
-          sql: 'SQL',
-          py: 'Python',
-          bash: 'Bash',
-          sh: 'Shell',
-          mermaid: 'Mermaid',
-          // Top 10 additional languages
-          rust: 'Rust',
-          go: 'Go',
-          cpp: 'C++',
-          c: 'C',
-          java: 'Java',
-          kotlin: 'Kotlin',
-          swift: 'Swift',
-          php: 'PHP',
-          ruby: 'Ruby',
-          dart: 'Dart',
-        },
-        // Add better syntax theme configuration
-      }),
-    ],
-    [
-      availableFonts,
-      bookView,
-      bookViewMargin,
-      bookViewWidth,
-      createCodeMirrorExtensions,
-      currentViewMode,
-      focusedCommentId,
-      fontSize,
-      handleBookViewMarginChange,
-      handleBookViewToggle,
-      handleBookViewWidthChange,
-      handleCommentInserted,
-      handleFontChange,
-      handleFontSizeChange,
-      handleTextAlignChange,
-      handleViewModeChange,
-      isDarkTheme,
-      localBookViewMargin,
-      localBookViewWidth,
-      pendingComment,
-      selectedFont,
-      textAlign,
-    ],
-  );
+  const plugins = usePlugins({
+    defaultFont,
+    bookView,
+    bookViewMargin,
+    bookViewWidth,
+    currentViewMode,
+    focusedCommentId,
+    fontSize,
+    handleViewModeChange,
+    isDarkTheme,
+    pendingComment,
+    textAlign,
+    setPendingComment,
+    setIsTyping,
+    editorRef,
+    onMarkdownChange,
+    setParsedComments,
+    setFocusedCommentId,
+    selectedFont,
+    setSelectedFont,
+  });
 
   return (
     <div
