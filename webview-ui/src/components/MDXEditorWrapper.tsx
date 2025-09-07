@@ -99,13 +99,9 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   // Detect VS Code theme on mount and when it changes
   useEffect(() => {
     const detectTheme = () => {
-      const computedStyle = getComputedStyle(document.body);
-      const bgColor = computedStyle.getPropertyValue('--vscode-editor-background') || '#1e1e1e';
-      // Parse RGB values to determine if theme is dark
-      const isDark = bgColor.includes('#')
-        ? parseInt(bgColor.slice(1, 3), 16) < 128
-        : bgColor.includes('rgb') && bgColor.match(/\d+/)?.[0] && parseInt(bgColor.match(/\d+/)?.[0] ?? '0') < 128;
-      setIsDarkTheme(isDark as boolean);
+      const isDark = document.querySelector('[data-vscode-theme-kind="vscode-dark"]') !== null;
+      console.log('isDark', isDark);
+      setIsDarkTheme(isDark);
     };
 
     detectTheme();
@@ -720,7 +716,9 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
     // Don't show floating button in source or diff view
     if (currentViewMode !== 'rich-text') {
-      if (showFloatingButton) setShowFloatingButton(false);
+      if (showFloatingButton) {
+        setShowFloatingButton(false);
+      }
       return;
     }
 
@@ -729,7 +727,9 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
     // Fast bail-out for caret-only/no selection to avoid layout work
     if (!selected) {
-      if (showFloatingButton) setShowFloatingButton(false);
+      if (showFloatingButton) {
+        setShowFloatingButton(false);
+      }
       if (!showCommentModal && !showEditModal && selectedText) {
         setSelectedText('');
       }
@@ -742,8 +742,12 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     }
     selectionRafRef.current = requestAnimationFrame(() => {
       selectionRafRef.current = null;
-      if (!containerRef.current) return;
-      if (!selection || selection.rangeCount === 0) return;
+      if (!containerRef.current) {
+        return;
+      }
+      if (!selection || selection.rangeCount === 0) {
+        return;
+      }
       const range = selection.getRangeAt(0);
 
       // Check if the selection is within the editor content area, not in search input or other UI elements
@@ -779,7 +783,9 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       };
 
       if (!isWithinEditor(startContainer) || !isWithinEditor(endContainer)) {
-        if (showFloatingButton) setShowFloatingButton(false);
+        if (showFloatingButton) {
+          setShowFloatingButton(false);
+        }
         if (!showCommentModal && !showEditModal && selectedText) {
           setSelectedText('');
         }
@@ -789,9 +795,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       const rect = range.getBoundingClientRect();
       const containerRect = containerRef.current.getBoundingClientRect();
 
-      const editorContentRect = containerRef.current
-        .querySelector('.mdx-editor-content')
-        ?.getBoundingClientRect();
+      const editorContentRect = containerRef.current.querySelector('.mdx-editor-content')?.getBoundingClientRect();
       const rightEdgeX = editorContentRect
         ? editorContentRect.right - containerRect.left - 50
         : containerRect.width - 60;
@@ -801,7 +805,9 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         y: rect.top - containerRect.top + rect.height / 2 - 20,
       });
       setSelectedText(selected);
-      if (!showFloatingButton) setShowFloatingButton(true);
+      if (!showFloatingButton) {
+        setShowFloatingButton(true);
+      }
     });
   }, [currentViewMode, showCommentModal, showEditModal, showFloatingButton, selectedText]);
 
