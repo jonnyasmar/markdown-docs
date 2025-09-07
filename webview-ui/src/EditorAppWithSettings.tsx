@@ -45,10 +45,8 @@ function EditorAppWithSettings() {
     // Listen for settings response
     const handleMessage = (event: MessageEvent) => {
       const message = event.data as WebviewMessage;
-      console.log('EditorAppWithSettings: Received message:', message.command);
 
       if (message.command === 'settingsUpdate' && message.settings) {
-        console.log('EditorAppWithSettings: Loading initial settings:', message.settings);
         const msgSettings = message.settings;
         setSettings({
           defaultFont: msgSettings.defaultFont ?? 'Default',
@@ -63,8 +61,6 @@ function EditorAppWithSettings() {
 
     window.addEventListener('message', handleMessage);
 
-    // Request settings immediately
-    console.log('EditorAppWithSettings: Requesting settings');
     vscode.postMessage({ command: 'getSettings' });
 
     return () => {

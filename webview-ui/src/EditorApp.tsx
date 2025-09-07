@@ -41,7 +41,6 @@ function EditorApp({ initialSettings }: EditorAppProps) {
   const [bookView, setBookView] = useState(initialSettings.bookView);
   const [bookViewWidth, setBookViewWidth] = useState(initialSettings.bookViewWidth ?? '5.5in');
   const [bookViewMargin, setBookViewMargin] = useState(initialSettings.bookViewMargin ?? '0.5in');
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [editorConfig, setEditorConfig] = useState<{ wordWrap: string }>({ wordWrap: 'off' });
 
   // Get VS Code API once at component initialization
@@ -91,10 +90,6 @@ function EditorApp({ initialSettings }: EditorAppProps) {
             document.dispatchEvent(saveEvent);
             break;
           }
-          case 'saveComplete':
-            // Extension confirms save was successful - clear dirty state
-            setHasUnsavedChanges(false);
-            break;
           case 'configUpdate':
             // Update editor configuration (word wrap, etc.)
             if (message.editorConfig) {
@@ -172,44 +167,56 @@ function EditorApp({ initialSettings }: EditorAppProps) {
     }
   }, [vscode]);
 
-  const handleMarkdownChange = (newMarkdown: string) => {
-    setMarkdown(newMarkdown);
+  const handleMarkdownChange = useCallback(
+    (newMarkdown: string) => {
+      setMarkdown(newMarkdown);
 
-    // Send edit messages to keep TextDocument in sync (TextDocument is source of truth)
-    if (vscode) {
-      vscode.postMessage({
-        command: 'edit',
-        content: newMarkdown,
-      });
-    }
-  };
+      // Send edit messages to keep TextDocument in sync (TextDocument is source of truth)
+      if (vscode) {
+        vscode.postMessage({
+          command: 'edit',
+          content: newMarkdown,
+        });
+      }
+    },
+    [vscode],
+  );
 
-  const handleNavigateToComment = (commentId: string) => {
-    if (vscode) {
-      vscode.postMessage({
-        command: 'navigateToComment',
-        commentId,
-      });
-    }
-  };
+  const handleNavigateToComment = useCallback(
+    (commentId: string) => {
+      if (vscode) {
+        vscode.postMessage({
+          command: 'navigateToComment',
+          commentId,
+        });
+      }
+    },
+    [vscode],
+  );
 
-  const handleEditComment = (commentId: string) => {
-    if (vscode) {
-      vscode.postMessage({
-        command: 'editComment',
-        commentId,
-      });
-    }
-  };
+  const handleEditComment = useCallback(
+    (commentId: string) => {
+      if (vscode) {
+        vscode.postMessage({
+          command: 'editComment',
+          commentId,
+        });
+      }
+    },
+    [vscode],
+  );
 
-  const handleDeleteComment = (commentId: string) => {
-    if (vscode) {
-      vscode.postMessage({
-        command: 'deleteComment',
-        commentId,
-      });
-    }
-  };
+  const handleDeleteComment = useCallback(
+    (commentId: string) => {
+      if (vscode) {
+        vscode.postMessage({
+          command: 'deleteComment',
+          commentId,
+        });
+      }
+    },
+    [vscode],
+  );
 
   // Handle font messages
   const handleFontMessage = useCallback(
@@ -245,16 +252,6 @@ function EditorApp({ initialSettings }: EditorAppProps) {
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
   }, [handleFontMessage]);
-
-  // Handle unsaved changes warning on close - send state to extension
-  useEffect(() => {
-    if (vscode) {
-      vscode.postMessage({
-        command: 'updateUnsavedChanges',
-        hasUnsavedChanges,
-      });
-    }
-  }, [hasUnsavedChanges, vscode]);
 
   if (error) {
     return (
@@ -300,7 +297,6 @@ function EditorApp({ initialSettings }: EditorAppProps) {
         bookView={bookView}
         bookViewWidth={bookViewWidth}
         bookViewMargin={bookViewMargin}
-        onDirtyStateChange={setHasUnsavedChanges}
         editorConfig={editorConfig}
       />
     </ErrorBoundary>

@@ -11,14 +11,13 @@ import { useViewModeTracking } from '@/hooks/useViewModeTracking';
 import { MDXEditor, type MDXEditorMethods } from '@mdxeditor/editor';
 import '@mdxeditor/editor/style.css';
 import { TableOfContents as TableOfContentsIcon } from 'lucide-react';
-import React, { startTransition, useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { DirectiveService } from '../services/directive';
 import { CommentWithAnchor, FontFamily } from '../types';
 import {
   postContentEdit,
   postContentSave,
-  postDirtyState,
   postError,
   postExternalLink,
   postGetFont,
@@ -46,7 +45,6 @@ interface MDXEditorWrapperProps {
   bookView?: boolean;
   bookViewWidth?: string;
   bookViewMargin?: string;
-  onDirtyStateChange?: (isDirty: boolean) => void;
   editorConfig?: EditorConfig;
 }
 
@@ -60,19 +58,27 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   bookView = false,
   bookViewWidth = '5.5in',
   bookViewMargin = '0.5in',
-  onDirtyStateChange,
 }) => {
+  const editorRef = useRef<MDXEditorMethods>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const hasInitiallyFocusedRef = useRef(false);
+  const preSourceContentRef = useRef<string | null>(null);
+  const currentViewModeRef = useRef<'rich-text' | 'source' | 'diff'>('rich-text');
+  const typingTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const deferredMessageTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const parseCommentTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const hasAppliedInitialEscapingRef = useRef(false);
+  const dirtyStateTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+
   const [selectedFont, setSelectedFont] = useState(defaultFont);
   const [showCommentSidebar, setShowCommentSidebar] = useState(false);
   const [showTOCSidebar, setShowTOCSidebar] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(240);
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [selectedText, setSelectedText] = useState('');
-  const [, setCurrentSelection] = useState<{ start: number; end: number } | null>(null);
   const [showFloatingButton, setShowFloatingButton] = useState(false);
   const [floatingButtonPosition, setFloatingButtonPosition] = useState<{ x: number; y: number } | null>(null);
-
-  // Comment insertion state
   const [pendingComment, setPendingComment] = useState<{
     comment: string;
     commentId: string;
@@ -82,27 +88,11 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   const [editingComment, setEditingComment] = useState<CommentWithAnchor | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [focusedCommentId, setFocusedCommentId] = useState<string | null>(null);
-
-  // View mode tracking for hiding comments in source/diff view
   const [currentViewMode, setCurrentViewMode] = useState<'rich-text' | 'source' | 'diff'>('rich-text');
-  const currentViewModeRef = useRef<'rich-text' | 'source' | 'diff'>('rich-text');
-
-  // Live content tracking for real-time TOC updates
   const [liveMarkdown, setLiveMarkdown] = useState(markdown);
-
-  // Update live markdown when prop changes (initial load)
-  useEffect(() => {
-    setLiveMarkdown(markdown);
-  }, [markdown]);
-
-  // Performance optimization: Track typing state to prevent expensive operations during typing
   const [isTyping, setIsTyping] = useState(false);
-  const [,] = useTransition();
-  const typingTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
-  const deferredMessageTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
-
-  // Theme detection - detect VS Code theme
-  const [isDarkTheme, setIsDarkTheme] = useState<boolean>(true); // Default to dark
+  const [isDarkTheme, setIsDarkTheme] = useState<boolean>(true);
+  const [parsedComments, setParsedComments] = useState<CommentWithAnchor[]>([]);
 
   // Detect VS Code theme on mount and when it changes
   useEffect(() => {
@@ -124,9 +114,6 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
     return () => observer.disconnect();
   }, []);
-
-  // Store the content before entering source mode for proper restoration
-  const preSourceContentRef = useRef<string | null>(null);
 
   // Handle view mode changes to hide comments in source/diff view
   const handleViewModeChange = useCallback(
@@ -182,7 +169,6 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       if (mode !== 'rich-text') {
         setShowFloatingButton(false);
         setSelectedText('');
-        setCurrentSelection(null);
       }
     },
     [currentViewMode],
@@ -325,14 +311,6 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       observer.disconnect();
     };
   }, [fontSize, textAlign, bookView, bookViewWidth, bookViewMargin]);
-
-  const editorRef = useRef<MDXEditorMethods>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
-  const hasInitiallyFocusedRef = useRef(false);
-
-  // Parse comments from markdown
-  const [parsedComments, setParsedComments] = useState<CommentWithAnchor[]>([]);
 
   // PERFORMANCE CRITICAL: Comment position cache - ONLY recalculate when comments change
   // NOT when markdown changes (which happens on every keystroke)
@@ -516,10 +494,6 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     [onNavigateToComment],
   );
 
-  const stableHandleEditComment = useCallback(handleEditComment, [handleEditComment]);
-  const stableHandleDeleteComment = useCallback(handleDeleteComment, [handleDeleteComment]);
-  const stableHandleCommentClick = useCallback(handleCommentClick, [handleCommentClick]);
-
   // Memoized sorted comments using cached positions - MASSIVE performance improvement
   const sortedCommentItems = useMemo(() => {
     if (parsedComments.length === 0) {
@@ -555,21 +529,12 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         key={comment.id}
         comment={comment}
         isFocused={focusedCommentId === comment.id}
-        onCommentClick={stableHandleCommentClick}
-        onDeleteComment={stableHandleDeleteComment}
-        onEditComment={stableHandleEditComment}
+        onCommentClick={handleCommentClick}
+        onDeleteComment={handleDeleteComment}
+        onEditComment={handleEditComment}
       />
     ));
-  }, [
-    parsedComments,
-    commentPositions,
-    focusedCommentId,
-    stableHandleCommentClick,
-    stableHandleDeleteComment,
-    stableHandleEditComment,
-  ]);
-
-  const parseCommentTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  }, [commentPositions, focusedCommentId, handleCommentClick, handleDeleteComment, handleEditComment, parsedComments]);
 
   useEffect(() => {
     if (!liveMarkdown && !markdown) {
@@ -619,14 +584,6 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       }
     };
   }, []);
-
-  // Track if we just saved to prevent unnecessary reloads
-  // REMOVED: justSavedRef echo prevention - consolidated to extension level
-
-  // Timeout ref for debouncing dirty state notifications
-  const dirtyStateTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
-
-  // REMOVED: const [syncState, setSyncState] = useState<SyncState>(SyncState.IDLE); - SyncState no longer needed
 
   // Handle external updates ONLY when they come from VS Code (not from user typing)
   useEffect(() => {
@@ -715,32 +672,22 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     }
   }, [markdown]);
 
-  // Track unsaved changes state
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  // REMOVED: const syncManagerRef = useRef<SyncManager | null>(null); - SyncManager no longer used
-  const hasAppliedInitialEscapingRef = useRef(false);
-
   // Function to handle modifier key tracking (defined outside useEffect)
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
-    // Check if vscodeApi is available
-    if (!window.vscodeApi) {
-      return;
-    }
-
-    // Set interaction flag when Ctrl or Cmd key is pressed
     if (event.ctrlKey || event.metaKey) {
       postUserInteraction(true);
     }
   }, []);
 
   const handleKeyUp = useCallback((event: KeyboardEvent) => {
-    // Check if vscodeApi is available
-    if (!window.vscodeApi) {
-      return;
-    }
-
-    // Clear interaction flag when Ctrl or Cmd key is released
-    if (event.key === 'Control' || event.key === 'Meta') {
+    if ((event.ctrlKey || event.metaKey) && event.key === 'f') {
+      event.preventDefault();
+      // Focus the inline search input
+      if (searchInputRef.current) {
+        searchInputRef.current.focus();
+        searchInputRef.current.select();
+      }
+    } else if (event.key === 'Control' || event.key === 'Meta') {
       postUserInteraction(false);
     }
   }, []);
@@ -760,10 +707,6 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
   const handleMarkdownChange = useCallback(
     (newMarkdown: string) => {
-      console.log('MARKDOWNCHANGE');
-
-      // REMOVED: SyncManager external update checks - no longer needed with direct messaging
-
       // On first edit, apply escaping to the editor content invisibly (but only in rich-text mode)
       if (!hasAppliedInitialEscapingRef.current && editorRef.current && currentViewModeRef.current === 'rich-text') {
         const currentContent = editorRef.current.getMarkdown();
@@ -786,228 +729,120 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         return;
       }
 
-      // PERFORMANCE FIX: Batch all state updates to prevent multiple re-renders per keystroke
-      startTransition(() => {
-        // Update live markdown for real-time TOC updates
-        setLiveMarkdown(newMarkdown);
-        // Mark as typing for performance optimizations
-        setIsTyping(true);
-        // Update UI state for immediate feedback
-        setHasUnsavedChanges(hasChanges);
-      });
+      setIsTyping(true);
+
       // Clear and reset typing timeout
       clearTimeout(typingTimeoutRef.current);
-      typingTimeoutRef.current = setTimeout(() => setIsTyping(false), 300);
+      typingTimeoutRef.current = setTimeout(() => {
+        setIsTyping(false);
+        setLiveMarkdown(newMarkdown);
+      }, 300);
 
       // Mark that user has interacted with editor to prevent auto-focus
       hasInitiallyFocusedRef.current = true;
 
-      // Notify parent of dirty state
-      onDirtyStateChange?.(hasChanges);
-
       // Send content to VS Code using consolidated messaging utility
       postContentEdit(processedMarkdown);
-
-      // Send dirty state notification
-      postDirtyState(true);
     },
-    [markdown, onDirtyStateChange], // State setters should be stable
+    [markdown], // State setters should be stable
   );
 
-  // Handle VS Code messages including theme changes
-  useEffect(() => {
-    const handleVSCodeMessage = (event: MessageEvent) => {
-      // VS Code extension message events use any type for data
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      const { data } = event;
-      console.log('Received VS Code message:', data);
+  const handleSelectionChange = useCallback(() => {
+    // Don't update selection if comment modal is open - lock the selection
+    if (showCommentModal || showEditModal) {
+      return;
+    }
 
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      if (data.type === 'open-search') {
-        // Find search button and click it programmatically
-        const searchButton = document.querySelector('button[title*="Search"]');
-        if (searchButton) {
-          (searchButton as HTMLButtonElement).click();
+    // Don't show floating button in source or diff view
+    if (currentViewMode !== 'rich-text') {
+      setShowFloatingButton(false);
+      return;
+    }
+
+    const selection = window.getSelection();
+    if (selection?.toString().trim() && containerRef.current) {
+      const range = selection.getRangeAt(0);
+
+      // Check if the selection is within the editor content area, not in search input or other UI elements
+      const startContainer = range.startContainer;
+      const endContainer = range.endContainer;
+
+      // Find if selection is within editor content
+      const isWithinEditor = (node: Node): boolean => {
+        let current: Node | null = node;
+        while (current) {
+          if (current.nodeType === Node.ELEMENT_NODE) {
+            const element = current as Element;
+            // Check if it's within the MDX editor content area
+            if (
+              element.classList.contains('mdx-content') ||
+              element.classList.contains('mdx-editor-content') ||
+              element.closest('.mdx-content') ||
+              element.closest('.mdx-editor-content') ||
+              element.closest('[contenteditable="true"]')
+            ) {
+              return true;
+            }
+            // Exclude search input and other UI elements
+            if (
+              element.classList.contains('inline-search-input') ||
+              element.closest('.inline-search-container') ||
+              element.closest('.comments-sidebar') ||
+              element.closest('.toolbar')
+            ) {
+              return false;
+            }
+          }
+          current = current.parentNode;
         }
-      }
+        return false;
+      };
 
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      if (data.type === 'init' && data.theme) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        console.log('Received theme from VS Code init:', data.theme);
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        const isDark = data.theme === 'dark';
-        setIsDarkTheme(isDark);
-      }
-
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      if (data.command === 'themeChanged' && data.theme) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        console.log('Received theme change from VS Code:', data.theme);
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        const isDark = data.theme === 'dark';
-        setIsDarkTheme(isDark);
-      }
-    };
-
-    window.addEventListener('message', handleVSCodeMessage);
-    return () => window.removeEventListener('message', handleVSCodeMessage);
-  }, []);
-
-  // Manual save only - removed auto-save after comment operations
-
-  // Function to convert webview URIs back to relative paths for saving
-  const convertWebviewUrisToRelativePaths = useCallback((content: string): string => {
-    // Convert vscode-webview:// URIs back to relative paths for file storage
-    const webviewUriRegex = /!\[([^\]]*)\]\(vscode-webview:\/\/[^/]+\/([^)]+)\)/g;
-
-    return content.replace(webviewUriRegex, (match, alt, encodedPath) => {
-      try {
-        // Decode the URI path
-        // String replace callback parameters use any type for captured groups
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-        const decodedPath = decodeURIComponent(encodedPath);
-
-        // Extract just the relative portion if it's an absolute path
-        // This assumes the current document is in the same directory structure
-        const relativePath = decodedPath.includes('media/')
-          ? decodedPath.substring(decodedPath.lastIndexOf('media/'))
-          : decodedPath;
-
-        return `![${String(alt)}](${String(relativePath)})`;
-      } catch (error) {
-        logger.error('Error converting webview URI:', error);
-        return match; // Return original if conversion fails
-      }
-    });
-  }, []);
-
-  // Handle Ctrl+F / Cmd+F for search only - let VS Code handle save natively
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Only handle search shortcuts, let VS Code handle save naturally
-      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
-        e.preventDefault();
-        // Focus the inline search input
-        if (searchInputRef.current) {
-          searchInputRef.current.focus();
-          searchInputRef.current.select();
+      // Only show comment button if selection is within editor content
+      if (!isWithinEditor(startContainer) || !isWithinEditor(endContainer)) {
+        setShowFloatingButton(false);
+        if (!showCommentModal && !showEditModal) {
+          setSelectedText('');
         }
+        return;
       }
-    };
 
-    // Use capture phase to intercept events before CodeMirror gets them
-    document.addEventListener('keydown', handleKeyDown, true);
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown, true);
-    };
-  }, [hasUnsavedChanges, markdown, convertWebviewUrisToRelativePaths]);
+      const rect = range.getBoundingClientRect();
+      const containerRect = containerRef.current.getBoundingClientRect();
+
+      const selectedTextContent = selection.toString().trim();
+
+      // Position button on the right edge of the editor content area
+      const editorContentRect = containerRef.current.querySelector('.mdx-editor-content')?.getBoundingClientRect();
+      const rightEdgeX = editorContentRect
+        ? editorContentRect.right - containerRect.left - 50
+        : containerRect.width - 60;
+
+      setFloatingButtonPosition({
+        x: rightEdgeX,
+        y: rect.top - containerRect.top + rect.height / 2 - 20,
+      });
+      setSelectedText(selectedTextContent);
+      setShowFloatingButton(true);
+    } else {
+      setShowFloatingButton(false);
+      // Don't clear selectedText immediately - keep it for the modal
+      if (!showCommentModal && !showEditModal) {
+        setSelectedText('');
+      }
+    }
+  }, [currentViewMode, showCommentModal, showEditModal]);
 
   // Text selection handling for floating comment button
   useEffect(() => {
-    const handleSelectionChange = () => {
-      // Don't update selection if comment modal is open - lock the selection
-      if (showCommentModal || showEditModal) {
-        return;
-      }
-
-      // Don't show floating button in source or diff view
-      if (currentViewMode !== 'rich-text') {
-        setShowFloatingButton(false);
-        return;
-      }
-
-      const selection = window.getSelection();
-      if (selection?.toString().trim() && containerRef.current) {
-        const range = selection.getRangeAt(0);
-
-        // Check if the selection is within the editor content area, not in search input or other UI elements
-        const startContainer = range.startContainer;
-        const endContainer = range.endContainer;
-
-        // Find if selection is within editor content
-        const isWithinEditor = (node: Node): boolean => {
-          let current: Node | null = node;
-          while (current) {
-            if (current.nodeType === Node.ELEMENT_NODE) {
-              const element = current as Element;
-              // Check if it's within the MDX editor content area
-              if (
-                element.classList.contains('mdx-content') ||
-                element.classList.contains('mdx-editor-content') ||
-                element.closest('.mdx-content') ||
-                element.closest('.mdx-editor-content') ||
-                element.closest('[contenteditable="true"]')
-              ) {
-                return true;
-              }
-              // Exclude search input and other UI elements
-              if (
-                element.classList.contains('inline-search-input') ||
-                element.closest('.inline-search-container') ||
-                element.closest('.comments-sidebar') ||
-                element.closest('.toolbar')
-              ) {
-                return false;
-              }
-            }
-            current = current.parentNode;
-          }
-          return false;
-        };
-
-        // Only show comment button if selection is within editor content
-        if (!isWithinEditor(startContainer) || !isWithinEditor(endContainer)) {
-          setShowFloatingButton(false);
-          if (!showCommentModal && !showEditModal) {
-            setSelectedText('');
-            setCurrentSelection(null);
-          }
-          return;
-        }
-
-        const rect = range.getBoundingClientRect();
-        const containerRect = containerRef.current.getBoundingClientRect();
-
-        const selectedTextContent = selection.toString().trim();
-
-        // Position button on the right edge of the editor content area
-        const editorContentRect = containerRef.current.querySelector('.mdx-editor-content')?.getBoundingClientRect();
-        const rightEdgeX = editorContentRect
-          ? editorContentRect.right - containerRect.left - 50
-          : containerRect.width - 60;
-
-        setFloatingButtonPosition({
-          x: rightEdgeX,
-          y: rect.top - containerRect.top + rect.height / 2 - 20,
-        });
-        setSelectedText(selectedTextContent);
-        setShowFloatingButton(true);
-
-        // Store the actual selected text range
-        setCurrentSelection({
-          start: range.startOffset,
-          end: range.endOffset,
-        });
-      } else {
-        setShowFloatingButton(false);
-        // Don't clear selectedText immediately - keep it for the modal
-        if (!showCommentModal && !showEditModal) {
-          setSelectedText('');
-          setCurrentSelection(null);
-        }
-      }
-    };
-
     document.addEventListener('selectionchange', handleSelectionChange);
     return () => {
       document.removeEventListener('selectionchange', handleSelectionChange);
     };
-  }, [showCommentModal, showEditModal, currentViewMode]);
+  }, [handleSelectionChange]);
 
-  // Handle clicks on highlighted text to highlight corresponding comment
-  useEffect(() => {
-    const handleDocumentClick = (e: MouseEvent) => {
+  const handleDocumentClick = useCallback(
+    (e: MouseEvent) => {
       const target = e.target as HTMLElement;
 
       // Clear focus if clicking outside comments
@@ -1060,13 +895,17 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
           }
         }
       }
-    };
+    },
+    [showCommentSidebar, setShowCommentSidebar],
+  );
 
+  // Handle clicks on highlighted text to highlight corresponding comment
+  useEffect(() => {
     document.addEventListener('click', handleDocumentClick);
     return () => {
       document.removeEventListener('click', handleDocumentClick);
     };
-  }, [showCommentSidebar, setShowCommentSidebar]);
+  }, [handleDocumentClick]);
 
   // Sidebar resizing logic
   useEffect(() => {
@@ -1107,104 +946,117 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     };
   }, []);
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      // Cleanup handled by component unmounting - sync manager disposes itself
-    };
-  }, []);
-
-  const handleSubmitComment = (comment: string) => {
-    if (!comment.trim() || !selectedText) {
-      logger.warn('Missing comment or selected text');
-      setShowCommentModal(false);
-      return;
-    }
-
-    if (!editorRef.current) {
-      logger.error('Editor ref not available');
-      setShowCommentModal(false);
-      return;
-    }
-
-    const commentId = `comment-${Date.now()}`;
-    const currentMarkdown = editorRef.current.getMarkdown();
-
-    try {
-      // With native directive insertion, we can handle most text reliably
-      // Check for problematic content that can't be commented on
-      const isInCodeBlock = detectCodeBlockSelection(currentMarkdown, selectedText);
-      const isMultiParagraph = selectedText.includes('\n\n');
-
-      if (isInCodeBlock) {
-        // Code blocks can't be reliably commented - show error
-        postError(
-          'Sorry, code blocks cannot be commented on directly. If you have ideas how to make this work, please let us know on our GitHub repo!',
-        );
-        return;
-      } else if (isMultiParagraph) {
-        // Multi-paragraph selections use container directive
-        handleHybridComment(comment, commentId, currentMarkdown);
-      } else {
-        // Regular text (including formatted text) uses inline directive with native insertion
-        handleInlineComment(comment, commentId, currentMarkdown);
-      }
-    } catch (error) {
-      logger.error('Error in comment submission:', error);
-      // Show error instead of falling back to sidebar
-      postError('Failed to add comment. Please try selecting different text or report this issue on our GitHub repo.');
-    }
-
-    // Close modal
-    setShowCommentModal(false);
-    setSelectedText('');
-    setCurrentSelection(null);
-  };
+  // Function to trigger comment insertion via plugin
+  const setCommentPendingForPlugin = useCallback(
+    (commentData: { comment: string; commentId: string; selectedText: string; strategy: 'inline' | 'container' }) => {
+      setPendingComment(commentData);
+    },
+    [setPendingComment],
+  );
 
   // Handle standard inline comments using MDX Editor's native directive insertion
-  const handleInlineComment = (comment: string, commentId: string, _currentMarkdown: string) => {
-    // Trigger plugin to insert comment directive
-    if (editorRef.current) {
-      // We'll use the plugin's signal to insert the directive
-      // This will be handled by the plugin within the MDX Editor's context
-      setCommentPendingForPlugin({
-        comment,
-        commentId,
-        selectedText,
-        strategy: 'inline',
-      });
-    }
-  };
+  const handleInlineComment = useCallback(
+    (comment: string, commentId: string, _currentMarkdown: string) => {
+      // Trigger plugin to insert comment directive
+      if (editorRef.current) {
+        // We'll use the plugin's signal to insert the directive
+        // This will be handled by the plugin within the MDX Editor's context
+        setCommentPendingForPlugin({
+          comment,
+          commentId,
+          selectedText,
+          strategy: 'inline',
+        });
+      }
+    },
+    [selectedText, setCommentPendingForPlugin],
+  );
 
   // Handle hybrid comments (container directive for complex selections)
-  const handleHybridComment = (comment: string, commentId: string, _currentMarkdown: string) => {
-    // Trigger plugin to insert comment directive
-    if (editorRef.current) {
-      setCommentPendingForPlugin({
-        comment,
-        commentId,
-        selectedText,
-        strategy: 'container',
-      });
+  const handleHybridComment = useCallback(
+    (comment: string, commentId: string, _currentMarkdown: string) => {
+      // Trigger plugin to insert comment directive
+      if (editorRef.current) {
+        setCommentPendingForPlugin({
+          comment,
+          commentId,
+          selectedText,
+          strategy: 'container',
+        });
+      }
+    },
+    [selectedText, setCommentPendingForPlugin],
+  );
+
+  // Function to detect if selected text is within a code block
+  const detectCodeBlockSelection = useCallback((markdown: string, selectedText: string): boolean => {
+    // Look for the selected text in the markdown and check if it's within ``` blocks
+    const textIndex = markdown.indexOf(selectedText);
+    if (textIndex === -1) {
+      return false;
     }
-  };
 
-  // Function to trigger comment insertion via plugin
-  const setCommentPendingForPlugin = (commentData: {
-    comment: string;
-    commentId: string;
-    selectedText: string;
-    strategy: 'inline' | 'container';
-  }) => {
-    // The plugin will handle this through the cell subscription
-    // We need to publish to the cell from outside the plugin context
-    // This will be handled when the editor mounts
-    setPendingComment(commentData);
-  };
+    // Count code block markers before the selection
+    const beforeSelection = markdown.substring(0, textIndex);
+    const codeBlockMarkers = (beforeSelection.match(/```/g) ?? []).length;
 
-  // Save interception for Cmd+S/Ctrl+S inside CodeMirror
-  useEffect(() => {
-    const handleSaveKeyboard = (e: KeyboardEvent) => {
+    // If odd number of markers, we're inside a code block
+    return codeBlockMarkers % 2 === 1;
+  }, []);
+
+  const handleSubmitComment = useCallback(
+    (comment: string) => {
+      if (!comment.trim() || !selectedText) {
+        logger.warn('Missing comment or selected text');
+        setShowCommentModal(false);
+        return;
+      }
+
+      if (!editorRef.current) {
+        logger.error('Editor ref not available');
+        setShowCommentModal(false);
+        return;
+      }
+
+      const commentId = `comment-${Date.now()}`;
+      const currentMarkdown = editorRef.current.getMarkdown();
+
+      try {
+        // With native directive insertion, we can handle most text reliably
+        // Check for problematic content that can't be commented on
+        const isInCodeBlock = detectCodeBlockSelection(currentMarkdown, selectedText);
+        const isMultiParagraph = selectedText.includes('\n\n');
+
+        if (isInCodeBlock) {
+          // Code blocks can't be reliably commented - show error
+          postError(
+            'Sorry, code blocks cannot be commented on directly. If you have ideas how to make this work, please let us know on our GitHub repo!',
+          );
+          return;
+        } else if (isMultiParagraph) {
+          // Multi-paragraph selections use container directive
+          handleHybridComment(comment, commentId, currentMarkdown);
+        } else {
+          // Regular text (including formatted text) uses inline directive with native insertion
+          handleInlineComment(comment, commentId, currentMarkdown);
+        }
+      } catch (error) {
+        logger.error('Error in comment submission:', error);
+        // Show error instead of falling back to sidebar
+        postError(
+          'Failed to add comment. Please try selecting different text or report this issue on our GitHub repo.',
+        );
+      }
+
+      // Close modal
+      setShowCommentModal(false);
+      setSelectedText('');
+    },
+    [detectCodeBlockSelection, handleHybridComment, handleInlineComment, selectedText],
+  );
+
+  const handleSaveKeyboard = useCallback(
+    (e: KeyboardEvent) => {
       const isSave = (e.metaKey || e.ctrlKey) && e.key === 's';
 
       if (isSave) {
@@ -1232,37 +1084,24 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
           }, 100);
         }
       }
-    };
+    },
+    [editorRef],
+  );
 
+  // Save interception for Cmd+S/Ctrl+S inside CodeMirror
+  useEffect(() => {
     // Use capture phase to intercept before CodeMirror gets the event
     document.addEventListener('keydown', handleSaveKeyboard, true);
 
     return () => {
       document.removeEventListener('keydown', handleSaveKeyboard, true);
     };
-  }, []);
+  }, [handleSaveKeyboard]);
 
-  // Function to detect if selected text is within a code block
-  const detectCodeBlockSelection = (markdown: string, selectedText: string): boolean => {
-    // Look for the selected text in the markdown and check if it's within ``` blocks
-    const textIndex = markdown.indexOf(selectedText);
-    if (textIndex === -1) {
-      return false;
-    }
-
-    // Count code block markers before the selection
-    const beforeSelection = markdown.substring(0, textIndex);
-    const codeBlockMarkers = (beforeSelection.match(/```/g) ?? []).length;
-
-    // If odd number of markers, we're inside a code block
-    return codeBlockMarkers % 2 === 1;
-  };
-
-  const handleCloseModal = () => {
+  const handleCloseModal = useCallback(() => {
     setShowCommentModal(false);
     setSelectedText('');
-    setCurrentSelection(null);
-  };
+  }, [setShowCommentModal, setSelectedText]);
 
   // Comment action handlers
   // handleEditComment is already defined earlier in the file
@@ -1330,10 +1169,10 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     [markdown, onMarkdownChange, editingComment],
   );
 
-  const handleEditClose = () => {
+  const handleEditClose = useCallback(() => {
     setShowEditModal(false);
     setEditingComment(null);
-  };
+  }, [setShowEditModal, setEditingComment]);
 
   const plugins = usePlugins({
     defaultFont,
@@ -1367,9 +1206,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         <div className="mdx-editor-content">
           <ErrorBoundary>
             <MDXEditor
-              ref={ref => {
-                editorRef.current = ref;
-              }}
+              ref={editorRef}
               markdown={markdown || ''}
               onChange={handleMarkdownChange}
               suppressHtmlProcessing={true}
@@ -1403,7 +1240,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         {/* Show comments button when sidebar is hidden */}
         {!showCommentSidebar && (
           <button className="show-comments-btn" onClick={() => setShowCommentSidebar(true)} title="Show Comments">
-            💬 {parsedComments.length}
+            <span>💬</span> <span>{parsedComments.length}</span>
           </button>
         )}
 

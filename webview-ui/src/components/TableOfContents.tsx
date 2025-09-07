@@ -69,23 +69,26 @@ export const TableOfContents: React.FC<TableOfContentsProps> = ({
     <div className="toc-container">
       <div className="toc-header">Table of Contents</div>
       <nav className="toc-nav">
-        {tocItems.map((item, index) => (
-          <button
-            key={`${item.id}-${index}`}
-            className={`toc-item toc-level-${item.level}`}
-            onClick={() => onHeadingClick(item.id)}
-            title={`Navigate to ${item.text}`}
-          >
-            {item.text}
-          </button>
-        ))}
+        {tocItems.map((item, index) => {
+          const itemTextStrippedmarkdown = item.text.replace(/[#*_`~]/g, '');
+
+          return (
+            <button
+              key={`${item.id}-${index}`}
+              className={`toc-item toc-level-${item.level}`}
+              onClick={() => onHeadingClick(item.id)}
+              title={`Navigate to ${itemTextStrippedmarkdown}`}
+            >
+              {itemTextStrippedmarkdown}
+            </button>
+          );
+        })}
       </nav>
     </div>
   );
 
   return (
     <div className="toc-sidebar" style={{ width: `${sidebarWidth}px` }}>
-      <div className="sidebar-resize-handle"></div>
       <div className="toc-header-wrapper">
         <h3>Table of Contents</h3>
         <button onClick={() => setShowTOCSidebar(false)} className="sidebar-close" title="Hide Table of Contents">
