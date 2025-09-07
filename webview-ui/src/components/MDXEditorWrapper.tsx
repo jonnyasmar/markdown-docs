@@ -72,6 +72,8 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   const hasAppliedInitialEscapingRef = useRef(false);
   const dirtyStateTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const selectionRafRef = useRef<number | null>(null);
+  const regexCacheRef = useRef<Map<string, RegExp[]>>(new Map());
+  const lastParsedContentRef = useRef<string>('');
 
   const [selectedFont, setSelectedFont] = useState(defaultFont);
   const [showCommentSidebar, setShowCommentSidebar] = useState(false);
@@ -271,12 +273,20 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     // Memory leak prevention: Limit cache size to prevent unbounded growth
     const MAX_CACHE_SIZE = 1000;
 
-    // Performance optimization: Pre-compile regex patterns to avoid recreation
-    const createPatterns = (commentId: string) => [
-      new RegExp(`:comment\\[([^\\]]*)\\]\\{[^}]*(?:id="${commentId}"|#${commentId})[^}]*\\}`),
-      new RegExp(`::comment\\[([^\\]]*)\\]\\{[^}]*(?:id="${commentId}"|#${commentId})[^}]*\\}`),
-      new RegExp(`:::comment\\{[^}]*(?:id="${commentId}"|#${commentId})[^}]*\\}`),
-    ];
+    // Performance optimization: Pre-compile and cache regex patterns per comment id
+    const getPatterns = (commentId: string): RegExp[] => {
+      const cached = regexCacheRef.current.get(commentId);
+      if (cached) {
+        return cached;
+      }
+      const compiled = [
+        new RegExp(`:comment\\[([^\\]]*)\\]\\{[^}]*(?:id="${commentId}"|#${commentId})[^}]*\\}`),
+        new RegExp(`::comment\\[([^\\]]*)\\]\\{[^}]*(?:id="${commentId}"|#${commentId})[^}]*\\}`),
+        new RegExp(`:::comment\\{[^}]*(?:id="${commentId}"|#${commentId})[^}]*\\}`),
+      ];
+      regexCacheRef.current.set(commentId, compiled);
+      return compiled;
+    };
 
     // Cache positions of all comment directives for fast sorting
     parsedComments.forEach(comment => {
@@ -285,7 +295,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         return;
       }
 
-      const patterns = createPatterns(comment.id);
+      const patterns = getPatterns(comment.id);
 
       for (const regex of patterns) {
         const match = markdown.search(regex);
@@ -448,7 +458,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       return [];
     }
 
-    const sortedComments = parsedComments.sort((a, b) => {
+    const sortedComments = [...parsedComments].sort((a, b) => {
       // Use cached positions for O(1) sorting instead of O(n*m) regex searches
       const aPos = commentPositions.get(a.id) ?? -1;
       const bPos = commentPositions.get(b.id) ?? -1;
@@ -485,8 +495,16 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   }, [commentPositions, focusedCommentId, handleCommentClick, handleDeleteComment, handleEditComment, parsedComments]);
 
   useEffect(() => {
-    if (!liveMarkdown && !markdown) {
+    const currentContent = editorRef.current?.getMarkdown() ?? markdown ?? '';
+
+    if (!currentContent) {
       setParsedComments([]);
+      lastParsedContentRef.current = '';
+      return;
+    }
+
+    // Skip redundant parsing when content hasn't changed
+    if (currentContent === lastParsedContentRef.current) {
       return;
     }
 
@@ -497,21 +515,26 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     // Heavy debounce - only after user completely stops typing for 800ms
     parseCommentTimeoutRef.current = setTimeout(() => {
       try {
-        const comments = DirectiveService.parseCommentDirectives(editorRef.current?.getMarkdown() ?? '');
+        const comments = DirectiveService.parseCommentDirectives(currentContent);
         const commentsWithAnchor: CommentWithAnchor[] = comments.map(comment => ({
           ...comment,
           anchoredText: comment.anchoredText ?? 'Selected text',
           startPosition: 0,
           endPosition: 0,
         }));
+        lastParsedContentRef.current = currentContent;
         setParsedComments(commentsWithAnchor);
       } catch (error) {
         logger.error('Error parsing comments:', error);
         setParsedComments([]);
       }
-    }, 800); // Heavy debounce - only after complete typing pause
+    }, 800);
 
-    return () => clearTimeout(parseCommentTimeoutRef.current);
+    return () => {
+      if (parseCommentTimeoutRef.current) {
+        clearTimeout(parseCommentTimeoutRef.current);
+      }
+    };
   }, [liveMarkdown, markdown]);
 
   // Cleanup timeouts on unmount - Enhanced memory leak fix
@@ -533,6 +556,10 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       if (deferredMessageTimeoutRef.current) {
         clearTimeout(deferredMessageTimeoutRef.current);
         deferredMessageTimeoutRef.current = undefined;
+      }
+      if (parseCommentTimeoutRef.current) {
+        clearTimeout(parseCommentTimeoutRef.current);
+        parseCommentTimeoutRef.current = undefined;
       }
       if (selectionRafRef.current) {
         cancelAnimationFrame(selectionRafRef.current);
@@ -650,15 +677,17 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
   // Track modifier keys to prevent cursor jumping during undo/redo
   useEffect(() => {
-    // Listen for keydown/keyup to track modifier key state
-    document.addEventListener('keydown', handleKeyDown);
-    document.addEventListener('keyup', handleKeyUp);
+    // Prefer scoping to the editor container if available
+    const target: EventTarget = containerRef.current ?? document;
+    target.addEventListener('keydown', handleKeyDown as EventListener);
+    target.addEventListener('keyup', handleKeyUp as EventListener);
 
     // Cleanup
     return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-      document.removeEventListener('keyup', handleKeyUp);
+      target.removeEventListener('keydown', handleKeyDown as EventListener);
+      target.removeEventListener('keyup', handleKeyUp as EventListener);
     };
+    // Intentionally not depending on containerRef to avoid re-binding churn
   }, [handleKeyDown, handleKeyUp]);
 
   const handleMarkdownChange = useCallback(
@@ -754,30 +783,44 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       const startContainer = range.startContainer;
       const endContainer = range.endContainer;
 
+      const editorRoot = containerRef.current.querySelector('.mdxeditor-root-contenteditable');
+
+      const editorBounds = editorRoot?.getBoundingClientRect();
+
+      const rectsOverlap = (a: DOMRect, b: DOMRect) =>
+        !(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom);
+
       const isWithinEditor = (node: Node): boolean => {
         let current: Node | null = node;
-        while (current) {
+        let depth = 0;
+        while (current && depth < 10) {
           if (current.nodeType === Node.ELEMENT_NODE) {
-            const element = current as Element;
-            if (
-              element.classList.contains('mdx-content') ||
-              element.classList.contains('mdx-editor-content') ||
-              element.closest('.mdx-content') ||
-              element.closest('.mdx-editor-content') ||
-              element.closest('[contenteditable="true"]')
-            ) {
+            const el = current as Element;
+            // Quick geometry check to avoid expensive tree walks
+            if (editorBounds) {
+              const elRect = (el as HTMLElement).getBoundingClientRect?.();
+              if (elRect && !rectsOverlap(elRect, editorBounds)) {
+                return false;
+              }
+            }
+
+            if (el.getAttribute('contenteditable') === 'true') {
+              return true;
+            }
+            if (el.classList.contains('mdx-content') || el.classList.contains('mdx-editor-content')) {
               return true;
             }
             if (
-              element.classList.contains('inline-search-input') ||
-              element.closest('.inline-search-container') ||
-              element.closest('.comments-sidebar') ||
-              element.closest('.toolbar')
+              el.classList.contains('inline-search-input') ||
+              el.closest('.inline-search-container') ||
+              el.closest('.comments-sidebar') ||
+              el.closest('.toolbar')
             ) {
               return false;
             }
           }
           current = current.parentNode;
+          depth += 1;
         }
         return false;
       };
@@ -1035,6 +1078,10 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
   const handleSaveKeyboard = useCallback(
     (e: KeyboardEvent) => {
+      // Fast gate: ignore events outside our editor container
+      if (containerRef.current && e.target instanceof Node && !containerRef.current.contains(e.target)) {
+        return;
+      }
       const isSave = (e.metaKey || e.ctrlKey) && e.key === 's';
 
       if (isSave) {

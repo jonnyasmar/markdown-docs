@@ -37,9 +37,8 @@ export const useViewModeTracking = (onViewModeChange: (mode: 'rich-text' | 'sour
 
     const editorContainer = document.querySelector('.mdxeditor');
     if (editorContainer) {
+      // Observe only attribute changes to reduce overhead during typing.
       observer.observe(editorContainer, {
-        childList: true,
-        subtree: true,
         attributes: true,
         attributeFilter: ['style', 'class'],
       });
