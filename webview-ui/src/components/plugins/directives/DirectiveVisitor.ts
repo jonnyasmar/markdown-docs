@@ -5,21 +5,12 @@ import { $isCommentDirectiveNode } from './CommentDirectiveNode';
 import { $isDirectiveNode, DirectiveNode } from './DirectiveNode';
 
 export const DirectiveVisitor: LexicalExportVisitor<DirectiveNode, LeafDirective> = {
+  // Ensure we run before the default Text visitor
+  priority: 100,
   testLexicalNode: (node) => {
-    // Test for any node that has getMdastNode method (both DirectiveNode and CommentDirectiveNode)
-    const hasGetMdastNode = node && typeof node.getMdastNode === 'function';
-    const isDirective = $isDirectiveNode(node);
-    const isComment = $isCommentDirectiveNode(node);
-    
-    console.log('DirectiveVisitor test:', {
-      nodeType: node?.constructor?.name,
-      hasGetMdastNode,
-      isDirective,
-      isComment,
-      result: hasGetMdastNode
-    });
-    
-    return hasGetMdastNode; // Handle any node with getMdastNode method
+    // Only handle directive nodes (including our CommentDirectiveNode)
+    const isDirective = $isDirectiveNode(node) || $isCommentDirectiveNode(node);
+    return isDirective;
   },
   visitLexicalNode({ actions, mdastParent, lexicalNode }) {
     console.log('DirectiveVisitor: Processing node', lexicalNode?.constructor?.name);

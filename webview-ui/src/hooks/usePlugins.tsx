@@ -499,7 +499,12 @@ export const usePlugins = ({
       commentsPlugin({
         focusedCommentId,
         setFocusedCommentId,
-        directiveDescriptors: [createCommentDirectiveDescriptor(focusedCommentId, setFocusedCommentId)],
+        // Support admonitions and comments, with a generic fallback for unknown directives
+        directiveDescriptors: [
+          AdmonitionDirectiveDescriptor,
+          createCommentDirectiveDescriptor(focusedCommentId, setFocusedCommentId),
+          genericDirectiveDescriptor,
+        ],
       }),
       //directivesPluginFactory(),
       toolbarPluginFactory(),

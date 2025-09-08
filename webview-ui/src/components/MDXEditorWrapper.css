@@ -1075,6 +1075,25 @@ mark {
   color: inherit;
 }
 
+.comment-highlight p {
+  padding: 0 !important;
+  margin-top: 0.6em;
+  margin-bottom: 0.6em;
+}
+
+/* Make nested editors inside comment container blend with highlight */
+.comment-highlight .comment-container-editor {
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.comment-highlight .comment-container-editor [contenteditable='true'] {
+  background: transparent !important;
+}
+
 /* Lexical highlight text format styling */
 .mdx-editor .text-highlight {
   background-color: rgba(255, 255, 0, 0.25);

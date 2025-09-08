@@ -42,7 +42,8 @@ export class DirectiveNode extends DecoratorNode<React.JSX.Element> {
 
   /** @internal */
   static getType(): string {
-    return 'text';
+    // Must be unique and match exportJSON().type
+    return 'directive';
   }
 
   /** @internal */

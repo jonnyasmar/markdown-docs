@@ -7,6 +7,7 @@ import {
   addToMarkdownExtension$,
   directiveDescriptors$,
   insertDecoratorNode$,
+  insertDirective$ as coreInsertDirective$,
   realmPlugin,
 } from '@mdxeditor/editor';
 import { Signal, map } from '@mdxeditor/gurx';
@@ -136,20 +137,7 @@ export const commentsPlugin = realmPlugin<{
       ),
       // export
       [addLexicalNode$]: [DirectiveNode, CommentDirectiveNode],
-      [addToMarkdownExtension$]: [
-        directiveToMarkdown(),
-        // Post-process to fix comment directive markers
-        {
-          handlers: {
-            text: (node, parent, state, info) => {
-              const value = node.value || '';
-              // Replace our special markers with proper directive syntax
-              const processed = value.replace(/__DIRECTIVE_START__(.*?)__DIRECTIVE_END__/g, '$1');
-              return processed;
-            },
-          },
-        },
-      ],
+      [addToMarkdownExtension$]: [directiveToMarkdown()],
     });
 
     // Wire up the insertDirective$ signal to work with our comment nodes
@@ -159,6 +147,18 @@ export const commentsPlugin = realmPlugin<{
         map(payload => {
           console.log('insertDirective$ called with payload:', payload);
           return () => $createDirectiveNode(payload, undefined, params?.focusedCommentId, params?.setFocusedCommentId);
+        }),
+      ),
+      insertDecoratorNode$,
+    );
+
+    // Also listen to the core editor's insertDirective$ so toolbar actions work
+    realm.link(
+      realm.pipe(
+        coreInsertDirective$,
+        map(payload => {
+          console.log('core insertDirective$ received payload:', payload);
+          return () => $createDirectiveNode({ ...payload, children: [] }, undefined, params?.focusedCommentId, params?.setFocusedCommentId);
         }),
       ),
       insertDecoratorNode$,
@@ -175,21 +175,6 @@ export const commentsPlugin = realmPlugin<{
       ),
       insertDecoratorNode$,
     );
-
-    // Register a simple test visitor to see if ANY export visitors work
-    const testVisitor = {
-      testLexicalNode: node => {
-        console.log('TEST VISITOR: checking node:', node?.constructor?.name);
-        return true; // Accept all nodes
-      },
-      visitLexicalNode: ({ actions, mdastParent, lexicalNode }) => {
-        console.log('TEST VISITOR: processing node:', lexicalNode?.constructor?.name);
-        // Just pass through - don't actually modify anything
-      },
-    };
-
-    console.log('Registering test visitor');
-    realm.pub(addExportVisitor$, testVisitor);
 
     // Also register the original DirectiveVisitor
     realm.pub(addExportVisitor$, DirectiveVisitor);

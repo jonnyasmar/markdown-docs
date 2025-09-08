@@ -398,10 +398,31 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
           editorRef.current.setMarkdown(updatedMarkdown);
         }
 
+        // Immediately update parsedComments to reflect deletion in the sidebar
+        try {
+          const comments = DirectiveService.parseCommentDirectives(updatedMarkdown);
+          const commentsWithAnchor: CommentWithAnchor[] = comments.map(comment => ({
+            ...comment,
+            anchoredText: comment.anchoredText ?? 'Selected text',
+            startPosition: 0,
+            endPosition: 0,
+          }));
+          setParsedComments(commentsWithAnchor);
+          // Keep the debounce effect from skipping the next parse
+          lastParsedContentRef.current = updatedMarkdown;
+        } catch (error) {
+          logger.error('Error parsing comments after deletion:', error);
+        }
+
+        // Clear focus if we deleted the focused comment
+        if (focusedCommentId === commentId) {
+          setFocusedCommentId(null);
+        }
+
         onMarkdownChange(updatedMarkdown);
       }
     },
-    [markdown, commentPositions, onMarkdownChange],
+    [markdown, commentPositions, focusedCommentId, onMarkdownChange],
   );
 
   const handleCommentClick = useCallback(

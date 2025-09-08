@@ -1,7 +1,3 @@
----
-'': ''
----
-
 # Markdown Docs: Example Document
 
 This comprehensive example demonstrates the powerful features of the Markdown Docs VS Code extension. It showcases various Markdown elements enhanced by the extension's capabilities, providing a hands-on exploration of editing, commenting, searching, and formatting features in action.
@@ -12,7 +8,7 @@ This comprehensive example demonstrates the powerful features of the Markdown Do
 
 ### ✍️ WYSIWYG Editing Experience
 
-With Markdown Docs, you get a seamless **What You See Is What You** Get **(WYSIWYG)** editing experience. No more switching between raw Markdown and a preview pane! Edit directly and see your changes instantly.
+With Markdown Docs, you get a seamless **What You See Is What You** **Get** **(WYSIWYG)** editing experience. No more switching between raw Markdown and a preview pane! Edit directly and see your changes instantly.
 
 ### 💬 Interactive Commenting
 

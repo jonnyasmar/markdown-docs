@@ -322,60 +322,8 @@ export class CommentDirectiveNode extends TextNode {
     return writable;
   }
 
-  // Override text content for export to include directive syntax
+  // Always return plain text; Directive export handled by visitor
   getTextContent(): string {
-    const stack = new Error().stack;
-    
-    // Check if we're in an editing context (avoid export during these)
-    const isEditingContext = stack && (
-      stack.includes('insertText') ||
-      stack.includes('removeText') ||
-      stack.includes('splitText') ||
-      stack.includes('mergeText') ||
-      stack.includes('normalizeSelection') ||
-      stack.includes('updateDOM') ||
-      stack.includes('reconcileSelection') ||
-      stack.includes('setTextContent') ||
-      // Avoid during node creation/updates
-      stack.includes('createDOM') ||
-      stack.includes('clone')
-    );
-    
-    // If we're editing, always return plain text
-    if (isEditingContext) {
-      console.log('CommentDirectiveNode: Editing context detected, returning plain text');
-      return this.__text;
-    }
-    
-    // Check for export context (but be more inclusive than before)
-    const isExportContext = stack && (
-      stack.includes('toMarkdown') ||
-      stack.includes('mdastToMarkdown') ||
-      stack.includes('serialize') ||
-      stack.includes('markdown') ||
-      stack.includes('export') ||
-      stack.includes('getMarkdown') ||
-      stack.includes('toString')
-    );
-
-    if (isExportContext) {
-      console.log('CommentDirectiveNode: Export context detected, returning directive syntax');
-
-      // Return directive syntax with special markers to prevent escaping
-      const mdast = this.__mdastNode;
-      const text = this.__text;
-      const attrs = Object.entries(mdast.attributes || {})
-        .map(([key, value]) => `${key}="${value}"`)
-        .join(' ');
-
-      const directiveSyntax = `__DIRECTIVE_START__:${mdast.name}[${text}]{${attrs}}__DIRECTIVE_END__`;
-
-      console.log('CommentDirectiveNode: Returning marked directive syntax:', directiveSyntax);
-      return directiveSyntax;
-    }
-
-    console.log('CommentDirectiveNode: Normal context, returning plain text');
-    // Normal context, return plain text for editor display
     return this.__text;
   }
 }

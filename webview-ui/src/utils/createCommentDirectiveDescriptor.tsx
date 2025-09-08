@@ -1,5 +1,5 @@
 import { logger } from '@/utils/logger';
-import { DirectiveDescriptor, GenericDirectiveEditor } from '@mdxeditor/editor';
+import { DirectiveDescriptor, GenericDirectiveEditor, NestedLexicalEditor } from '@mdxeditor/editor';
 
 export const createCommentDirectiveDescriptor = (
   focusedCommentId: string | null,
@@ -19,7 +19,7 @@ export const createCommentDirectiveDescriptor = (
   hasChildren: true, // All directive types can have children (the [content] part)
   // MDX AST nodes from third-party library lack proper TypeScript definitions
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  Editor: ({ mdastNode }) => {
+  Editor: ({ mdastNode, parentEditor, lexicalNode, descriptor }) => {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     const commentId = String(mdastNode.attributes?.id ?? '');
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
@@ -83,43 +83,65 @@ export const createCommentDirectiveDescriptor = (
       }
     };
 
-    // For container directives (:::), render as block element to preserve line breaks
+    // For container directives (:::), use a nested editor so cursor navigation and editing work naturally
     if (directiveType === 'containerDirective') {
       return (
         <div
           className={`comment-highlight ${focusedCommentId === commentId ? 'focused' : ''}`}
           data-comment-id={commentId}
           title={`Comment: ${commentText}`}
-          onClick={handleClick}
+          onClick={e => {
+            // Only handle clicks on the outer highlight, not inside the nested editor
+            if (e.target === e.currentTarget) {
+              handleClick(e);
+            }
+          }}
         >
-          {renderContent()
-            .split('\n\n')
-            .map((paragraph: string, index: number) => (
-              <p key={index} style={{ margin: '.5em 0' }}>
-                {paragraph}
-              </p>
-            ))}
+          <NestedLexicalEditor<any>
+            block
+            getContent={(node: any) => (Array.isArray(node.children) ? node.children : [])}
+            getUpdatedMdastNode={(node: any, children: any[]) => ({
+              ...node,
+              children,
+            })}
+            contentEditableProps={{
+              className: 'comment-container-editor',
+              style: {
+                background: 'transparent',
+                boxShadow: 'none',
+                padding: 0,
+                margin: 0,
+                outline: 'none',
+              },
+              onFocus: () => {
+                setFocusedCommentId(commentId);
+              },
+              onMouseDown: e => {
+                // Prevent the outer wrapper from hijacking focus
+                e.stopPropagation();
+              },
+              onClick: e => {
+                e.stopPropagation();
+              },
+            }}
+          />
         </div>
       );
     }
 
     // For inline directives, render as span
     return (
-      <>
-        <span
-          data-lexical-decorator="true"
-          className={`comment-highlight ${focusedCommentId === commentId ? 'focused' : ''}`}
-          data-comment-id={commentId}
-          title={`Comment: ${commentText}`}
-          onClick={handleClick}
-          contentEditable={true}
-          style={{
-            cursor: 'text !important',
-          }}
-        >
-          {renderContent()}
-        </span>
-      </>
+      <span
+        data-lexical-decorator="true"
+        className={`comment-highlight ${focusedCommentId === commentId ? 'focused' : ''}`}
+        data-comment-id={commentId}
+        title={`Comment: ${commentText}`}
+        onClick={handleClick}
+        contentEditable={true}
+        style={{ cursor: 'text' }}
+      >
+        {renderContent()}
+      </span>
     );
   },
 });
