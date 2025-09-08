@@ -1150,6 +1150,22 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
   const handleEditSubmit = useCallback(
     (newComment: string) => {
+      const handleCommentTextChange = (newMarkdown: string) => {
+        try {
+          const comments = DirectiveService.parseCommentDirectives(newMarkdown);
+          const commentsWithAnchor: CommentWithAnchor[] = comments.map(comment => ({
+            ...comment,
+            anchoredText: comment.anchoredText ?? 'Selected text',
+            startPosition: 0,
+            endPosition: 0,
+          }));
+          setParsedComments(commentsWithAnchor);
+          console.log('Updated parsedComments after inline edit:', commentsWithAnchor);
+        } catch (error) {
+          logger.error('Error parsing comments after inline edit:', error);
+        }
+      };
+
       if (!editingComment) {
         logger.error('No comment being edited');
         return;
@@ -1202,6 +1218,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
       if (found) {
         onMarkdownChange(updatedMarkdown);
+        handleCommentTextChange(updatedMarkdown);
         setShowEditModal(false);
         setEditingComment(null);
       } else {

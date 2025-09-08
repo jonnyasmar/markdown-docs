@@ -307,6 +307,21 @@ export class CommentDirectiveNode extends TextNode {
     return writable;
   }
 
+  // Override setTextContent to trigger document updates when comment text changes
+  setTextContent(text: string): this {
+    const writable = super.setTextContent(text);
+    
+    // Trigger a document change event to update parsed comments
+    setTimeout(() => {
+      const customEvent = new CustomEvent('commentTextChanged', {
+        detail: { commentId: this.__commentId, newText: text }
+      });
+      document.dispatchEvent(customEvent);
+    }, 0);
+    
+    return writable;
+  }
+
   // Override text content for export to include directive syntax
   getTextContent(): string {
     const stack = new Error().stack;

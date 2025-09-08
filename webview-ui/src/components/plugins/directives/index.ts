@@ -86,17 +86,19 @@ export const insertDirective$ = Signal<{
   type: Directives['type'];
   name: string;
   attributes?: Directives['attributes'];
-}>(r => {
-  r.link(
-    r.pipe(
-      insertDirective$,
-      map(payload => {
-        return () => $createDirectiveNode({ children: [], ...payload });
-      }),
-    ),
-    insertDecoratorNode$,
-  );
-});
+  children?: any[];
+}>();
+
+/**
+ * A signal specifically for inserting comment directives with focus state support.
+ * @group Directive
+ */
+export const insertCommentDirective$ = Signal<{
+  type: Directives['type'];
+  name: string;
+  attributes?: Directives['attributes'];
+  children?: any[];
+}>();
 
 /**
  * A plugin that adds support for markdown directives.
@@ -149,6 +151,30 @@ export const commentsPlugin = realmPlugin<{
         },
       ],
     });
+
+    // Wire up the insertDirective$ signal to work with our comment nodes
+    realm.link(
+      realm.pipe(
+        insertDirective$,
+        map(payload => {
+          console.log('insertDirective$ called with payload:', payload);
+          return () => $createDirectiveNode(payload, undefined, params?.focusedCommentId, params?.setFocusedCommentId);
+        }),
+      ),
+      insertDecoratorNode$,
+    );
+
+    // Wire up the insertCommentDirective$ signal specifically for comments
+    realm.link(
+      realm.pipe(
+        insertCommentDirective$,
+        map(payload => {
+          console.log('insertCommentDirective$ called with payload:', payload);
+          return () => $createDirectiveNode(payload, undefined, params?.focusedCommentId, params?.setFocusedCommentId);
+        }),
+      ),
+      insertDecoratorNode$,
+    );
 
     // Register a simple test visitor to see if ANY export visitors work
     const testVisitor = {

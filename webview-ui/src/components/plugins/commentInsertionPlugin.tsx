@@ -1,6 +1,7 @@
 import { logger } from '@/utils/logger';
 import { escapeDirectiveContent } from '@/utils/textNormalization';
-import { insertDirective$, realmPlugin } from '@mdxeditor/editor';
+import { realmPlugin } from '@mdxeditor/editor';
+import { insertCommentDirective$ } from './directives';
 
 export const commentInsertionPlugin = realmPlugin<{
   pendingComment?: {
@@ -17,7 +18,7 @@ export const commentInsertionPlugin = realmPlugin<{
   }) => void;
 }>({
   init(_realm, _params) {
-    logger.debug('Comment insertion plugin initialized with native insertDirective$ support');
+    logger.debug('Comment insertion plugin initialized with insertCommentDirective$ support');
   },
 
   update(realm, params) {
@@ -26,7 +27,7 @@ export const commentInsertionPlugin = realmPlugin<{
       const pendingComment = params.pendingComment;
 
       try {
-        // Use MDX Editor's native insertDirective$ signal - this is the key!
+        // Use our custom insertCommentDirective$ signal - this ensures proper integration with CommentDirectiveNode
         const directiveConfig = {
           name: 'comment',
           type: (pendingComment.strategy === 'container' ? 'containerDirective' : 'textDirective') as
@@ -42,10 +43,10 @@ export const commentInsertionPlugin = realmPlugin<{
             text: escapeDirectiveContent(pendingComment.comment, pendingComment.strategy === 'container'),
           },
         };
-        logger.debug('Directive config to insert:', directiveConfig);
-        realm.pub(insertDirective$, directiveConfig);
+        logger.debug('Comment directive config to insert:', directiveConfig);
+        realm.pub(insertCommentDirective$, directiveConfig);
 
-        logger.debug('Comment directive inserted successfully via native insertDirective$');
+        logger.debug('Comment directive inserted successfully via insertCommentDirective$');
 
         // Call completion callback if provided
         if (params?.onInsertComment) {
@@ -55,7 +56,7 @@ export const commentInsertionPlugin = realmPlugin<{
           logger.warn('No onInsertComment callback provided');
         }
       } catch (error) {
-        logger.error('Error inserting comment directive via insertDirective$:', error);
+        logger.error('Error inserting comment directive via insertCommentDirective$:', error);
         logger.error('Error details:', error instanceof Error ? error.stack : String(error));
       }
     }
