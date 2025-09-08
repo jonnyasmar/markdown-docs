@@ -6,7 +6,6 @@ import {
   CreateLink,
   InsertAdmonition,
   InsertCodeBlock,
-  InsertFrontmatter,
   InsertTable,
   InsertThematicBreak,
   ListsToggle,
@@ -159,7 +158,7 @@ export const ToolbarGroups = memo(
                 ]}
               />
               <CreateLink />
-              <InsertFrontmatter />
+              {/* <InsertFrontmatter /> */}
               <InsertTable />
               <InsertThematicBreak />
               {!isOverflow && <Separator />}

@@ -2,6 +2,7 @@ import { MermaidEditor } from '@/components/MermaidEditor';
 import { Toolbar } from '@/components/Toolbar';
 import { commentInsertionPlugin } from '@/components/plugins/commentInsertionPlugin';
 import { customSearchPlugin } from '@/components/plugins/customSearchPlugin';
+// Import FrontmatterNode and related functions from local copy
 import { DirectiveService } from '@/services/directive';
 import { CommentWithAnchor, FontFamily, WebviewMessage } from '@/types';
 import { createCommentDirectiveDescriptor, genericDirectiveDescriptor } from '@/utils/createCommentDirectiveDescriptor';
@@ -260,26 +261,14 @@ export const usePlugins = ({
     }, 200);
   }, [editorRef, onMarkdownChange, setIsTyping, setParsedComments, setPendingComment]);
 
-  return useMemo<RealmPlugin[]>(
-    () => [
-      // Core editing plugins
-      headingsPlugin(),
-      quotePlugin(),
-      listsPlugin(),
-      linkPlugin(),
-      linkDialogPlugin(),
-      tablePlugin(),
-      thematicBreakPlugin(),
-      markdownShortcutPlugin(),
-      customSearchPlugin({}),
-      frontmatterPlugin(),
-
+  return useMemo<RealmPlugin[]>(() => {
+    const diffSourcePluginFactory = () =>
       diffSourcePlugin({
         diffMarkdown: '',
         codeMirrorExtensions: [],
-      }),
+      });
 
-      // Use default MDXEditor history behavior - our fix is to avoid setMarkdown() calls
+    const imagePluginFactory = () =>
       imagePlugin({
         imageUploadHandler: async (image: File) => {
           return new Promise(resolve => {
@@ -302,18 +291,17 @@ export const usePlugins = ({
           });
         },
         imageAutocompleteSuggestions: ['media/', './media/', '../media/'],
-      }),
+      });
 
-      // Custom comment insertion plugin using native insertDirective$
+    const commentInsertionPluginFactory = () =>
       commentInsertionPlugin({
         pendingComment,
         onInsertComment: _commentData => {
           handleCommentInserted();
         },
-      }),
+      });
 
-      // Removed angle bracket plugin for better performance
-
+    const directivesPluginFactory = () =>
       directivesPlugin({
         directiveDescriptors: [
           AdmonitionDirectiveDescriptor,
@@ -322,9 +310,9 @@ export const usePlugins = ({
         ],
         // Disable escaping of unknown text directives
         escapeUnknownTextDirectives: false,
-      }),
+      });
 
-      // Toolbar with our custom comment button and responsive design
+    const toolbarPluginFactory = () =>
       toolbarPlugin({
         toolbarContents: () => (
           <Toolbar
@@ -347,9 +335,9 @@ export const usePlugins = ({
             handleBookViewMarginChange={handleBookViewMarginChange}
           />
         ),
-      }),
+      });
 
-      // Enhanced code block plugin with Mermaid support
+    const codeBlockPluginFactory = () =>
       codeBlockPlugin({
         defaultCodeBlockLanguage: 'js',
         codeBlockEditorDescriptors: [
@@ -453,7 +441,9 @@ export const usePlugins = ({
             Editor: CodeMirrorEditor,
           },
         ],
-      }),
+      });
+
+    const codeMirrorPluginFactory = () =>
       codeMirrorPlugin({
         codeBlockLanguages: {
           js: 'JavaScript',
@@ -486,31 +476,51 @@ export const usePlugins = ({
           dart: 'Dart',
         },
         // Add better syntax theme configuration
-      }),
-    ],
-    [
-      availableFonts,
-      bookView,
-      bookViewMargin,
-      bookViewWidth,
-      currentViewMode,
-      focusedCommentId,
-      fontSize,
-      handleBookViewMarginChange,
-      handleBookViewToggle,
-      handleBookViewWidthChange,
-      handleCommentInserted,
-      handleFontChange,
-      handleFontSizeChange,
-      handleTextAlignChange,
-      handleViewModeChange,
-      isDarkTheme,
-      localBookViewMargin,
-      localBookViewWidth,
-      pendingComment,
-      selectedFont,
-      setFocusedCommentId,
-      textAlign,
-    ],
-  );
+      });
+
+    //const frontmatterPluginFactory = () => frontmatterPlugin();
+
+    return [
+      headingsPlugin(),
+      quotePlugin(),
+      listsPlugin(),
+      linkPlugin(),
+      linkDialogPlugin(),
+      tablePlugin(),
+      thematicBreakPlugin(),
+      markdownShortcutPlugin(),
+      customSearchPlugin({}),
+      //frontmatterPluginFactory(),
+      diffSourcePluginFactory(),
+      imagePluginFactory(),
+      commentInsertionPluginFactory(),
+      directivesPluginFactory(),
+      toolbarPluginFactory(),
+      codeBlockPluginFactory(),
+      codeMirrorPluginFactory(),
+    ];
+  }, [
+    availableFonts,
+    bookView,
+    bookViewMargin,
+    bookViewWidth,
+    currentViewMode,
+    focusedCommentId,
+    fontSize,
+    handleBookViewMarginChange,
+    handleBookViewToggle,
+    handleBookViewWidthChange,
+    handleCommentInserted,
+    handleFontChange,
+    handleFontSizeChange,
+    handleTextAlignChange,
+    handleViewModeChange,
+    isDarkTheme,
+    localBookViewMargin,
+    localBookViewWidth,
+    pendingComment,
+    selectedFont,
+    setFocusedCommentId,
+    textAlign,
+  ]);
 };
