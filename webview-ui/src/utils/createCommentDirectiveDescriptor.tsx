@@ -1,10 +1,10 @@
 import { logger } from '@/utils/logger';
-import { GenericDirectiveEditor } from '@mdxeditor/editor';
+import { DirectiveDescriptor, GenericDirectiveEditor } from '@mdxeditor/editor';
 
 export const createCommentDirectiveDescriptor = (
   focusedCommentId: string | null,
   setFocusedCommentId: (id: string | null) => void,
-) => ({
+): DirectiveDescriptor => ({
   name: 'comment',
   // MDX AST nodes from third-party library lack proper TypeScript definitions
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -19,7 +19,7 @@ export const createCommentDirectiveDescriptor = (
   hasChildren: true, // All directive types can have children (the [content] part)
   // MDX AST nodes from third-party library lack proper TypeScript definitions
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  Editor: ({ mdastNode }: any) => {
+  Editor: ({ mdastNode }) => {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     const commentId = String(mdastNode.attributes?.id ?? '');
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
@@ -68,7 +68,7 @@ export const createCommentDirectiveDescriptor = (
     };
 
     const handleClick = (e: React.MouseEvent) => {
-      e.preventDefault();
+      //e.preventDefault();
       logger.debug('Clicked comment highlight:', commentId);
 
       // Set focus state for inline comment
@@ -105,14 +105,21 @@ export const createCommentDirectiveDescriptor = (
 
     // For inline directives, render as span
     return (
-      <span
-        className={`comment-highlight ${focusedCommentId === commentId ? 'focused' : ''}`}
-        data-comment-id={commentId}
-        title={`Comment: ${commentText}`}
-        onClick={handleClick}
-      >
-        {renderContent()}
-      </span>
+      <>
+        <span
+          data-lexical-decorator="true"
+          className={`comment-highlight ${focusedCommentId === commentId ? 'focused' : ''}`}
+          data-comment-id={commentId}
+          title={`Comment: ${commentText}`}
+          onClick={handleClick}
+          contentEditable={true}
+          style={{
+            cursor: 'text !important',
+          }}
+        >
+          {renderContent()}
+        </span>
+      </>
     );
   },
 });

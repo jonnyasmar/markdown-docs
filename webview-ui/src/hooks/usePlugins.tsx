@@ -2,6 +2,8 @@ import { MermaidEditor } from '@/components/MermaidEditor';
 import { Toolbar } from '@/components/Toolbar';
 import { commentInsertionPlugin } from '@/components/plugins/commentInsertionPlugin';
 import { customSearchPlugin } from '@/components/plugins/customSearchPlugin';
+import { commentsPlugin } from '@/components/plugins/directives';
+import { CommentDirectiveNode } from '@/components/plugins/directives/CommentDirectiveNode';
 // Import FrontmatterNode and related functions from local copy
 import { DirectiveService } from '@/services/directive';
 import { CommentWithAnchor, FontFamily, WebviewMessage } from '@/types';
@@ -305,8 +307,8 @@ export const usePlugins = ({
       directivesPlugin({
         directiveDescriptors: [
           AdmonitionDirectiveDescriptor,
-          createCommentDirectiveDescriptor(focusedCommentId, setFocusedCommentId),
-          genericDirectiveDescriptor,
+          //createCommentDirectiveDescriptor(focusedCommentId, setFocusedCommentId),
+          //genericDirectiveDescriptor,
         ],
         // Disable escaping of unknown text directives
         escapeUnknownTextDirectives: false,
@@ -494,7 +496,12 @@ export const usePlugins = ({
       diffSourcePluginFactory(),
       imagePluginFactory(),
       commentInsertionPluginFactory(),
-      directivesPluginFactory(),
+      commentsPlugin({
+        focusedCommentId,
+        setFocusedCommentId,
+        directiveDescriptors: [createCommentDirectiveDescriptor(focusedCommentId, setFocusedCommentId)],
+      }),
+      //directivesPluginFactory(),
       toolbarPluginFactory(),
       codeBlockPluginFactory(),
       codeMirrorPluginFactory(),

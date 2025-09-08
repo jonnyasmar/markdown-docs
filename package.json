@@ -2,7 +2,7 @@
   "name": "markdown-docs",
   "displayName": "Markdown Docs & Comments",
   "description": "WYSIWYG Markdown Editor with Inline Commenting (great for working with AI!)",
-  "version": "1.2.15",
+  "version": "1.2.16",
   "icon": "media/icon.png",
   "publisher": "jonnyasmar",
   "repository": {
@@ -206,6 +206,7 @@
   "dependencies": {
     "js-yaml": "^4.1.0",
     "lexical": "^0.35.0",
+    "mdast-util-directive": "^3.1.0",
     "mdast-util-frontmatter": "^2.0.1",
     "micromark-extension-frontmatter": "^2.0.0",
     "uuid": "^11.1.0",

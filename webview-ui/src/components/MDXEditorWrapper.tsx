@@ -406,6 +406,9 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
   const handleCommentClick = useCallback(
     (commentId: string) => {
+      document.querySelectorAll('.comment-highlight.focused').forEach(el => {
+        el.classList.remove('focused');
+      });
       // Set focus state for this comment
       setFocusedCommentId(commentId);
 
@@ -439,12 +442,13 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         commentElement.offsetHeight;
 
         // Add the highlight class immediately
-        commentElement.classList.add('editor-highlighted');
+        commentElement.classList.add('focused');
 
         // Remove highlight after animation completes
         setTimeout(() => {
-          if (commentElement.classList.contains('editor-highlighted')) {
-            commentElement.classList.remove('editor-highlighted');
+          if (commentElement.classList.contains('focused')) {
+            //commentElement.classList.remove('editor-highlighted');
+            //commentElement.classList.add('focused');
           }
         }, 2000);
       }
@@ -862,6 +866,19 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     };
   }, [handleSelectionChange]);
 
+  useEffect(() => {
+    if (focusedCommentId && !showCommentSidebar) {
+      setShowCommentSidebar(true);
+    }
+    if (focusedCommentId && showCommentSidebar) {
+      document.querySelector(`.comment-item[data-comment-id="${focusedCommentId}"]`)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest', // This will minimize scrolling if element is already visible
+        inline: 'nearest',
+      });
+    }
+  }, [focusedCommentId, showCommentSidebar]);
+
   const handleDocumentClick = useCallback(
     (e: MouseEvent) => {
       const target = e.target as HTMLElement;
@@ -1246,7 +1263,13 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         {showCommentSidebar && (
           <CommentsSidebar
             sidebarWidth={sidebarWidth}
-            setShowCommentSidebar={setShowCommentSidebar}
+            setShowCommentSidebar={val => {
+              document.querySelectorAll('.comment-highlight.focused').forEach(el => {
+                el.classList.remove('focused');
+              });
+              setFocusedCommentId(null);
+              setShowCommentSidebar(val);
+            }}
             parsedComments={parsedComments}
             sortedCommentItems={sortedCommentItems}
           />
