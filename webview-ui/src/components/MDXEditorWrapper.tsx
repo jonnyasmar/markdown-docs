@@ -498,6 +498,115 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     ));
   }, [commentPositions, focusedCommentId, handleCommentClick, handleDeleteComment, handleEditComment, parsedComments]);
 
+  // Comment navigation handlers
+  const handleNavigateToPrevComment = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (parsedComments.length === 0) {
+        return;
+      }
+
+      console.log('Navigate to previous - focusedCommentId:', focusedCommentId);
+
+      // Sort comments by position to get consistent ordering (same as sidebar)
+      const sortedComments = [...parsedComments].sort((a, b) => {
+        const aPos = commentPositions.get(a.id) ?? -1;
+        const bPos = commentPositions.get(b.id) ?? -1;
+        if (aPos !== -1 && bPos !== -1) {
+          return aPos - bPos;
+        }
+        if (aPos !== -1 && bPos === -1) {
+          return -1;
+        }
+        if (bPos !== -1 && aPos === -1) {
+          return 1;
+        }
+        return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+      });
+
+      let targetCommentId: string;
+
+      if (!focusedCommentId) {
+        // No focused comment - go to last comment
+        targetCommentId = sortedComments[sortedComments.length - 1].id;
+        console.log('No focused comment, going to last:', targetCommentId);
+      } else {
+        // Find current focused comment index in sorted array
+        const currentIndex = sortedComments.findIndex(c => c.id === focusedCommentId);
+        console.log('Current index in sorted array:', currentIndex);
+
+        if (currentIndex > 0) {
+          // Go to previous comment
+          targetCommentId = sortedComments[currentIndex - 1].id;
+          console.log('Going to previous comment:', targetCommentId);
+        } else {
+          // At first comment - go to last comment (wrap around)
+          targetCommentId = sortedComments[sortedComments.length - 1].id;
+          console.log('At first comment, wrapping to last:', targetCommentId);
+        }
+      }
+
+      handleCommentClick(targetCommentId);
+    },
+    [parsedComments, commentPositions, focusedCommentId, handleCommentClick],
+  );
+
+  const handleNavigateToNextComment = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (parsedComments.length === 0) {
+        return;
+      }
+
+      console.log('Navigate to next - focusedCommentId:', focusedCommentId);
+
+      // Sort comments by position to get consistent ordering (same as sidebar)
+      const sortedComments = [...parsedComments].sort((a, b) => {
+        const aPos = commentPositions.get(a.id) ?? -1;
+        const bPos = commentPositions.get(b.id) ?? -1;
+        if (aPos !== -1 && bPos !== -1) {
+          return aPos - bPos;
+        }
+        if (aPos !== -1 && bPos === -1) {
+          return -1;
+        }
+        if (bPos !== -1 && aPos === -1) {
+          return 1;
+        }
+        return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+      });
+
+      let targetCommentId: string;
+
+      if (!focusedCommentId) {
+        // No focused comment - go to first comment
+        targetCommentId = sortedComments[0].id;
+        console.log('No focused comment, going to first:', targetCommentId);
+      } else {
+        // Find current focused comment index in sorted array
+        const currentIndex = sortedComments.findIndex(c => c.id === focusedCommentId);
+        console.log('Current index in sorted array:', currentIndex);
+
+        if (currentIndex < sortedComments.length - 1) {
+          // Go to next comment
+          targetCommentId = sortedComments[currentIndex + 1].id;
+          console.log('Going to next comment:', targetCommentId);
+        } else {
+          // At last comment - go to first comment (wrap around)
+          targetCommentId = sortedComments[0].id;
+          console.log('At last comment, wrapping to first:', targetCommentId);
+        }
+      }
+
+      handleCommentClick(targetCommentId);
+    },
+    [parsedComments, commentPositions, focusedCommentId, handleCommentClick],
+  );
+
   useEffect(() => {
     const currentContent = editorRef.current?.getMarkdown() ?? markdown ?? '';
 
@@ -1289,6 +1398,9 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
             }}
             parsedComments={parsedComments}
             sortedCommentItems={sortedCommentItems}
+            focusedCommentId={focusedCommentId}
+            onNavigateToPrevComment={handleNavigateToPrevComment}
+            onNavigateToNextComment={handleNavigateToNextComment}
           />
         )}
 

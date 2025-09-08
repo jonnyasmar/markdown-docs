@@ -771,6 +771,12 @@ button[role='combobox'][aria-label='Language']:hover,
   height: 100%;
 }
 
+.comment-close-wrapper {
+  display: flex;
+  flex: 10;
+  justify-content: flex-end;
+}
+
 .sidebar-resize-handle {
   position: absolute;
   left: 0;
@@ -796,6 +802,7 @@ button[role='combobox'][aria-label='Language']:hover,
   align-items: center;
   padding: 11px 20px;
   border-bottom: 1px solid var(--vscode-sideBar-border);
+  gap: 8px;
 }
 
 .comments-header h3 {
@@ -817,6 +824,32 @@ button[role='combobox'][aria-label='Language']:hover,
 
 .sidebar-close:hover {
   background: var(--vscode-button-hoverBackground);
+}
+
+.comment-navigation {
+  display: flex;
+  gap: 4px;
+}
+
+.nav-button {
+  background: transparent;
+  border: none;
+  color: var(--vscode-sideBar-foreground);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-button:hover:not(:disabled) {
+  background: var(--vscode-button-hoverBackground);
+}
+
+.nav-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .comments-list {
