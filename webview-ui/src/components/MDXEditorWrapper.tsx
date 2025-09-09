@@ -629,7 +629,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   );
 
   useEffect(() => {
-    const currentContent = editorRef.current?.getMarkdown() ?? markdown ?? '';
+    const currentContent = liveMarkdown ?? markdown ?? '';
 
     if (!currentContent) {
       setParsedComments([]);
@@ -895,6 +895,16 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       }
       if (!showCommentModal && !showEditModal && selectedText) {
         setSelectedText('');
+      }
+      return;
+    }
+
+    // Ignore selections inside CodeMirror code blocks to avoid disrupting clipboard behavior
+    const isInCodeMirror = (node: Node | null) =>
+      !!(node && (node as Element).parentElement && (node as Element).parentElement!.closest('.cm-editor'));
+    if (selection && (isInCodeMirror(selection.anchorNode) || isInCodeMirror(selection.focusNode))) {
+      if (showFloatingButton) {
+        setShowFloatingButton(false);
       }
       return;
     }
@@ -1349,6 +1359,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       if (found) {
         onMarkdownChange(updatedMarkdown);
         handleCommentTextChange(updatedMarkdown);
+        setLiveMarkdown(updatedMarkdown);
         setShowEditModal(false);
         setEditingComment(null);
       } else {

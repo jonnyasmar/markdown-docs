@@ -25,7 +25,7 @@ export const CommentsSidebar = ({
     <div className="comments-sidebar" style={{ width: `${sidebarWidth}px` }}>
       <div className="sidebar-resize-handle"></div>
       <div className="comments-header">
-        <h3>Comments</h3>
+        <h3>Comments ({parsedComments.length})</h3>
         <div className="comment-navigation">
           <button
             onClick={onNavigateToPrevComment}
