@@ -1,5 +1,7 @@
-import { $createFrontmatterNode, MdastImportVisitor } from '@mdxeditor/editor';
+import { MdastImportVisitor } from '@mdxeditor/editor';
 import * as Mdast from 'mdast';
+
+import { $createFrontmatterNode } from './FrontmatterNode';
 
 export const MdastFrontmatterVisitor: MdastImportVisitor<Mdast.YAML> = {
   testNode: 'yaml',

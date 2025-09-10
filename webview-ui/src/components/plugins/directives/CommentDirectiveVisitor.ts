@@ -9,27 +9,34 @@ import { $isCommentDirectiveNode, CommentDirectiveNode } from './CommentDirectiv
  * Export visitor for CommentDirectiveNode that preserves directive syntax
  */
 export const CommentDirectiveVisitor: LexicalExportVisitor<TextNode, Text | LeafDirective> = {
-  testLexicalNode: (node) => {
+  testLexicalNode: node => {
     const isText = $isTextNode(node);
     const isComment = $isCommentDirectiveNode(node);
-    console.log('CommentDirectiveVisitor testLexicalNode:', node?.constructor?.name, 'isText:', isText, 'isComment:', isComment);
+    console.log(
+      'CommentDirectiveVisitor testLexicalNode:',
+      node?.constructor?.name,
+      'isText:',
+      isText,
+      'isComment:',
+      isComment,
+    );
     return isText; // Catch all text nodes, then filter in visitLexicalNode
   },
   visitLexicalNode({ actions, mdastParent, lexicalNode }) {
     console.log('CommentDirectiveVisitor: Processing text node', lexicalNode?.constructor?.name);
-    
+
     // Check if this is actually a CommentDirectiveNode
     if ($isCommentDirectiveNode(lexicalNode)) {
       console.log('CommentDirectiveVisitor: Found CommentDirectiveNode!');
-      
+
       // Get the original MDAST node with directive syntax
       const mdastNode = lexicalNode.getMdastNode();
       console.log('CommentDirectiveVisitor: Original mdastNode', mdastNode);
-      
+
       // Update the text content in case it was edited
       const currentText = lexicalNode.getTextContent();
       console.log('CommentDirectiveVisitor: Current text content', currentText);
-      
+
       // Create a fresh copy to avoid mutation issues
       const exportNode = {
         ...mdastNode,
@@ -40,9 +47,9 @@ export const CommentDirectiveVisitor: LexicalExportVisitor<TextNode, Text | Leaf
           },
         ],
       };
-      
+
       console.log('CommentDirectiveVisitor: Exporting directive node', exportNode);
-      
+
       // Append the directive node with preserved syntax and updated content
       actions.appendToParent(mdastParent, exportNode);
     } else {

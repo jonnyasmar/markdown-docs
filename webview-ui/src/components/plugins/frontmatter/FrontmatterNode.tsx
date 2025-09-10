@@ -1,4 +1,3 @@
-import { FrontmatterEditor } from '@/components/plugins/frontmatter/FrontmatterEditor';
 import {
   DecoratorNode,
   EditorConfig,
@@ -8,7 +7,9 @@ import {
   SerializedLexicalNode,
   Spread,
 } from 'lexical';
-import React from 'react';
+import React, { JSX } from 'react';
+
+import { FrontmatterEditor } from './FrontmatterEditor';
 
 /**
  * A serialized representation of an {@link FrontmatterNode}.
@@ -75,16 +76,7 @@ export class FrontmatterNode extends DecoratorNode<JSX.Element> {
   }
 
   decorate(editor: LexicalEditor): JSX.Element {
-    return (
-      <FrontmatterEditor
-        yaml={this.getYaml()}
-        onChange={yaml => {
-          editor.update(() => {
-            this.setYaml(yaml);
-          });
-        }}
-      />
-    );
+    return null;
   }
 
   isKeyboardSelectable(): boolean {

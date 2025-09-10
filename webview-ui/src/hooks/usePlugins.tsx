@@ -3,8 +3,7 @@ import { Toolbar } from '@/components/Toolbar';
 import { commentInsertionPlugin } from '@/components/plugins/commentInsertionPlugin';
 import { customSearchPlugin } from '@/components/plugins/customSearchPlugin';
 import { commentsPlugin } from '@/components/plugins/directives';
-import { CommentDirectiveNode } from '@/components/plugins/directives/CommentDirectiveNode';
-// Import FrontmatterNode and related functions from local copy
+import { frontmatterPlugin } from '@/components/plugins/frontmatter';
 import { DirectiveService } from '@/services/directive';
 import { CommentWithAnchor, FontFamily, WebviewMessage } from '@/types';
 import { createCommentDirectiveDescriptor, genericDirectiveDescriptor } from '@/utils/createCommentDirectiveDescriptor';
@@ -28,7 +27,6 @@ import {
   codeMirrorPlugin,
   diffSourcePlugin,
   directivesPlugin,
-  frontmatterPlugin,
   headingsPlugin,
   imagePlugin,
   linkDialogPlugin,
@@ -492,7 +490,7 @@ export const usePlugins = ({
       thematicBreakPlugin(),
       markdownShortcutPlugin(),
       customSearchPlugin({}),
-      //frontmatterPluginFactory(),
+      frontmatterPlugin(),
       diffSourcePluginFactory(),
       imagePluginFactory(),
       commentInsertionPluginFactory(),

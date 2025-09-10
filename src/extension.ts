@@ -98,6 +98,8 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
       this.sendContentToWebview(document, webviewPanel);
       logger.info('Initial content sent to webview');
 
+      // Do not suppress edits by timing; rely on no-op detection and webview gating
+
       // Listen for document changes and update webview with echo prevention
       const changeDocumentSubscription = vscode.workspace.onDidChangeTextDocument(e => {
         if (e.document.uri.toString() === document.uri.toString()) {
@@ -440,9 +442,30 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
 
   private async updateTextDocument(document: vscode.TextDocument, newContent: string): Promise<void> {
     // Skip update if content hasn't actually changed
-    if (this.lastWebviewContent === newContent) {
-      logger.debug('Skipping document update - content unchanged');
-      return;
+    try {
+      const currentText = document.getText();
+
+      // Normalize for comparison: unify EOLs and ignore a single trailing newline difference
+      const normalize = (s: string): string => s.replace(/\r\n/g, '\n');
+      const stripFinalNewline = (s: string): string => (s.endsWith('\n') ? s.slice(0, -1) : s);
+      const a = normalize(currentText);
+      const b = normalize(newContent);
+      const equalOrFinalNewlineOnly = a === b || stripFinalNewline(a) === stripFinalNewline(b);
+      if (equalOrFinalNewlineOnly) {
+        logger.debug('Skipping document update - content identical (no-op)');
+        return;
+      }
+      if (this.lastWebviewContent === newContent) {
+        logger.debug('Skipping document update - content unchanged (lastWebviewContent match)');
+        return;
+      }
+      if (this.lastSentToWebview && this.lastSentToWebview === newContent) {
+        logger.debug('Skipping document update - equals lastSentToWebview (echo)');
+        return;
+      }
+    } catch (e) {
+      // If for any reason reading the document fails, proceed safely with the edit
+      logger.warn('Could not compare current document text before update:', e);
     }
 
     this.updatingFromWebview = true;

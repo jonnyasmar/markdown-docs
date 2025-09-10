@@ -34,7 +34,7 @@ export const MdastDirectiveVisitor: (
     const isKnown = !escapeUnknownTextDirectives || descriptors.directiveDescriptors.some(d => d.testNode(mdastNode));
     if (isKnown) {
       (lexicalParent as ElementNode).append(
-        $createDirectiveNode(mdastNode, undefined, focusedCommentId, setFocusedCommentId)
+        $createDirectiveNode(mdastNode, undefined, focusedCommentId, setFocusedCommentId),
       );
     } else {
       /**

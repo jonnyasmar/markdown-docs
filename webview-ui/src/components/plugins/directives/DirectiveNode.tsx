@@ -49,10 +49,10 @@ export class DirectiveNode extends DecoratorNode<React.JSX.Element> {
   /** @internal */
   static clone(node: DirectiveNode): DirectiveNode {
     return new DirectiveNode(
-      structuredClone(node.__mdastNode), 
+      structuredClone(node.__mdastNode),
       node.__key,
       node.__focusedCommentId,
-      node.__setFocusedCommentId
+      node.__setFocusedCommentId,
     );
   }
 
@@ -66,10 +66,10 @@ export class DirectiveNode extends DecoratorNode<React.JSX.Element> {
    * Constructs a new {@link DirectiveNode} with the specified MDAST directive node as the object to edit.
    */
   constructor(
-    mdastNode: Directives, 
+    mdastNode: Directives,
     key?: NodeKey,
     focusedCommentId?: string | null,
-    setFocusedCommentId?: (id: string | null) => void
+    setFocusedCommentId?: (id: string | null) => void,
   ) {
     super(key);
     this.__mdastNode = mdastNode;

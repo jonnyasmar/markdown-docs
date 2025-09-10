@@ -135,7 +135,7 @@ export class CommentDirectiveNode extends TextNode {
       console.log('Looking for sidebar comment with ID:', this.__commentId);
       const commentElement = document.querySelector(`.comment-item[data-comment-id="${this.__commentId}"]`);
       console.log('Found sidebar comment element:', commentElement);
-      
+
       if (!commentElement) {
         // Try alternative selectors
         const altElement1 = document.querySelector(`[data-comment-id="${this.__commentId}"]`);
@@ -143,7 +143,7 @@ export class CommentDirectiveNode extends TextNode {
         console.log('Alternative selector 1:', altElement1);
         console.log('Alternative selector 2:', altElement2);
       }
-      
+
       if (commentElement) {
         // Simulate clicking on the sidebar comment item
         logger.debug('Triggering sidebar comment click for:', this.__commentId);
@@ -163,7 +163,9 @@ export class CommentDirectiveNode extends TextNode {
         // Try to open the sidebar anyway
         console.log('Attempting to open comments sidebar...');
         // Look for sidebar toggle button or similar
-        const sidebarToggle = document.querySelector('[data-testid="comments-toggle"], .comments-toggle, .sidebar-toggle');
+        const sidebarToggle = document.querySelector(
+          '[data-testid="comments-toggle"], .comments-toggle, .sidebar-toggle',
+        );
         if (sidebarToggle) {
           console.log('Found sidebar toggle, clicking it:', sidebarToggle);
           (sidebarToggle as HTMLElement).click();
@@ -215,27 +217,27 @@ export class CommentDirectiveNode extends TextNode {
     // Add global click handler to blur when clicking elsewhere (only set up once per document)
     if (!document.body.hasAttribute('data-comment-blur-handler-setup')) {
       document.body.setAttribute('data-comment-blur-handler-setup', 'true');
-      
+
       const globalBlurHandler = (e: Event) => {
         const target = e.target as HTMLElement;
-        
+
         // Don't blur if clicking on any comment highlight
         if (target.closest('.comment-highlight')) {
           return;
         }
-        
+
         // Don't blur if clicking in the sidebar
         const isInSidebar = target.closest('.comments-sidebar, .comment-list, [data-testid="comments-sidebar"]');
         if (isInSidebar) {
           return;
         }
-        
+
         // Clear focus from all comment highlights
         const focusedHighlights = document.querySelectorAll('.comment-highlight.focused');
         if (focusedHighlights.length > 0) {
           logger.debug('Blurring all comment highlights');
           focusedHighlights.forEach(el => el.classList.remove('focused'));
-          
+
           // Clear the focus state in the component (use the first one's handler)
           const firstHighlight = focusedHighlights[0] as any;
           if (firstHighlight && firstHighlight.__commentNode) {
@@ -243,10 +245,10 @@ export class CommentDirectiveNode extends TextNode {
           }
         }
       };
-      
+
       document.addEventListener('click', globalBlurHandler);
     }
-    
+
     // Store reference to this node on the element for the global handler
     (element as any).__commentNode = this;
 
@@ -310,15 +312,15 @@ export class CommentDirectiveNode extends TextNode {
   // Override setTextContent to trigger document updates when comment text changes
   setTextContent(text: string): this {
     const writable = super.setTextContent(text);
-    
+
     // Trigger a document change event to update parsed comments
     setTimeout(() => {
       const customEvent = new CustomEvent('commentTextChanged', {
-        detail: { commentId: this.__commentId, newText: text }
+        detail: { commentId: this.__commentId, newText: text },
       });
       document.dispatchEvent(customEvent);
     }, 0);
-    
+
     return writable;
   }
 

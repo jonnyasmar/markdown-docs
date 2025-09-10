@@ -70,6 +70,8 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   const deferredMessageTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const parseCommentTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const hasAppliedInitialEscapingRef = useRef(false);
+  const ignoreNextChangeRef = useRef(false);
+  const hasUserEditedRef = useRef(false);
   const dirtyStateTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const selectionRafRef = useRef<number | null>(null);
   const regexCacheRef = useRef<Map<string, RegExp[]>>(new Map());
@@ -629,7 +631,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   );
 
   useEffect(() => {
-    const currentContent = liveMarkdown ?? markdown ?? '';
+    const currentContent = editorRef.current?.getMarkdown() ?? liveMarkdown ?? markdown ?? '';
 
     if (!currentContent) {
       setParsedComments([]);
@@ -649,7 +651,8 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     // Heavy debounce - only after user completely stops typing for 800ms
     parseCommentTimeoutRef.current = setTimeout(() => {
       try {
-        const comments = DirectiveService.parseCommentDirectives(currentContent);
+        const latestContent = editorRef.current?.getMarkdown() ?? liveMarkdown ?? markdown ?? '';
+        const comments = DirectiveService.parseCommentDirectives(latestContent);
         const commentsWithAnchor: CommentWithAnchor[] = comments.map(comment => ({
           ...comment,
           anchoredText: comment.anchoredText ?? 'Selected text',
@@ -717,11 +720,48 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       }
 
       // Apply external update directly
+      ignoreNextChangeRef.current = true; // Ignore first onChange after programmatic set
       editorRef.current.setMarkdown(markdown);
 
       // REMOVED: justSavedRef.current = true; - echo prevention handled at extension level
     }
   }, [markdown]);
+
+  // Detect real user edits (typing, paste, toolbar actions) before allowing sync to extension
+  useEffect(() => {
+    const root = document.querySelector('.mdxeditor-root-contenteditable');
+    if (!root) {
+      return;
+    }
+
+    const markEdited = () => {
+      hasUserEditedRef.current = true;
+      // If a programmatic set previously requested ignoring one change, clear it now for the first real user edit
+      if (ignoreNextChangeRef.current) {
+        ignoreNextChangeRef.current = false;
+      }
+    };
+
+    // input fires for typing, paste, and many programmatic content changes from toolbar
+    root.addEventListener('input', markEdited, true);
+
+    // keydown fallback for completeness
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) {
+        return;
+      }
+      const editingKeys = new Set(['Enter', 'Backspace', 'Delete', 'Tab']);
+      if (editingKeys.has(e.key) || e.key.length === 1) {
+        hasUserEditedRef.current = true;
+      }
+    };
+    root.addEventListener('keydown', onKeyDown, true);
+
+    return () => {
+      root.removeEventListener('input', markEdited, true);
+      root.removeEventListener('keydown', onKeyDown, true);
+    };
+  }, []);
 
   // Focus editor on initial load
   useEffect(() => {
@@ -826,24 +866,25 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
   const handleMarkdownChange = useCallback(
     (newMarkdown: string) => {
-      // On first edit, apply escaping to the editor content invisibly (but only in rich-text mode)
-      if (!hasAppliedInitialEscapingRef.current && editorRef.current && currentViewModeRef.current === 'rich-text') {
-        const currentContent = editorRef.current.getMarkdown();
-        const needsEscaping = currentContent.includes('<') && !currentContent.includes('\\<');
-
-        if (needsEscaping) {
-          hasAppliedInitialEscapingRef.current = true;
-          const escapedContent = preprocessAngleBrackets(currentContent);
-          editorRef.current.setMarkdown(escapedContent);
-          return; // Let the next change handle the actual sync
-        }
+      // P1: Ignore the first change after a programmatic set
+      if (ignoreNextChangeRef.current) {
+        ignoreNextChangeRef.current = false;
+        return;
       }
+
+      // Guarantee: don't send edits until the user actually performs an edit action
+      if (!hasUserEditedRef.current) {
+        return;
+      }
+
+      // Removed: first-edit auto-escaping. Extension pre-escapes initial content.
 
       // Apply postprocessing in all modes to clean up unwanted escaping
       const processedMarkdown = postprocessAngleBrackets(newMarkdown);
+      const baseline = postprocessAngleBrackets(markdown);
 
-      // Check if this is actually a change
-      const hasChanges = processedMarkdown !== markdown;
+      // Check if this is actually a change (normalize both sides)
+      const hasChanges = processedMarkdown !== baseline;
       if (!hasChanges) {
         return;
       }

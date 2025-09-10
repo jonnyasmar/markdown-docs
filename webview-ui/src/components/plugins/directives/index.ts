@@ -5,9 +5,9 @@ import {
   addMdastExtension$,
   addSyntaxExtension$,
   addToMarkdownExtension$,
+  insertDirective$ as coreInsertDirective$,
   directiveDescriptors$,
   insertDecoratorNode$,
-  insertDirective$ as coreInsertDirective$,
   realmPlugin,
 } from '@mdxeditor/editor';
 import { Signal, map } from '@mdxeditor/gurx';
@@ -133,7 +133,7 @@ export const commentsPlugin = realmPlugin<{
       [addImportVisitor$]: MdastDirectiveVisitor(
         params?.escapeUnknownTextDirectives,
         params?.focusedCommentId,
-        params?.setFocusedCommentId
+        params?.setFocusedCommentId,
       ),
       // export
       [addLexicalNode$]: [DirectiveNode, CommentDirectiveNode],
@@ -158,7 +158,13 @@ export const commentsPlugin = realmPlugin<{
         coreInsertDirective$,
         map(payload => {
           console.log('core insertDirective$ received payload:', payload);
-          return () => $createDirectiveNode({ ...payload, children: [] }, undefined, params?.focusedCommentId, params?.setFocusedCommentId);
+          return () =>
+            $createDirectiveNode(
+              { ...payload, children: [] },
+              undefined,
+              params?.focusedCommentId,
+              params?.setFocusedCommentId,
+            );
         }),
       ),
       insertDecoratorNode$,

@@ -16,9 +16,12 @@
     "@mdxeditor/editor": "^3.19.0",
     "lucide-react": "^0.542.0",
     "marked": "^12.0.2",
+    "mdast-util-frontmatter": "^2.0.1",
     "mermaid": "^11.10.1",
+    "micromark-extension-frontmatter": "^2.0.0",
     "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+    "react-dom": "^19.1.1",
+    "remark-frontmatter": "^5.0.0"
   },
   "devDependencies": {
     "@rspack/cli": "^1.5.1",

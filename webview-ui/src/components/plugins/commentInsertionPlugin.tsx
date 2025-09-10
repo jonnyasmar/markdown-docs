@@ -2,7 +2,8 @@ import { logger } from '@/utils/logger';
 import { escapeDirectiveContent } from '@/utils/textNormalization';
 import { realmPlugin, rootEditor$ } from '@mdxeditor/editor';
 import { $getSelection, $isRangeSelection } from 'lexical';
-import { insertCommentDirective$, $createDirectiveNode } from './directives';
+
+import { $createDirectiveNode, insertCommentDirective$ } from './directives';
 
 export const commentInsertionPlugin = realmPlugin<{
   pendingComment?: {
@@ -39,7 +40,10 @@ export const commentInsertionPlugin = realmPlugin<{
 
         const directiveConfig = {
           name: 'comment',
-          type: (isContainer ? 'containerDirective' : 'textDirective') as 'containerDirective' | 'textDirective' | 'leafDirective',
+          type: (isContainer ? 'containerDirective' : 'textDirective') as
+            | 'containerDirective'
+            | 'textDirective'
+            | 'leafDirective',
           // @ts-expect-error - mdast children are loosely typed here
           children,
           attributes: {
@@ -77,7 +81,13 @@ export const commentInsertionPlugin = realmPlugin<{
                   const getType = (n as any)?.getType?.bind(n);
                   const getTextContent = (n as any)?.getTextContent?.bind(n);
                   const remove = (n as any)?.remove?.bind(n);
-                  if (getType && getTextContent && remove && getType() === 'paragraph' && getTextContent().trim() === '') {
+                  if (
+                    getType &&
+                    getTextContent &&
+                    remove &&
+                    getType() === 'paragraph' &&
+                    getTextContent().trim() === ''
+                  ) {
                     remove();
                   }
                 } catch {

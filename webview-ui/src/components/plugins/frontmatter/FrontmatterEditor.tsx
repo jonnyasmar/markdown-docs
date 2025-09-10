@@ -1,16 +1,13 @@
-import {
-  editorRootElementRef$,
-  frontmatterDialogOpen$,
-  iconComponentFor$,
-  readOnly$,
-  removeFrontmatter$,
-  useTranslation,
-} from '@mdxeditor/editor';
 import { useCellValues, usePublisher } from '@mdxeditor/gurx';
 import * as Dialog from '@radix-ui/react-dialog';
 import classNames from 'classnames';
+import YamlParser from 'js-yaml';
 import React from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
+
+import { frontmatterDialogOpen$, removeFrontmatter$ } from '.';
+import styles from '../../styles/ui.module.css';
+import { editorRootElementRef$, iconComponentFor$, readOnly$, useTranslation } from '../core';
 
 type YamlConfig = Array<{ key: string; value: string }>;
 
