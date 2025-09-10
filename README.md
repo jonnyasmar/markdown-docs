@@ -1,7 +1,3 @@
----
-test: 123
----
-
 # Markdown Docs: Your Ultimate Markdown Companion
 
 ---
@@ -116,7 +112,3 @@ We're always looking for ways to improve Markdown Docs. If you have a feature re
 ## License
 
 This extension is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
-
-```js
-
-```
