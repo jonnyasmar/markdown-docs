@@ -26,7 +26,6 @@ import {
   codeBlockPlugin,
   codeMirrorPlugin,
   diffSourcePlugin,
-  directivesPlugin,
   headingsPlugin,
   imagePlugin,
   linkDialogPlugin,
@@ -261,14 +260,17 @@ export const usePlugins = ({
     }, 200);
   }, [editorRef, onMarkdownChange, setIsTyping, setParsedComments, setPendingComment]);
 
-  return useMemo<RealmPlugin[]>(() => {
-    const diffSourcePluginFactory = () =>
+  const diffSourcePluginFactory = useCallback(
+    () =>
       diffSourcePlugin({
         diffMarkdown: '',
         codeMirrorExtensions: [],
-      });
+      }),
+    [],
+  );
 
-    const imagePluginFactory = () =>
+  const imagePluginFactory = useCallback(
+    () =>
       imagePlugin({
         imageUploadHandler: async (image: File) => {
           return new Promise(resolve => {
@@ -291,17 +293,23 @@ export const usePlugins = ({
           });
         },
         imageAutocompleteSuggestions: ['media/', './media/', '../media/'],
-      });
+      }),
+    [],
+  );
 
-    const commentInsertionPluginFactory = () =>
+  const commentInsertionPluginFactory = useCallback(
+    () =>
       commentInsertionPlugin({
         pendingComment,
         onInsertComment: _commentData => {
           handleCommentInserted();
         },
-      });
+      }),
+    [handleCommentInserted, pendingComment],
+  );
 
-    const directivesPluginFactory = () =>
+  /* const directivesPluginFactory = useCallback(
+    () =>
       directivesPlugin({
         directiveDescriptors: [
           AdmonitionDirectiveDescriptor,
@@ -310,9 +318,12 @@ export const usePlugins = ({
         ],
         // Disable escaping of unknown text directives
         escapeUnknownTextDirectives: false,
-      });
+      }),
+    [],
+  ); */
 
-    const toolbarPluginFactory = () =>
+  const toolbarPluginFactory = useCallback(
+    () =>
       toolbarPlugin({
         toolbarContents: () => (
           <Toolbar
@@ -335,9 +346,30 @@ export const usePlugins = ({
             handleBookViewMarginChange={handleBookViewMarginChange}
           />
         ),
-      });
+      }),
+    [
+      availableFonts,
+      bookView,
+      bookViewMargin,
+      bookViewWidth,
+      currentViewMode,
+      fontSize,
+      handleBookViewMarginChange,
+      handleBookViewToggle,
+      handleBookViewWidthChange,
+      handleFontChange,
+      handleFontSizeChange,
+      handleTextAlignChange,
+      handleViewModeChange,
+      localBookViewMargin,
+      localBookViewWidth,
+      selectedFont,
+      textAlign,
+    ],
+  );
 
-    const codeBlockPluginFactory = () =>
+  const codeBlockPluginFactory = useCallback(
+    () =>
       codeBlockPlugin({
         defaultCodeBlockLanguage: 'js',
         codeBlockEditorDescriptors: [
@@ -441,9 +473,12 @@ export const usePlugins = ({
             Editor: CodeMirrorEditor,
           },
         ],
-      });
+      }),
+    [isDarkTheme],
+  );
 
-    const codeMirrorPluginFactory = () =>
+  const codeMirrorPluginFactory = useCallback(
+    () =>
       codeMirrorPlugin({
         codeBlockLanguages: {
           js: 'JavaScript',
@@ -476,10 +511,13 @@ export const usePlugins = ({
           dart: 'Dart',
         },
         // Add better syntax theme configuration
-      });
+      }),
+    [],
+  );
 
-    //const frontmatterPluginFactory = () => frontmatterPlugin();
+  //const frontmatterPluginFactory = () => frontmatterPlugin();
 
+  return useMemo<RealmPlugin[]>(() => {
     return [
       headingsPlugin(),
       quotePlugin(),
@@ -510,27 +548,13 @@ export const usePlugins = ({
       codeMirrorPluginFactory(),
     ];
   }, [
-    availableFonts,
-    bookView,
-    bookViewMargin,
-    bookViewWidth,
-    currentViewMode,
+    codeBlockPluginFactory,
+    codeMirrorPluginFactory,
+    commentInsertionPluginFactory,
+    diffSourcePluginFactory,
     focusedCommentId,
-    fontSize,
-    handleBookViewMarginChange,
-    handleBookViewToggle,
-    handleBookViewWidthChange,
-    handleCommentInserted,
-    handleFontChange,
-    handleFontSizeChange,
-    handleTextAlignChange,
-    handleViewModeChange,
-    isDarkTheme,
-    localBookViewMargin,
-    localBookViewWidth,
-    pendingComment,
-    selectedFont,
+    imagePluginFactory,
     setFocusedCommentId,
-    textAlign,
+    toolbarPluginFactory,
   ]);
 };

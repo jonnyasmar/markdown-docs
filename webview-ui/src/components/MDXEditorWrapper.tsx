@@ -702,6 +702,10 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         cancelAnimationFrame(selectionRafRef.current);
         selectionRafRef.current = null;
       }
+      if (selectionTimeoutRef.current) {
+        clearTimeout(selectionTimeoutRef.current);
+        selectionTimeoutRef.current = undefined;
+      }
     };
   }, []);
 
@@ -912,7 +916,11 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
     [markdown], // State setters should be stable
   );
 
-  const handleSelectionChange = useCallback(() => {
+  // Selection handling timeout ref for debouncing
+  const selectionTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+
+  // Core selection logic (extracted for reuse)
+  const processSelectionChange = useCallback(() => {
     // Don't update selection if comment modal is open - lock the selection
     if (showCommentModal || showEditModal) {
       return;
@@ -1025,7 +1033,13 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
       const editorContentRect = containerRef.current.querySelector('.mdx-editor-content')?.getBoundingClientRect();
       const rightEdgeX = editorContentRect
-        ? editorContentRect.right - containerRect.left - 50
+        ? editorContentRect.right -
+          containerRect.left -
+          50 -
+          (bookView
+            ? (containerRect.width - parseFloat(bookViewWidth.replace('in', '')) * 96) / 2 -
+              (parseFloat(bookViewMargin.replace('in', '')) * 96) / 2
+            : 0)
         : containerRect.width - 60;
 
       setFloatingButtonPosition({
@@ -1037,7 +1051,29 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
         setShowFloatingButton(true);
       }
     });
-  }, [currentViewMode, showCommentModal, showEditModal, showFloatingButton, selectedText]);
+  }, [
+    showCommentModal,
+    showEditModal,
+    currentViewMode,
+    showFloatingButton,
+    selectedText,
+    bookView,
+    bookViewWidth,
+    bookViewMargin,
+  ]);
+
+  // Debounced selection change handler
+  const handleSelectionChange = useCallback(() => {
+    // Clear any existing timeout
+    if (selectionTimeoutRef.current) {
+      clearTimeout(selectionTimeoutRef.current);
+    }
+
+    // Debounce selection processing to avoid excessive calls during rapid selection changes
+    selectionTimeoutRef.current = setTimeout(() => {
+      processSelectionChange();
+    }, 100); // 100ms debounce
+  }, [processSelectionChange]);
 
   // Text selection handling for floating comment button
   useEffect(() => {

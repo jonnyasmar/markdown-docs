@@ -1,4 +1,4 @@
-import React from 'react';
+import { RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { CursorPosition, CursorTracker } from '../../utils/cursorTracking';
 
@@ -22,17 +22,17 @@ export const useEditorStatus = (
   content: string,
   selectedText?: string,
   isTyping?: boolean,
-  editorRef?: React.RefObject<EditorRef>,
+  editorRef?: RefObject<EditorRef>,
 ): EditorStatus => {
-  const [cursorPosition, setCursorPosition] = React.useState<CursorPosition>({ line: 1, column: 1 });
-  const [stats, setStats] = React.useState({ wordCount: 0, charCount: 0, readingTime: 0 });
+  const [cursorPosition, setCursorPosition] = useState<CursorPosition>({ line: 1, column: 1 });
+  const [stats, setStats] = useState({ wordCount: 0, charCount: 0, readingTime: 0 });
 
   // Refs for timeout management - critical for proper cleanup
-  const statsTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
-  const cursorTrackerRef = React.useRef<CursorTracker | null>(null);
+  const statsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const cursorTrackerRef = useRef<CursorTracker | null>(null);
 
   // PERFORMANCE FIX: Stable stats calculation to prevent constant recreation
-  const calculateStats = React.useCallback(() => {
+  const calculateStats = useCallback(() => {
     const markdownContent = editorRef?.current?.getMarkdown?.() ?? content;
 
     if (!markdownContent) {
@@ -54,7 +54,7 @@ export const useEditorStatus = (
   }, [content, editorRef]); // CRITICAL: Remove content dep to prevent constant recreation
 
   // Initialize cursor tracker
-  React.useEffect(() => {
+  useEffect(() => {
     cursorTrackerRef.current = new CursorTracker(setCursorPosition, 250);
 
     return () => {
@@ -63,7 +63,7 @@ export const useEditorStatus = (
   }, []);
 
   // Update stats and cursor position (debounced)
-  React.useEffect(() => {
+  useEffect(() => {
     // Clear existing timeout
     if (statsTimeoutRef.current) {
       clearTimeout(statsTimeoutRef.current);
@@ -81,11 +81,14 @@ export const useEditorStatus = (
     };
   }, [content, calculateStats, isTyping]);
 
-  return {
-    cursorPosition,
-    wordCount: stats.wordCount,
-    charCount: stats.charCount,
-    readingTime: stats.readingTime,
-    selectionLength: selectedText?.length ?? 0,
-  };
+  return useMemo(
+    () => ({
+      cursorPosition,
+      wordCount: stats.wordCount,
+      charCount: stats.charCount,
+      readingTime: stats.readingTime,
+      selectionLength: selectedText?.length ?? 0,
+    }),
+    [cursorPosition, stats.wordCount, stats.charCount, stats.readingTime, selectedText],
+  );
 };
