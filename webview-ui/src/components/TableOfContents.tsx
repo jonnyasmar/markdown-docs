@@ -59,7 +59,6 @@ export const TableOfContents: React.FC<TableOfContentsProps> = ({
   if (tocItems.length === 0) {
     Body = (
       <div className="toc-container">
-        <div className="toc-header">Table of Contents</div>
         <div className="toc-empty">No headings found</div>
       </div>
     );
@@ -67,7 +66,6 @@ export const TableOfContents: React.FC<TableOfContentsProps> = ({
 
   Body = (
     <div className="toc-container">
-      <div className="toc-header">Table of Contents</div>
       <nav className="toc-nav">
         {tocItems.map((item, index) => {
           const itemTextStrippedmarkdown = item.text.replace(/[#*_`~]/g, '');

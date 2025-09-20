@@ -284,7 +284,7 @@ export const customSearchPlugin = realmPlugin<CustomSearchPluginParams>({
 
     // Add keyboard shortcut listener for Cmd+F / Ctrl+F
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key === 'f') {
         e.preventDefault();
         e.stopPropagation();
 
