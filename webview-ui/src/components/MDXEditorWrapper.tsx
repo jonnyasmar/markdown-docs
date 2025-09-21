@@ -18,6 +18,7 @@ import { CommentWithAnchor, FontFamily } from '../types';
 import {
   postContentEdit,
   postContentSave,
+  postDirtyState,
   postError,
   postExternalLink,
   postGetFont,
@@ -738,7 +739,7 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       return;
     }
 
-    const markEdited = () => {
+    const markEdited = (event?: Event) => {
       hasUserEditedRef.current = true;
       // If a programmatic set previously requested ignoring one change, clear it now for the first real user edit
       if (ignoreNextChangeRef.current) {
@@ -748,6 +749,22 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
     // input fires for typing, paste, and many programmatic content changes from toolbar
     root.addEventListener('input', markEdited, true);
+
+    // Specific paste event listener
+    const onPaste = (e: Event) => {
+      markEdited(e);
+    };
+    root.addEventListener('paste', onPaste, true);
+
+    // Click event listener for checkbox interactions (task lists)
+    const onClick = (e: Event) => {
+      const target = e.target as HTMLElement;
+      // Check if this is a checkbox input in a task list
+      if (target.tagName === 'INPUT' && target.getAttribute('type') === 'checkbox') {
+        markEdited(e);
+      }
+    };
+    root.addEventListener('click', onClick, true);
 
     // keydown fallback for completeness
     const onKeyDown = (e: KeyboardEvent) => {
@@ -763,6 +780,8 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
 
     return () => {
       root.removeEventListener('input', markEdited, true);
+      root.removeEventListener('paste', onPaste, true);
+      root.removeEventListener('click', onClick, true);
       root.removeEventListener('keydown', onKeyDown, true);
     };
   }, []);
@@ -892,6 +911,9 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
       if (!hasChanges) {
         return;
       }
+
+      // Set dirty state for user edits (including paste operations)
+      postDirtyState(true);
 
       setIsTyping(true);
 
