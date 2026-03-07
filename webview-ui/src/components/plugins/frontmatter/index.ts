@@ -44,7 +44,7 @@ export const insertFrontmatter$ = Action(r => {
     rootEditor?.update(() => {
       const firstItem = $getRoot().getFirstChild();
       if (!$isFrontmatterNode(firstItem)) {
-        const fmNode = $createFrontmatterNode('"": ""');
+        const fmNode = $createFrontmatterNode('');
         if (firstItem) {
           firstItem.insertBefore(fmNode);
         } else {

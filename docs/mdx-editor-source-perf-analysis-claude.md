@@ -1,3 +1,6 @@
+---
+---
+
 # MDXEditor Source Code Performance Analysis - Root Cause Discovery
 
 ## Executive Summary
@@ -41,22 +44,23 @@ export const markdown$ = Cell('', (r) => {
 1. **User types a character** → Lexical editor state updates
 2. **`registerUpdateListener` fires** → Triggers markdown export
 3. **`exportMarkdownFromLexical()` executes**:
-   - Traverses entire Lexical AST tree (every node in document)
-   - Runs visitor pattern matching against 19+ registered visitors
-   - Converts entire document from Lexical AST → MDAST → Markdown string
-   - Processes JSX components, imports, frontmatter, etc.
+   * Traverses entire Lexical AST tree (every node in document)
+   * Runs visitor pattern matching against 19+ registered visitors
+   * Converts entire document from Lexical AST → MDAST → Markdown string
+   * Processes JSX components, imports, frontmatter, etc.
 4. **Process repeats** for every subsequent keystroke
 
 ### Why Performance Degrades Over Time
 
 The operation complexity scales with:
-- **Document length**: Larger documents = more nodes to traverse
-- **Node complexity**: Rich formatting, lists, tables require more processing
-- **Visitor overhead**: 19+ visitor pattern matches per node
-- **String concatenation**: Full document reconstruction on every keystroke
-- **Memory allocation**: New MDAST tree creation for every update
 
-**Result**: What starts as ~5ms per keystroke grows to 50ms+ as document size and complexity increase.
+* **Document length**: Larger documents \= more nodes to traverse
+* **Node complexity**: Rich formatting, lists, tables require more processing
+* **Visitor overhead**: 19+ visitor pattern matches per node
+* **String concatenation**: Full document reconstruction on every keystroke
+* **Memory allocation**: New MDAST tree creation for every update
+
+**Result**: What starts as \~5ms per keystroke grows to 50ms+ as document size and complexity increase.
 
 ## The Visitor Pattern Bottleneck
 
@@ -109,9 +113,10 @@ function visitChildren(lexicalNode: LexicalElementNode, parentNode: Mdast.Parent
 ```
 
 **Performance Impact**:
-- For a document with N nodes and V visitors: **O(N × V)** complexity per keystroke
-- With 19 visitors and 1000 nodes: **19,000 visitor tests per keystroke**
-- Recursive tree traversal visits every single node in the document
+
+* For a document with N nodes and V visitors: **O(N × V)** complexity per keystroke
+* With 19 visitors and 1000 nodes: **19,000 visitor tests per keystroke**
+* Recursive tree traversal visits every single node in the document
 
 ## Architectural Design Flaw
 
@@ -131,45 +136,53 @@ MDXEditor's architecture assumes it must **always maintain a perfectly synchroni
 ## Comparison: Why Lexical Playground Doesn't Have This Issue
 
 The user's breakthrough discovery showed:
-- ✅ **Lexical Playground**: No performance degradation
-- ❌ **MDXEditor Playground**: Same performance degradation as user's app
+
+* ✅ **Lexical Playground**: No performance degradation
+* ❌ **MDXEditor Playground**: Same performance degradation as user's app
 
 **Why Lexical is Fast**:
-- Lexical maintains internal editor state efficiently
-- No automatic markdown export on every update
-- Export happens only when explicitly requested
-- Optimized for interactive editing, not continuous serialization
+
+* Lexical maintains internal editor state efficiently
+* No automatic markdown export on every update
+* Export happens only when explicitly requested
+* Optimized for interactive editing, not continuous serialization
 
 **Why MDXEditor is Slow**:
-- Forces continuous markdown synchronization
-- Treats markdown export as primary state representation
-- Architectural assumption that markdown must always be "current"
+
+* Forces continuous markdown synchronization
+* Treats markdown export as primary state representation
+* Architectural assumption that markdown must always be "current"
 
 ## Evidence Supporting Root Cause
 
 ### 1. Timing Correlation
-- **User observation**: "Issue is typing frequency dependent, not content dependent"
-- **Root cause**: More typing = more `registerUpdateListener` calls = more exports
-- **Perfect match**: Explains exponential performance degradation
+
+* **User observation**: "Issue is typing frequency dependent, not content dependent"
+* **Root cause**: More typing \= more `registerUpdateListener` calls \= more exports
+* **Perfect match**: Explains exponential performance degradation
 
 ### 2. Playground Isolation
-- **User discovery**: MDXEditor playground shows same issue
-- **Root cause**: Same `registerUpdateListener` + `exportMarkdownFromLexical` code
-- **Confirms**: Issue is in MDXEditor core, not user's wrapper code
+
+* **User discovery**: MDXEditor playground shows same issue
+* **Root cause**: Same `registerUpdateListener` + `exportMarkdownFromLexical` code
+* **Confirms**: Issue is in MDXEditor core, not user's wrapper code
 
 ### 3. Content Size Scaling
-- **User observation**: "Complex documents don't matter initially, but get worse over time"
-- **Root cause**: Larger documents = more nodes to traverse per export
-- **Exponential**: O(N × V) complexity means both document size AND typing frequency matter
+
+* **User observation**: "Complex documents don't matter initially, but get worse over time"
+* **Root cause**: Larger documents \= more nodes to traverse per export
+* **Exponential**: O(N × V) complexity means both document size AND typing frequency matter
 
 ### 4. Plugin Optimization Ineffectiveness
-- **User finding**: "Emptying plugin dependencies had no effect"
-- **Root cause**: Issue is in core markdown export, not plugin reconfiguration
-- **Confirms**: Problem is architectural, not implementation detail
+
+* **User finding**: "Emptying plugin dependencies had no effect"
+* **Root cause**: Issue is in core markdown export, not plugin reconfiguration
+* **Confirms**: Problem is architectural, not implementation detail
 
 ## Performance Metrics Estimation
 
 ### Current Performance (Per Keystroke)
+
 ```
 Small document (100 nodes, 19 visitors):
 - Visitor tests: 1,900 operations
@@ -185,6 +198,7 @@ Large document (1,000 nodes, 19 visitors):
 ```
 
 ### Optimal Performance (Lazy Export)
+
 ```
 Any document size:
 - Keystroke processing: Native Lexical (1-2ms)
@@ -195,6 +209,7 @@ Any document size:
 ## The Core Architecture Problem
 
 ### Current Flow (Problematic)
+
 ```
 User types → Lexical state updates → registerUpdateListener fires
 → exportMarkdownFromLexical() → Full AST traversal 
@@ -203,6 +218,7 @@ User types → Lexical state updates → registerUpdateListener fires
 ```
 
 ### Optimal Flow (Not Implemented)
+
 ```
 User types → Lexical state updates → Efficient internal state management
 → Continue typing with native Lexical performance
@@ -216,7 +232,9 @@ When export needed (save, copy, etc.) → exportMarkdownFromLexical()
 The core markdown export isn't the only performance issue. Additional `registerUpdateListener` calls found:
 
 ### 1. Frontmatter Plugin
+
 **File**: `editor/src/plugins/frontmatter/index.ts:79`
+
 ```typescript
 return rootEditor.registerUpdateListener(({ editorState }) => {
   editorState.read(() => {
@@ -225,8 +243,10 @@ return rootEditor.registerUpdateListener(({ editorState }) => {
 })
 ```
 
-### 2. Image Plugin  
+### 2. Image Plugin
+
 **File**: `editor/src/plugins/image/ImageEditor.tsx:210`
+
 ```typescript
 editor.registerUpdateListener(({ editorState }) => {
   // Image state tracking logic
@@ -234,7 +254,9 @@ editor.registerUpdateListener(({ editorState }) => {
 ```
 
 ### 3. Additional Core Listeners
+
 **File**: `editor/src/plugins/core/index.ts:624`
+
 ```typescript
 return editor.registerUpdateListener(({ editorState }) => {
   // Additional state management
@@ -246,6 +268,7 @@ return editor.registerUpdateListener(({ editorState }) => {
 ## Solutions and Workarounds
 
 ### 1. Immediate Workaround (User-Level)
+
 Since the issue is in MDXEditor core, no wrapper-level optimization can fix it. However:
 
 ```typescript
@@ -263,6 +286,7 @@ const debouncedOnChange = useMemo(() =>
 **Limitation**: This only reduces external processing, not MDXEditor's internal export operations.
 
 ### 2. MDXEditor Core Fix (Requires Fork/PR)
+
 ```typescript
 // Replace automatic export with lazy export
 export const markdown$ = Cell('', (r) => {
@@ -283,18 +307,19 @@ const exportedMarkdown = r.getValue(exportMarkdown$)();
 ```
 
 ### 3. Alternative Approach
+
 Consider switching to pure Lexical with custom markdown serialization that runs only when needed, not on every keystroke.
 
 ## Conclusion
 
 The progressive typing performance degradation in MDXEditor is caused by a **fundamental architectural design flaw** in the core plugin system. MDXEditor executes a complete, expensive markdown export operation (`exportMarkdownFromLexical`) on every single editor state change through `registerUpdateListener`.
 
-This creates **O(N × V) complexity per keystroke** where N = number of nodes in document and V = number of export visitors (19+). As users type more content, both the document size grows AND the frequency of expensive operations increases, creating exponential performance degradation.
+This creates **O(N × V) complexity per keystroke** where N \= number of nodes in document and V \= number of export visitors (19+). As users type more content, both the document size grows AND the frequency of expensive operations increases, creating exponential performance degradation.
 
 The issue cannot be fixed at the wrapper level because it's embedded in MDXEditor's core architecture. The only solutions are:
 
 1. **Fork MDXEditor** and implement lazy export
-2. **Switch to pure Lexical** with custom serialization  
+2. **Switch to pure Lexical** with custom serialization
 3. **Submit PR to MDXEditor** to fix the architectural issue
 4. **Live with degraded performance** as an inherent limitation
 
@@ -303,11 +328,13 @@ The user's testing methodology that isolated the issue to MDXEditor (not Lexical
 ## Recommendations
 
 ### For Immediate Relief
+
 1. Keep documents shorter when possible
 2. Consider breaking large documents into sections
 3. Implement external debouncing to reduce downstream processing
 
 ### For Long-term Solution
+
 1. Consider contributing a fix to MDXEditor's open source project
 2. Evaluate switching to pure Lexical with custom export logic
 3. Monitor MDXEditor releases for performance improvements
@@ -319,9 +346,10 @@ This analysis definitively resolves the mystery of MDXEditor's progressive typin
 ### User's Critical Observation: Ladle Stories Don't Show the Issue
 
 **Testing Results**:
-- ✅ **Ladle Stories (localhost:61000)**: No performance degradation during typing
-- ❌ **MDXEditor Live Demo**: Exhibits the performance degradation
-- ❌ **User's VS Code Extension**: Exhibits the performance degradation
+
+* ✅ **Ladle Stories (localhost:61000)**: No performance degradation during typing
+* ❌ **MDXEditor Live Demo**: Exhibits the performance degradation
+* ❌ **User's VS Code Extension**: Exhibits the performance degradation
 
 This suggests the issue may be **build environment dependent** rather than purely architectural.
 
@@ -338,24 +366,27 @@ react(IN_LADLE ? {} : { jsxRuntime: 'classic' } as const),
 ```
 
 **Key Difference**:
-- **Ladle Development**: Uses modern React JSX transform (automatic runtime)
-- **Production Builds**: Uses classic JSX transform (`jsxRuntime: 'classic'`)
+
+* **Ladle Development**: Uses modern React JSX transform (automatic runtime)
+* **Production Builds**: Uses classic JSX transform (`jsxRuntime: 'classic'`)
 
 **Potential Impact**: Different JSX transforms could affect React's reconciliation performance and component re-rendering behavior.
 
 #### 2. Development vs Production Bundle Differences
 
 **Development (Ladle)**:
-- Hot Module Replacement (HMR) enabled
-- Source maps available
-- Unminified code with development warnings
-- React development mode optimizations
+
+* Hot Module Replacement (HMR) enabled
+* Source maps available
+* Unminified code with development warnings
+* React development mode optimizations
 
 **Production Builds**:
-- Minified and optimized code (`minify: 'terser'`)
-- Tree-shaking applied
-- Production React build optimizations
-- Module preservation (`preserveModules: true`)
+
+* Minified and optimized code (`minify: 'terser'`)
+* Tree-shaking applied
+* Production React build optimizations
+* Module preservation (`preserveModules: true`)
 
 ### Hypothesis: React Development Mode Performance Characteristics
 
@@ -370,11 +401,13 @@ react(IN_LADLE ? {} : { jsxRuntime: 'classic' } as const),
 ### Testing Hypothesis
 
 **Recommended Test**:
+
 1. **Build Production Ladle**: Create a production build of the Ladle stories and test performance
 2. **Development Build in Extension**: Try running your VS Code extension with development MDXEditor build
 3. **JSX Runtime Test**: Modify your extension to use automatic JSX runtime and test performance
 
 **Commands to Test**:
+
 ```bash
 # In MDXEditor repo
 npm run build  # Create production build
@@ -388,10 +421,11 @@ LADLE=true npm run build  # If this mode exists
 
 The **architectural issue remains valid** - `registerUpdateListener` + `exportMarkdownFromLexical` is still the core bottleneck. However, the **development vs production environment** difference suggests:
 
-**Primary Issue**: Architectural flaw in markdown export frequency  
+**Primary Issue**: Architectural flaw in markdown export frequency
 **Secondary Issue**: Production build optimizations that exacerbate the performance problem
 
 **Possible Explanations**:
+
 1. **React DevTools**: Development mode React might have built-in throttling for excessive updates
 2. **Bundle Caching**: Development mode might cache the visitor pattern results differently
 3. **Minification Side Effects**: Terser minification might be breaking performance optimizations in the visitor pattern
@@ -400,18 +434,21 @@ The **architectural issue remains valid** - `registerUpdateListener` + `exportMa
 ### Updated Recommendations
 
 #### Immediate Testing
+
 1. **Verify with Production Ladle Build**: Build production version of Ladle stories and test
 2. **Development Build Test**: Use development MDXEditor build in your extension
 3. **JSX Runtime Test**: Try automatic JSX runtime in your extension
 
 #### If Development Build Fixes Performance
-- Use development MDXEditor build as workaround
-- Investigate what specific production optimizations cause the issue
-- Submit bug report to MDXEditor about production performance regression
+
+* Use development MDXEditor build as workaround
+* Investigate what specific production optimizations cause the issue
+* Submit bug report to MDXEditor about production performance regression
 
 #### If Issue Persists in All Builds
-- Original architectural analysis stands
-- Fork MDXEditor and implement lazy export pattern
-- Or switch to pure Lexical with custom export logic
+
+* Original architectural analysis stands
+* Fork MDXEditor and implement lazy export pattern
+* Or switch to pure Lexical with custom export logic
 
 This discovery significantly changes the troubleshooting approach and suggests the issue might be more nuanced than pure architectural design - it could be a production build optimization gone wrong.

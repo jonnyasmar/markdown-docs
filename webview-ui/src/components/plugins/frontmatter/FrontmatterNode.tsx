@@ -9,7 +9,7 @@ import {
 } from 'lexical';
 import React, { JSX } from 'react';
 
-import { FrontmatterEditor } from './FrontmatterEditor';
+import { FrontmatterInlineEditor } from './FrontmatterInlineEditor';
 
 /**
  * A serialized representation of an {@link FrontmatterNode}.
@@ -76,7 +76,7 @@ export class FrontmatterNode extends DecoratorNode<JSX.Element> {
   }
 
   decorate(editor: LexicalEditor): JSX.Element {
-    return null;
+    return <FrontmatterInlineEditor yaml={this.__yaml} nodeKey={this.__key} editor={editor} />;
   }
 
   isKeyboardSelectable(): boolean {

@@ -2225,3 +2225,61 @@ body {
 [class*='_tableEditor_'] thead > tr > th {
   text-align: center !important;
 }
+
+/* ===== FRONTMATTER INLINE EDITOR ===== */
+
+.frontmatter-inline {
+  margin: 0 0 1.25em 0;
+  border-radius: 4px;
+  background: var(--vscode-textCodeBlock-background, rgba(128, 128, 128, 0.1));
+  border: 1px solid rgba(128, 128, 128, 0.12);
+  overflow: hidden;
+}
+
+.frontmatter-inline-label {
+  font-family: var(--vscode-font-family, sans-serif);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--vscode-descriptionForeground, rgba(128, 128, 128, 0.7));
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 4px 10px;
+  border-bottom: 1px solid var(--vscode-editorWidget-border, rgba(128, 128, 128, 0.15));
+  user-select: none;
+}
+
+.frontmatter-inline-code {
+  margin: 0;
+  padding: 8px 12px;
+  font-family: var(--vscode-editor-font-family, 'SF Mono', Monaco, Consolas, monospace);
+  font-size: 0.85em;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  color: var(--vscode-editor-foreground);
+  background: transparent;
+  border: none;
+  outline: none;
+  cursor: text;
+}
+
+.frontmatter-inline-code:focus {
+  outline: none;
+}
+
+.fm-key {
+  color: var(--vscode-symbolIcon-propertyForeground, #9cdcfe);
+}
+
+.fm-colon {
+  color: var(--vscode-descriptionForeground, rgba(128, 128, 128, 0.6));
+}
+
+.fm-value {
+  color: var(--vscode-symbolIcon-stringForeground, #ce9178);
+}
+
+.fm-comment {
+  color: var(--vscode-symbolIcon-textForeground, #6a9955);
+  font-style: italic;
+}

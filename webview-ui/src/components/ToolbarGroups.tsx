@@ -1,3 +1,4 @@
+import { hasFrontmatter$, insertFrontmatter$ } from '@/components/plugins/frontmatter';
 import { FontFamily } from '@/types';
 import {
   BlockTypeSelect,
@@ -11,8 +12,20 @@ import {
   ListsToggle,
   Select,
   Separator,
+  TooltipWrap,
 } from '@mdxeditor/editor';
-import { AArrowDown, AArrowUp, AlignCenter, AlignJustify, AlignLeft, AlignRight, BookOpen, Undo } from 'lucide-react';
+import { useCellValue, usePublisher } from '@mdxeditor/gurx';
+import {
+  AArrowDown,
+  AArrowUp,
+  AlignCenter,
+  AlignJustify,
+  AlignLeft,
+  AlignRight,
+  BookOpen,
+  FileText,
+  Undo,
+} from 'lucide-react';
 import { memo } from 'react';
 
 export const ToolbarGroups = memo(
@@ -158,7 +171,7 @@ export const ToolbarGroups = memo(
                 ]}
               />
               <CreateLink />
-              {/* <InsertFrontmatter /> */}
+              <InsertFrontmatterButton />
               <InsertTable />
               <InsertThematicBreak />
               {!isOverflow && <Separator />}
@@ -269,3 +282,20 @@ export const ToolbarGroups = memo(
     );
   },
 );
+
+const InsertFrontmatterButton = () => {
+  const insertFrontmatter = usePublisher(insertFrontmatter$);
+  const hasFrontmatter = useCellValue(hasFrontmatter$);
+
+  return (
+    <TooltipWrap title={hasFrontmatter ? 'Frontmatter already exists' : 'Insert frontmatter'}>
+      <button
+        className="custom-button _toolbarToggleItem_1e2ox_208"
+        disabled={hasFrontmatter}
+        onClick={() => insertFrontmatter()}
+      >
+        <FileText size={16} />
+      </button>
+    </TooltipWrap>
+  );
+};
