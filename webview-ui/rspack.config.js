@@ -24,7 +24,7 @@ const webviewConfig = {
   
   resolve: {
     // support reading TypeScript and JavaScript files, plus JSX
-    extensions: ['.tsx', '.ts', '.jsx', '.js'],
+    extensions: ['.tsx', '.ts', '.jsx', '.js', '.json'],
     alias: {
       '@': path.resolve(__dirname, './src'),
       '@extension': path.resolve(__dirname, '../src')

@@ -3,6 +3,7 @@ import { Toolbar } from '@/components/Toolbar';
 import { commentInsertionPlugin } from '@/components/plugins/commentInsertionPlugin';
 import { customSearchPlugin } from '@/components/plugins/customSearchPlugin';
 import { commentsPlugin } from '@/components/plugins/directives';
+import { emojiShortcodePlugin } from '@/components/plugins/emojiShortcodePlugin';
 import { frontmatterPlugin } from '@/components/plugins/frontmatter';
 import { DirectiveService } from '@/services/directive';
 import { CommentWithAnchor, FontFamily, WebviewMessage } from '@/types';
@@ -529,6 +530,7 @@ export const usePlugins = ({
       markdownShortcutPlugin(),
       customSearchPlugin({}),
       frontmatterPlugin(),
+      emojiShortcodePlugin(),
       diffSourcePluginFactory(),
       imagePluginFactory(),
       commentInsertionPluginFactory(),
