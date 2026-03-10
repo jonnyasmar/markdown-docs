@@ -1,4 +1,5 @@
 import React from 'react';
+import { convertEmojiShortcodes } from '@/utils/emojiShortcodes';
 
 // Simple and reliable approach: escape ALL angle brackets AND protect curly brace patterns
 // Since suppressHtmlProcessing doesn't work reliably, we'll escape everything
@@ -27,12 +28,17 @@ const isInCodeBlock = (text: string, position: number): boolean => {
 };
 
 // Main preprocessing function - escape ALL angle brackets AND protect curly braces, clean up unwanted escaping
+// Also converts emoji shortcodes (e.g., :smile: → 😄) to unicode emoji characters
 export const preprocessAngleBrackets = (markdown: string): string => {
   // First clean up any unwanted escaping from previous processing
   let cleanedMarkdown = markdown;
   cleanedMarkdown = cleanedMarkdown.replace(/\\\[/g, '[');
   cleanedMarkdown = cleanedMarkdown.replace(/\\\]/g, ']');
   cleanedMarkdown = cleanedMarkdown.replace(/\\\|/g, '|');
+
+  // Convert emoji shortcodes to unicode (e.g., :smile: → 😄)
+  // Done early so the editor renders actual emoji characters
+  cleanedMarkdown = convertEmojiShortcodes(cleanedMarkdown);
 
   // Then protect curly brace patterns
   const result = preprocessCurlyBraces(cleanedMarkdown);

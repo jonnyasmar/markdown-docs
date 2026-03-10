@@ -1,5 +1,6 @@
 import * as path from 'path';
 
+import * as nodeEmoji from 'node-emoji';
 import * as vscode from 'vscode';
 
 import { logger } from './utils/logger';
@@ -619,14 +620,92 @@ function preprocessAngleBrackets(markdown: string): string {
 
 function postprocessAngleBrackets(markdown: string): string {
   // First clean up escaped underscores inside curly braces
-  const result = markdown.replace(/\{\{([^}]*)\}\}/g, (match, content) => {
+  let result = markdown.replace(/\{\{([^}]*)\}\}/g, (match, content) => {
     // Remove backslash escaping from underscores within curly braces
     const unescapedContent = (content as string).replace(/\\_/g, '_');
     return `{{${unescapedContent}}}`;
   });
 
   // Then remove backslash escaping from < characters (we no longer escape >)
-  return result.replace(/\\</g, '<');
+  result = result.replace(/\\</g, '<');
+
+  // Remove backslash escaping from emoji characters that MDXEditor may have escaped
+  result = result.replace(/\\([\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{27BF}\u{2B50}\u{2B55}\u{231A}-\u{23F3}\u{23E9}-\u{23EF}\u{25AA}-\u{25FE}\u{2702}-\u{27B0}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{FE0F}\u{200D}\u{20E3}\u{E0020}-\u{E007F}])/gu, '$1');
+
+  // Convert emoji shortcodes (e.g., :smile: → 😄) to unicode
+  // Uses code-aware conversion to skip shortcodes inside code blocks and inline code
+  result = convertEmojiShortcodes(result);
+
+  return result;
+}
+
+/**
+ * Convert emoji shortcodes (e.g., :smile:, :rocket:) to unicode emoji characters.
+ * Respects code contexts — shortcodes inside inline code or fenced code blocks are left untouched.
+ *
+ * NOTE: A parallel implementation exists in webview-ui/src/utils/emojiShortcodes.ts
+ * for the webview build target. Keep both in sync when making changes.
+ */
+function convertEmojiShortcodes(markdown: string): string {
+  if (!markdown) {
+    return markdown;
+  }
+
+  const result: string[] = [];
+  let i = 0;
+
+  while (i < markdown.length) {
+    // Check for fenced code block (``` or ~~~)
+    if (
+      (markdown[i] === '`' && markdown.slice(i, i + 3) === '```') ||
+      (markdown[i] === '~' && markdown.slice(i, i + 3) === '~~~')
+    ) {
+      const fence = markdown.slice(i, i + 3);
+      const endIndex = markdown.indexOf('\n' + fence, i + 3);
+      if (endIndex !== -1) {
+        let closeEnd = endIndex + 1 + fence.length;
+        while (closeEnd < markdown.length && markdown[closeEnd] !== '\n') {
+          closeEnd++;
+        }
+        result.push(markdown.slice(i, closeEnd));
+        i = closeEnd;
+      } else {
+        result.push(markdown.slice(i));
+        i = markdown.length;
+      }
+      continue;
+    }
+
+    // Check for inline code (backtick)
+    if (markdown[i] === '`') {
+      const endIndex = markdown.indexOf('`', i + 1);
+      if (endIndex !== -1) {
+        result.push(markdown.slice(i, endIndex + 1));
+        i = endIndex + 1;
+      } else {
+        result.push(markdown.slice(i));
+        i = markdown.length;
+      }
+      continue;
+    }
+
+    // Regular text — collect until the next code boundary
+    let textEnd = i;
+    while (
+      textEnd < markdown.length &&
+      markdown[textEnd] !== '`' &&
+      !(markdown[textEnd] === '~' && markdown.slice(textEnd, textEnd + 3) === '~~~')
+    ) {
+      textEnd++;
+    }
+
+    // Apply emoji conversion to this text segment
+    const textSegment = markdown.slice(i, textEnd);
+    result.push(nodeEmoji.emojify(textSegment));
+    i = textEnd;
+  }
+
+  return result.join('');
 }
 
 export function activate(context: vscode.ExtensionContext): void {
