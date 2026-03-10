@@ -78,14 +78,15 @@ function setCaretOffset(element: HTMLElement, offset: number) {
 export const FrontmatterInlineEditor: React.FC<FrontmatterInlineEditorProps> = ({ yaml, nodeKey, editor }) => {
   const preRef = useRef<HTMLPreElement>(null);
   const isLocalEdit = useRef(false);
+  const [collapsed, setCollapsed] = React.useState(true);
 
-  // Set initial highlighted content on mount
+  // Apply highlight when pre mounts (initial or after expanding)
   useEffect(() => {
-    if (preRef.current) {
+    if (!collapsed && preRef.current) {
       applyHighlight(preRef.current, yaml);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [collapsed]);
 
   // Sync external changes (undo/redo) — skip if we just typed
   useEffect(() => {
@@ -123,18 +124,23 @@ export const FrontmatterInlineEditor: React.FC<FrontmatterInlineEditorProps> = (
   }, []);
 
   return (
-    <div className="frontmatter-inline" contentEditable={false}>
-      <div className="frontmatter-inline-label">Frontmatter</div>
-      <pre
-        ref={preRef}
-        className="frontmatter-inline-code"
-        contentEditable
-        suppressContentEditableWarning
-        onInput={handleInput}
-        onKeyDown={stopPropagation}
-        onKeyUp={stopPropagation}
-        spellCheck={false}
-      />
+    <div className={`frontmatter-inline ${collapsed ? 'frontmatter-collapsed' : ''}`} contentEditable={false}>
+      <div className="frontmatter-inline-label" onClick={() => setCollapsed(c => !c)}>
+        <span className="frontmatter-toggle">{collapsed ? '▶' : '▼'}</span>
+        Frontmatter
+      </div>
+      {!collapsed && (
+        <pre
+          ref={preRef}
+          className="frontmatter-inline-code"
+          contentEditable
+          suppressContentEditableWarning
+          onInput={handleInput}
+          onKeyDown={stopPropagation}
+          onKeyUp={stopPropagation}
+          spellCheck={false}
+        />
+      )}
     </div>
   );
 };

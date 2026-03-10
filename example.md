@@ -1,3 +1,10 @@
+---
+title: Markdown Docs Example
+author: Jonny Asmar
+description: A comprehensive example showcasing the features of the Markdown Docs VS Code extension.
+version: 1.2.26
+---
+
 # Markdown Docs: Example Document
 
 This comprehensive example demonstrates the powerful features of the Markdown Docs VS Code extension. It showcases various Markdown elements enhanced by the extension's capabilities, providing a hands-on exploration of editing, commenting, searching, and formatting features in action.

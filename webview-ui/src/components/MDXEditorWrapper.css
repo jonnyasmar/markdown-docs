@@ -2246,6 +2246,18 @@ body {
   padding: 4px 10px;
   border-bottom: 1px solid var(--vscode-editorWidget-border, rgba(128, 128, 128, 0.15));
   user-select: none;
+  cursor: pointer;
+}
+
+.frontmatter-collapsed .frontmatter-inline-label {
+  border-bottom: none;
+}
+
+.frontmatter-toggle {
+  display: inline-block;
+  font-size: 9px;
+  margin-right: 4px;
+  transition: transform 0.15s ease;
 }
 
 .frontmatter-inline-code {
