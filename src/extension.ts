@@ -21,6 +21,8 @@ interface WebviewMessage {
   bookViewWidth?: string;
   bookViewMargin?: string;
   isInteracting?: boolean;
+  url?: string;
+  relativePath?: string;
   settings?: {
     defaultFont: string;
     fontSize: number;
@@ -407,6 +409,44 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
               userInteractionRegistry.add(fileUri);
             } else {
               userInteractionRegistry.delete(fileUri);
+            }
+            break;
+          }
+
+          case 'resolveLink': {
+            if (message.relativePath) {
+              const workspaceFolders = vscode.workspace.workspaceFolders;
+              const workspaceRoot = workspaceFolders && workspaceFolders.length > 0
+                ? workspaceFolders[0].uri
+                : vscode.Uri.joinPath(document.uri, '..');
+              const documentDir = vscode.Uri.joinPath(document.uri, '..');
+
+              // Try resolving as a local file: workspace root first, then document-relative
+              const workspaceUri = vscode.Uri.joinPath(workspaceRoot, message.relativePath);
+              const documentUri = vscode.Uri.joinPath(documentDir, message.relativePath);
+
+              let opened = false;
+              try {
+                await vscode.workspace.fs.stat(workspaceUri);
+                this.outputChannel.appendLine(`Opening local file (workspace): ${workspaceUri.toString()}`);
+                await vscode.commands.executeCommand('vscode.open', workspaceUri);
+                opened = true;
+              } catch {
+                try {
+                  await vscode.workspace.fs.stat(documentUri);
+                  this.outputChannel.appendLine(`Opening local file (document-relative): ${documentUri.toString()}`);
+                  await vscode.commands.executeCommand('vscode.open', documentUri);
+                  opened = true;
+                } catch {
+                  // Not a local file
+                }
+              }
+
+              // If not found locally, open as external URL in browser
+              if (!opened && message.url) {
+                this.outputChannel.appendLine(`Opening external link: ${message.url}`);
+                await vscode.env.openExternal(vscode.Uri.parse(message.url));
+              }
             }
             break;
           }
