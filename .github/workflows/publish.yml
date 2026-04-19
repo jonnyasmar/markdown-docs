@@ -46,8 +46,8 @@ jobs:
       with:
         node-version: '20.x'
 
-    - name: Install vsce
-      run: npm install -g vsce
+    - name: Install vsce and ovsx
+      run: npm install -g @vscode/vsce ovsx
 
     - name: Install root dependencies (for publish job)
       run: npm install
@@ -55,7 +55,15 @@ jobs:
     - name: Install webview-ui dependencies (for publish job)
       run: cd webview-ui && npm install
 
-    - name: Publish extension
-      run: vsce publish -p ${{ secrets.VSCE_TOKEN }}
-      env:
-        VSCE_TOKEN: ${{ secrets.VSCE_TOKEN }}
+    - name: Package extension
+      run: vsce package
+
+    - name: Read version
+      id: version
+      run: echo "value=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+
+    - name: Publish to VS Code Marketplace
+      run: vsce publish --packagePath markdown-docs-${{ steps.version.outputs.value }}.vsix -p ${{ secrets.VSCE_TOKEN }}
+
+    - name: Publish to Open VSX
+      run: ovsx publish markdown-docs-${{ steps.version.outputs.value }}.vsix -p ${{ secrets.OPEN_VSX_TOKEN }}
