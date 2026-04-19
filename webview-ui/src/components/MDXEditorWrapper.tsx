@@ -20,9 +20,9 @@ import {
   postContentSave,
   postDirtyState,
   postError,
-  postExternalLink,
   postGetFont,
   postReady,
+  postToExtension,
   postUserInteraction,
 } from '../utils/extensionMessaging';
 import { logger } from '../utils/logger';
@@ -224,39 +224,73 @@ export const MDXEditorWrapper: React.FC<MDXEditorWrapperProps> = ({
   }, []);
 
   // Handle link clicks in the editor
+  // Uses a capturing listener on document to intercept clicks before VS Code's
+  // webview navigation handler can see them.
   useEffect(() => {
     const handleLinkClick = (event: Event) => {
       const target = event.target as HTMLElement;
+      const mouseEvent = event as MouseEvent;
 
       // Check if clicked element is a link
       if (target.tagName === 'A' || target.closest('a')) {
         const link =
           target.tagName === 'A' ? (target as HTMLAnchorElement) : (target.closest('a') as HTMLAnchorElement);
-        const href = link?.getAttribute('href');
+        // Use .href property (resolved URL) to detect local files,
+        // fall back to getAttribute for raw value
+        const resolvedHref = link?.href || '';
+        const rawHref = link?.getAttribute('href') || '';
+        const href = resolvedHref || rawHref;
 
         if (!href) {
           return;
         }
 
-        (event as MouseEvent).preventDefault();
-
         // Handle internal anchor links (e.g., #heading)
-        if (href.startsWith('#')) {
-          const headingId = href.substring(1);
+        if (rawHref.startsWith('#')) {
+          mouseEvent.preventDefault();
+          mouseEvent.stopImmediatePropagation();
+          const headingId = rawHref.substring(1);
           handleHeadingNavigation(headingId);
+          return;
         }
-        // Handle external links
-        else if (href.startsWith('http://') || href.startsWith('https://')) {
-          postExternalLink(href);
+
+        // All non-anchor links: try to resolve as a local file first.
+        // Lexical's formatUrl() prepends "https://" to relative paths like
+        // "people/file.md", making them "https://people/file.md".
+        // Instead of heuristic detection, we send the URL to the extension
+        // which tries to resolve it locally — if the file doesn't exist,
+        // it falls back to opening in the browser.
+        if (href.startsWith('http://') || href.startsWith('https://')) {
+          mouseEvent.preventDefault();
+          mouseEvent.stopImmediatePropagation();
+          mouseEvent.stopPropagation();
+          // Strip the https:// prefix and trailing slash to recover the original relative path
+          const strippedPath = href.replace(/^https?:\/\//, '').replace(/\/$/, '');
+          postToExtension({
+            command: 'resolveLink',
+            relativePath: strippedPath,
+            url: href,
+          });
+          return;
+        }
+
+        // Handle relative file links directly (without http scheme)
+        if (rawHref) {
+          mouseEvent.preventDefault();
+          mouseEvent.stopImmediatePropagation();
+          mouseEvent.stopPropagation();
+          postToExtension({
+            command: 'resolveLink',
+            relativePath: rawHref,
+            url: rawHref,
+          });
         }
       }
     };
 
-    const editorContainer = document.querySelector('.mdxeditor-root-contenteditable');
-    if (editorContainer) {
-      editorContainer.addEventListener('click', handleLinkClick);
-      return () => editorContainer.removeEventListener('click', handleLinkClick);
-    }
+    // Use capturing phase (true) to intercept before VS Code's webview handler
+    document.addEventListener('click', handleLinkClick, true);
+    return () => document.removeEventListener('click', handleLinkClick, true);
   }, [handleHeadingNavigation]);
 
   // Load saved font preference from VS Code settings on mount and signal ready

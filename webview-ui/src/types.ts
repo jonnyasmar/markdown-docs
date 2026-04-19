@@ -50,6 +50,7 @@ export interface WebviewMessage {
   bookViewMargin?: string;
   isInteracting?: boolean;
   url?: string;
+  relativePath?: string;
   settings?: EditorSettings;
   editorConfig?: { wordWrap: string };
   uri?: string;
