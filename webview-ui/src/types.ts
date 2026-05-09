@@ -56,6 +56,7 @@ export interface WebviewMessage {
   uri?: string;
   filename?: string;
   sourceUri?: string;
+  requestId?: string;
 }
 
 export interface VSCodeAPI {

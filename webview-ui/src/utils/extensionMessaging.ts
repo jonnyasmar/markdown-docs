@@ -119,11 +119,17 @@ export const postGetFont = (): void => {
   });
 };
 
-export const postImageUri = (data: string | ArrayBuffer, filename?: string, sourceUri?: string): void => {
+export const postImageUri = (
+  data: string | ArrayBuffer | undefined,
+  filename: string | undefined,
+  sourceUri: string | undefined,
+  requestId: string,
+): void => {
   postToExtension({
     command: 'getImageUri',
     data,
     filename,
     sourceUri,
+    requestId,
   });
 };

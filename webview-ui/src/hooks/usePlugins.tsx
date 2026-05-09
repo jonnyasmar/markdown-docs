@@ -42,6 +42,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const pendingPasteSourceUris: string[] = [];
 
+const IMAGE_EXT_RE = /\.(?:png|jpe?g|gif|svg|webp|avif|bmp|ico)(?:[?#].*)?$/i;
+
 const uriBasename = (uri: string): string => {
   try {
     const last = uri.split('/').pop() ?? '';
@@ -49,6 +51,57 @@ const uriBasename = (uri: string): string => {
   } catch {
     return '';
   }
+};
+
+const collectImageFileUrisFromClipboard = (clipboardData: DataTransfer): string[] => {
+  const result: string[] = [];
+  const seen = new Set<string>();
+  const push = (candidate: string | undefined) => {
+    if (!candidate) return;
+    const trimmed = candidate.trim();
+    if (!trimmed || /[\r\n]/.test(trimmed) || seen.has(trimmed)) return;
+    if (!IMAGE_EXT_RE.test(trimmed)) return;
+    seen.add(trimmed);
+    result.push(trimmed);
+  };
+
+  const uriList = clipboardData.getData('text/uri-list');
+  if (uriList) {
+    uriList.split(/\r?\n/).forEach(line => {
+      const trimmed = line.trim();
+      if (trimmed && !trimmed.startsWith('#')) {
+        push(trimmed);
+      }
+    });
+  }
+
+  push(clipboardData.getData('text/plain'));
+
+  return result;
+};
+
+const encodeImagePathForMarkdown = (p: string): string =>
+  p
+    .split('/')
+    .map(seg => encodeURIComponent(seg).replace(/%2F/gi, '/'))
+    .join('/');
+
+const requestImageUri = (
+  data: string | ArrayBuffer | undefined,
+  filename: string | undefined,
+  sourceUri: string | undefined,
+): Promise<string> => {
+  const requestId = `img-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return new Promise(resolve => {
+    const handle = (event: MessageEvent<WebviewMessage>) => {
+      if (event.data.command === 'imageUri' && event.data.requestId === requestId) {
+        window.removeEventListener('message', handle);
+        resolve(event.data.uri ?? '');
+      }
+    };
+    window.addEventListener('message', handle);
+    postImageUri(data, filename, sourceUri, requestId);
+  });
 };
 
 interface UsePluginsProps {
@@ -236,20 +289,62 @@ export const usePlugins = ({
   }, [bookViewMargin]);
 
   useEffect(() => {
-    const onPaste = (e: ClipboardEvent) => {
+    const handle = (data: DataTransfer | null, e: Event, source: 'paste' | 'drop') => {
       pendingPasteSourceUris.length = 0;
-      const uriList = e.clipboardData?.getData('text/uri-list');
-      if (!uriList) return;
-      uriList.split(/\r?\n/).forEach(line => {
-        const trimmed = line.trim();
-        if (trimmed && !trimmed.startsWith('#') && trimmed.startsWith('file://')) {
-          pendingPasteSourceUris.push(trimmed);
-        }
+      if (!data) return;
+
+      const hasImageBinary =
+        Array.from(data.items).some(item => item.kind === 'file' && item.type.startsWith('image/')) ||
+        Array.from(data.files).some(f => f.type.startsWith('image/'));
+      const imageUris = collectImageFileUrisFromClipboard(data);
+
+      logger.info(`${source} event`, {
+        types: Array.from(data.types),
+        hasImageBinary,
+        plainText: data.getData('text/plain'),
+        uriList: data.getData('text/uri-list'),
+        imageUris,
       });
+
+      if (imageUris.length === 0) return;
+
+      if (hasImageBinary) {
+        pendingPasteSourceUris.push(...imageUris);
+        return;
+      }
+
+      e.preventDefault();
+      e.stopPropagation();
+      void (async () => {
+        for (const uri of imageUris) {
+          const resolved = await requestImageUri(undefined, undefined, uri);
+          logger.info(`${source} resolution`, { uri, resolved });
+          if (resolved) {
+            editorRef.current?.insertMarkdown(`![](${encodeImagePathForMarkdown(resolved)})\n`);
+          }
+        }
+      })();
     };
+
+    const onPaste = (e: ClipboardEvent) => handle(e.clipboardData, e, 'paste');
+    const onDrop = (e: DragEvent) => handle(e.dataTransfer, e, 'drop');
+    const onDragOver = (e: DragEvent) => {
+      if (!e.dataTransfer) return;
+      const types = Array.from(e.dataTransfer.types);
+      if (types.includes('text/uri-list') || types.includes('Files')) {
+        e.preventDefault();
+      }
+    };
+
     document.addEventListener('paste', onPaste, true);
-    return () => document.removeEventListener('paste', onPaste, true);
-  }, []);
+    document.addEventListener('drop', onDrop, true);
+    document.addEventListener('dragover', onDragOver, true);
+    return () => {
+      document.removeEventListener('paste', onPaste, true);
+      document.removeEventListener('drop', onDrop, true);
+      document.removeEventListener('dragover', onDragOver, true);
+    };
+  }, [editorRef]);
 
   const availableFonts = Object.keys(fontFamilyMap);
 
@@ -308,24 +403,15 @@ export const usePlugins = ({
             pendingPasteSourceUris.splice(matchIndex, 1);
           }
 
-          return new Promise(resolve => {
+          const data = await new Promise<string | ArrayBuffer | undefined>(resolve => {
             const reader = new FileReader();
-            reader.onload = e => {
-              const data = e.target?.result;
-              if (data) {
-                postImageUri(data, image.name, sourceUri);
-                const handleUri = (event: MessageEvent<WebviewMessage>) => {
-                  if (event.data.command === 'imageUri') {
-                    window.removeEventListener('message', handleUri);
-                    resolve(event.data.uri ?? '');
-                  }
-                };
-
-                window.addEventListener('message', handleUri);
-              }
-            };
+            reader.onload = e => resolve(e.target?.result ?? undefined);
+            reader.onerror = () => resolve(undefined);
             reader.readAsDataURL(image);
           });
+          if (!data) return '';
+
+          return requestImageUri(data, image.name, sourceUri);
         },
         imageAutocompleteSuggestions: ['media/', './media/', '../media/'],
       }),

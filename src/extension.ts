@@ -27,6 +27,7 @@ interface WebviewMessage {
   data?: string;
   filename?: string;
   sourceUri?: string;
+  requestId?: string;
   settings?: {
     defaultFont: string;
     fontSize: number;
@@ -465,6 +466,7 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
             void webviewPanel.webview.postMessage({
               command: 'imageUri',
               uri: relativePath ?? '',
+              requestId: message.requestId,
             });
             break;
           }
@@ -504,43 +506,62 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
     filename: string | undefined,
     sourceUri: string | undefined,
   ): Promise<string | undefined> {
-    const inProject = await this.resolveInProjectImage(document, sourceUri);
+    const sourceFileUri = await this.resolveSourceUriCandidate(document, sourceUri);
+    if (sourceUri) {
+      this.outputChannel.appendLine(
+        `resolveOrSavePastedImage: sourceUri="${sourceUri}" → ${sourceFileUri?.fsPath ?? '(unresolved)'}`,
+      );
+    }
+
+    const inProject = sourceFileUri ? await this.resolveInProjectImage(document, sourceFileUri) : undefined;
     if (inProject) {
       this.outputChannel.appendLine(`resolveOrSavePastedImage: reusing in-project image ${inProject}`);
       return inProject;
     }
 
-    if (!dataUrl) {
-      return undefined;
-    }
-
-    const match = /^data:(?<mime>[^;]+);base64,(?<payload>.+)$/.exec(dataUrl);
-    if (!match?.groups) {
-      this.outputChannel.appendLine('resolveOrSavePastedImage: data URL did not match expected format');
-      return undefined;
-    }
-    const { mime, payload } = match.groups;
-
     const config = vscode.workspace.getConfiguration('markdown-docs');
     const folderSetting = config.get<string>('imagePasteFolder', 'media').trim();
-
     const documentDir = vscode.Uri.joinPath(document.uri, '..');
     const targetDir = folderSetting ? vscode.Uri.joinPath(documentDir, folderSetting) : documentDir;
 
-    const ext = path.extname(filename ?? '') || `.${mime.split('/')[1] || 'png'}`;
-    const baseFromName = filename ? path.basename(filename, path.extname(filename)) : '';
-    const safeBase = baseFromName.replace(/[\\/:*?"<>|]/g, '_').trim() || `image-${Date.now()}`;
+    let bytes: Uint8Array | undefined;
+    let baseName: string | undefined;
+    let extWithDot: string | undefined;
 
-    let candidate = vscode.Uri.joinPath(targetDir, `${safeBase}${ext}`);
+    if (dataUrl) {
+      const match = /^data:(?<mime>[^;]+);base64,(?<payload>.+)$/.exec(dataUrl);
+      if (!match?.groups) {
+        this.outputChannel.appendLine('resolveOrSavePastedImage: data URL did not match expected format');
+        return undefined;
+      }
+      bytes = Buffer.from(match.groups.payload, 'base64');
+      extWithDot = path.extname(filename ?? '') || `.${match.groups.mime.split('/')[1] || 'png'}`;
+      baseName = filename ? path.basename(filename, path.extname(filename)) : '';
+    } else if (sourceFileUri && (await this.fileExists(sourceFileUri))) {
+      try {
+        bytes = await vscode.workspace.fs.readFile(sourceFileUri);
+      } catch (error) {
+        this.outputChannel.appendLine(`resolveOrSavePastedImage: failed to read ${sourceFileUri.fsPath}: ${String(error)}`);
+        return undefined;
+      }
+      extWithDot = path.extname(sourceFileUri.fsPath) || '.png';
+      baseName = path.basename(sourceFileUri.fsPath, path.extname(sourceFileUri.fsPath));
+    } else {
+      return undefined;
+    }
+
+    const safeBase = (baseName ?? '').replace(/[\\/:*?"<>|]/g, '_').trim() || `image-${Date.now()}`;
+
+    let candidate = vscode.Uri.joinPath(targetDir, `${safeBase}${extWithDot}`);
     let counter = 1;
     while (await this.fileExists(candidate)) {
-      candidate = vscode.Uri.joinPath(targetDir, `${safeBase}-${counter}${ext}`);
+      candidate = vscode.Uri.joinPath(targetDir, `${safeBase}-${counter}${extWithDot}`);
       counter++;
     }
 
     try {
       await vscode.workspace.fs.createDirectory(targetDir);
-      await vscode.workspace.fs.writeFile(candidate, Buffer.from(payload, 'base64'));
+      await vscode.workspace.fs.writeFile(candidate, bytes);
     } catch (error) {
       this.outputChannel.appendLine(`resolveOrSavePastedImage: failed to write image: ${String(error)}`);
       return undefined;
@@ -560,24 +581,46 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
     }
   }
 
-  private async resolveInProjectImage(
+  private async resolveSourceUriCandidate(
     document: vscode.TextDocument,
-    sourceUri: string | undefined,
-  ): Promise<string | undefined> {
-    if (!sourceUri) {
-      return undefined;
-    }
+    input: string | undefined,
+  ): Promise<vscode.Uri | undefined> {
+    if (!input) return undefined;
+    const trimmed = input.trim();
+    if (!trimmed) return undefined;
 
-    let parsed: vscode.Uri;
+    const candidates: vscode.Uri[] = [];
     try {
-      parsed = vscode.Uri.parse(sourceUri);
+      if (/^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed)) {
+        const parsed = vscode.Uri.parse(trimmed);
+        if (parsed.scheme === 'file') candidates.push(parsed);
+      } else if (trimmed.startsWith('/') || /^[A-Za-z]:[\\/]/.test(trimmed)) {
+        candidates.push(vscode.Uri.file(trimmed));
+      } else {
+        const documentDir = vscode.Uri.joinPath(document.uri, '..');
+        candidates.push(vscode.Uri.joinPath(documentDir, trimmed));
+        const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
+        if (workspaceFolder) {
+          candidates.push(vscode.Uri.joinPath(workspaceFolder.uri, trimmed));
+        }
+      }
     } catch {
       return undefined;
     }
-    if (parsed.scheme !== 'file') {
-      return undefined;
+
+    for (const candidate of candidates) {
+      if (await this.fileExists(candidate)) {
+        return candidate;
+      }
     }
-    if (!(await this.fileExists(parsed))) {
+    return undefined;
+  }
+
+  private async resolveInProjectImage(
+    document: vscode.TextDocument,
+    sourceFileUri: vscode.Uri,
+  ): Promise<string | undefined> {
+    if (!(await this.fileExists(sourceFileUri))) {
       return undefined;
     }
 
@@ -585,7 +628,7 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
     const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
     const projectRoot = workspaceFolder?.uri.fsPath ?? documentDir;
 
-    const sourcePath = parsed.fsPath;
+    const sourcePath = sourceFileUri.fsPath;
     const relativeFromRoot = path.relative(projectRoot, sourcePath);
     if (relativeFromRoot.startsWith('..') || path.isAbsolute(relativeFromRoot)) {
       return undefined;
