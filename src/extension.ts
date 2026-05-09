@@ -24,6 +24,9 @@ interface WebviewMessage {
   isInteracting?: boolean;
   url?: string;
   relativePath?: string;
+  data?: string;
+  filename?: string;
+  sourceUri?: string;
   settings?: {
     defaultFont: string;
     fontSize: number;
@@ -451,6 +454,20 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
             }
             break;
           }
+
+          case 'getImageUri': {
+            const relativePath = await this.resolveOrSavePastedImage(
+              document,
+              message.data,
+              message.filename,
+              message.sourceUri,
+            );
+            void webviewPanel.webview.postMessage({
+              command: 'imageUri',
+              uri: relativePath ?? '',
+            });
+            break;
+          }
         }
       } catch (error) {
         this.outputChannel.appendLine(`ERROR in message handler: ${String(error)}`);
@@ -479,6 +496,102 @@ class MarkdownTextEditorProvider implements vscode.CustomTextEditorProvider {
       this.outputChannel.appendLine(`Error in handleCommentOperation: ${String(error)}`);
       console.error('Comment operation error:', error);
     }
+  }
+
+  private async resolveOrSavePastedImage(
+    document: vscode.TextDocument,
+    dataUrl: string | undefined,
+    filename: string | undefined,
+    sourceUri: string | undefined,
+  ): Promise<string | undefined> {
+    const inProject = await this.resolveInProjectImage(document, sourceUri);
+    if (inProject) {
+      this.outputChannel.appendLine(`resolveOrSavePastedImage: reusing in-project image ${inProject}`);
+      return inProject;
+    }
+
+    if (!dataUrl) {
+      return undefined;
+    }
+
+    const match = /^data:(?<mime>[^;]+);base64,(?<payload>.+)$/.exec(dataUrl);
+    if (!match?.groups) {
+      this.outputChannel.appendLine('resolveOrSavePastedImage: data URL did not match expected format');
+      return undefined;
+    }
+    const { mime, payload } = match.groups;
+
+    const config = vscode.workspace.getConfiguration('markdown-docs');
+    const folderSetting = config.get<string>('imagePasteFolder', 'media').trim();
+
+    const documentDir = vscode.Uri.joinPath(document.uri, '..');
+    const targetDir = folderSetting ? vscode.Uri.joinPath(documentDir, folderSetting) : documentDir;
+
+    const ext = path.extname(filename ?? '') || `.${mime.split('/')[1] || 'png'}`;
+    const baseFromName = filename ? path.basename(filename, path.extname(filename)) : '';
+    const safeBase = baseFromName.replace(/[\\/:*?"<>|]/g, '_').trim() || `image-${Date.now()}`;
+
+    let candidate = vscode.Uri.joinPath(targetDir, `${safeBase}${ext}`);
+    let counter = 1;
+    while (await this.fileExists(candidate)) {
+      candidate = vscode.Uri.joinPath(targetDir, `${safeBase}-${counter}${ext}`);
+      counter++;
+    }
+
+    try {
+      await vscode.workspace.fs.createDirectory(targetDir);
+      await vscode.workspace.fs.writeFile(candidate, Buffer.from(payload, 'base64'));
+    } catch (error) {
+      this.outputChannel.appendLine(`resolveOrSavePastedImage: failed to write image: ${String(error)}`);
+      return undefined;
+    }
+
+    const relative = path.relative(documentDir.fsPath, candidate.fsPath).split(path.sep).join('/');
+    this.outputChannel.appendLine(`resolveOrSavePastedImage: wrote ${candidate.fsPath} → ${relative}`);
+    return relative;
+  }
+
+  private async fileExists(uri: vscode.Uri): Promise<boolean> {
+    try {
+      await vscode.workspace.fs.stat(uri);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  private async resolveInProjectImage(
+    document: vscode.TextDocument,
+    sourceUri: string | undefined,
+  ): Promise<string | undefined> {
+    if (!sourceUri) {
+      return undefined;
+    }
+
+    let parsed: vscode.Uri;
+    try {
+      parsed = vscode.Uri.parse(sourceUri);
+    } catch {
+      return undefined;
+    }
+    if (parsed.scheme !== 'file') {
+      return undefined;
+    }
+    if (!(await this.fileExists(parsed))) {
+      return undefined;
+    }
+
+    const documentDir = vscode.Uri.joinPath(document.uri, '..').fsPath;
+    const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
+    const projectRoot = workspaceFolder?.uri.fsPath ?? documentDir;
+
+    const sourcePath = parsed.fsPath;
+    const relativeFromRoot = path.relative(projectRoot, sourcePath);
+    if (relativeFromRoot.startsWith('..') || path.isAbsolute(relativeFromRoot)) {
+      return undefined;
+    }
+
+    return path.relative(documentDir, sourcePath).split(path.sep).join('/');
   }
 
   private async updateTextDocument(document: vscode.TextDocument, newContent: string): Promise<void> {

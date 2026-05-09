@@ -2,7 +2,7 @@
   "name": "markdown-docs",
   "displayName": "Markdown Docs & Comments",
   "description": "WYSIWYG Markdown Editor with Inline Commenting (great for working with AI!)",
-  "version": "1.2.33",
+  "version": "1.3.0",
   "icon": "media/icon.png",
   "publisher": "jonnyasmar",
   "repository": {
@@ -153,6 +153,11 @@
           "type": "boolean",
           "default": true,
           "description": "Enable or disable automatic saving of changes"
+        },
+        "markdown-docs.imagePasteFolder": {
+          "type": "string",
+          "default": "media",
+          "description": "Folder (relative to the current document) where pasted images are saved. Set to '' to save next to the document."
         }
       }
     }

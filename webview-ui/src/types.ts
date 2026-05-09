@@ -54,6 +54,8 @@ export interface WebviewMessage {
   settings?: EditorSettings;
   editorConfig?: { wordWrap: string };
   uri?: string;
+  filename?: string;
+  sourceUri?: string;
 }
 
 export interface VSCodeAPI {

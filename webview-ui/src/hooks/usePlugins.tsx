@@ -40,6 +40,17 @@ import {
 } from '@mdxeditor/editor';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+const pendingPasteSourceUris: string[] = [];
+
+const uriBasename = (uri: string): string => {
+  try {
+    const last = uri.split('/').pop() ?? '';
+    return decodeURIComponent(last);
+  } catch {
+    return '';
+  }
+};
+
 interface UsePluginsProps {
   defaultFont: FontFamily;
   bookView: boolean;
@@ -224,6 +235,22 @@ export const usePlugins = ({
     setLocalBookViewMargin((bookViewMargin || '0.5in').replace('in', ''));
   }, [bookViewMargin]);
 
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      pendingPasteSourceUris.length = 0;
+      const uriList = e.clipboardData?.getData('text/uri-list');
+      if (!uriList) return;
+      uriList.split(/\r?\n/).forEach(line => {
+        const trimmed = line.trim();
+        if (trimmed && !trimmed.startsWith('#') && trimmed.startsWith('file://')) {
+          pendingPasteSourceUris.push(trimmed);
+        }
+      });
+    };
+    document.addEventListener('paste', onPaste, true);
+    return () => document.removeEventListener('paste', onPaste, true);
+  }, []);
+
   const availableFonts = Object.keys(fontFamilyMap);
 
   // Callback for when comment insertion is complete
@@ -274,12 +301,19 @@ export const usePlugins = ({
     () =>
       imagePlugin({
         imageUploadHandler: async (image: File) => {
+          let sourceUri: string | undefined;
+          const matchIndex = pendingPasteSourceUris.findIndex(uri => uriBasename(uri) === image.name);
+          if (matchIndex !== -1) {
+            sourceUri = pendingPasteSourceUris[matchIndex];
+            pendingPasteSourceUris.splice(matchIndex, 1);
+          }
+
           return new Promise(resolve => {
             const reader = new FileReader();
             reader.onload = e => {
               const data = e.target?.result;
               if (data) {
-                postImageUri(data);
+                postImageUri(data, image.name, sourceUri);
                 const handleUri = (event: MessageEvent<WebviewMessage>) => {
                   if (event.data.command === 'imageUri') {
                     window.removeEventListener('message', handleUri);
